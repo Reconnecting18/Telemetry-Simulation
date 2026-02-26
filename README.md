@@ -10,14 +10,6 @@ The goal is to model the dynamics of a high-performance race car, simulating var
 - Calculates lateral G-forces at each track node based on a constant velocity.
 - A basic physics engine to encapsulate physics calculations.
 
-## How to Build and Run
+## How to Run
 
-1.  **Prerequisites**: You need a C++ compiler like g++.
-2.  **Compile**: Open a terminal in the project directory and run the following command:
-    ```sh
-    g++ track_sim.cpp physicsEngine.cpp -o track_sim
-    ```
-3.  **Run**: Make sure you have a `track_data.csv` file in the same directory. Then, run the compiled program:
-    ```sh
-    ./track_sim
-    ```
+1.  AWS Amplify (In progress)
