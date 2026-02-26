@@ -1,2 +1,23 @@
 # Telemetry-Simulation
-Race-Telemetry Simulation designed to model the dynamics in mechanical components on a high-performance race car. Simulates the change in a variety of variables when racing such as tire wear, aerodynamics, amount of fuel, and the wear on mechanical components.
+
+A C++ project to simulate the physics of a race car on a track. This simulation reads track data from a CSV file and calculates the lateral forces on the car at various points along the track.
+
+The goal is to model the dynamics of a high-performance race car, simulating variables like tire wear, aerodynamics, fuel consumption, and mechanical component wear.
+
+## Current Features
+
+- Reads track geometry (X, Y, Curvature) from `track_data.csv`.
+- Calculates lateral G-forces at each track node based on a constant velocity.
+- A basic physics engine to encapsulate physics calculations.
+
+## How to Build and Run
+
+1.  **Prerequisites**: You need a C++ compiler like g++.
+2.  **Compile**: Open a terminal in the project directory and run the following command:
+    ```sh
+    g++ track_sim.cpp physicsEngine.cpp -o track_sim
+    ```
+3.  **Run**: Make sure you have a `track_data.csv` file in the same directory. Then, run the compiled program:
+    ```sh
+    ./track_sim
+    ```

@@ -3,6 +3,7 @@
 #include <vector>
 #include <string>
 #include <sstream>
+#include "physicsEngine.h" // Include our new physics engine header
 
 struct TrackNode {
     double x, y, curvature;
@@ -46,9 +47,9 @@ int main() {
     double mass = 800.0;    
 
     for (int i = 0; i < track.size(); i++) {
-        double force = mass * (velocity * velocity) * track[i].curvature;
+        double force = calculateForceFromCurvature(mass, velocity, track[i].curvature);
         std::cout << "Node " << i << ": Pos(" << track[i].x << "," << track[i].y 
-                  << ") | Lat Force: " << force << " N" << std::endl;
+                  << ") | Curvature: " << track[i].curvature << " | Lat Force: " << force << " N" << std::endl;
     }
 
     return 0;
