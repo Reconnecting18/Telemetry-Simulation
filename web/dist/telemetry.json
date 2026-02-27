@@ -1,0 +1,986 @@
+{
+  "session": {
+    "track": "data/circuit_alpha.csv",
+    "total_nodes": 54
+  },
+  "vehicle": {
+    "mass_kg": 798.0,
+    "max_lateral_g": 4.5000,
+    "max_speed_ms": 91.0,
+    "fuel_capacity_L": 110.0
+  },
+  "frames": [
+    {
+      "node": 0,
+      "time_s": 1.8257,
+      "x": 0.00,
+      "y": 0.00,
+      "velocity_ms": 54.7723,
+      "lateral_g": 0.0000,
+      "longitudinal_g": 1.5291,
+      "lateral_force_N": 0.0,
+      "drag_force_N": 0.0,
+      "fuel_L": 109.8906,
+      "tire_wear": {
+        "FL": 0.000260,
+        "FR": 0.000260,
+        "RL": 0.000260,
+        "RR": 0.000260
+      }
+    },
+    {
+      "node": 1,
+      "time_s": 3.1721,
+      "x": 100.00,
+      "y": 0.00,
+      "velocity_ms": 74.2728,
+      "lateral_g": 0.0000,
+      "longitudinal_g": 1.2826,
+      "lateral_force_N": 0.0,
+      "drag_force_N": 1929.4,
+      "fuel_L": 109.7819,
+      "tire_wear": {
+        "FL": 0.000542,
+        "FR": 0.000542,
+        "RL": 0.000542,
+        "RR": 0.000542
+      }
+    },
+    {
+      "node": 2,
+      "time_s": 4.3172,
+      "x": 200.00,
+      "y": 0.00,
+      "velocity_ms": 87.3343,
+      "lateral_g": 0.0000,
+      "longitudinal_g": 1.0759,
+      "lateral_force_N": 0.0,
+      "drag_force_N": 3547.8,
+      "fuel_L": 109.6738,
+      "tire_wear": {
+        "FL": 0.000838,
+        "FR": 0.000838,
+        "RL": 0.000838,
+        "RR": 0.000838
+      }
+    },
+    {
+      "node": 3,
+      "time_s": 5.4161,
+      "x": 300.00,
+      "y": 0.00,
+      "velocity_ms": 91.0000,
+      "lateral_g": 0.0000,
+      "longitudinal_g": 0.3332,
+      "lateral_force_N": 0.0,
+      "drag_force_N": 4905.3,
+      "fuel_L": 109.5790,
+      "tire_wear": {
+        "FL": 0.001138,
+        "FR": 0.001138,
+        "RL": 0.001138,
+        "RR": 0.001138
+      }
+    },
+    {
+      "node": 4,
+      "time_s": 6.5150,
+      "x": 400.00,
+      "y": 0.00,
+      "velocity_ms": 91.0000,
+      "lateral_g": 0.0000,
+      "longitudinal_g": 0.0000,
+      "lateral_force_N": 0.0,
+      "drag_force_N": 5325.7,
+      "fuel_L": 109.4907,
+      "tire_wear": {
+        "FL": 0.001438,
+        "FR": 0.001438,
+        "RL": 0.001438,
+        "RR": 0.001438
+      }
+    },
+    {
+      "node": 5,
+      "time_s": 7.6139,
+      "x": 500.00,
+      "y": 0.00,
+      "velocity_ms": 91.0000,
+      "lateral_g": 0.0000,
+      "longitudinal_g": 0.0000,
+      "lateral_force_N": 0.0,
+      "drag_force_N": 5325.7,
+      "fuel_L": 109.4023,
+      "tire_wear": {
+        "FL": 0.001738,
+        "FR": 0.001738,
+        "RL": 0.001738,
+        "RR": 0.001738
+      }
+    },
+    {
+      "node": 6,
+      "time_s": 8.7128,
+      "x": 600.00,
+      "y": 0.00,
+      "velocity_ms": 91.0000,
+      "lateral_g": 0.0000,
+      "longitudinal_g": 0.0000,
+      "lateral_force_N": 0.0,
+      "drag_force_N": 5325.7,
+      "fuel_L": 109.3140,
+      "tire_wear": {
+        "FL": 0.002038,
+        "FR": 0.002038,
+        "RL": 0.002038,
+        "RR": 0.002038
+      }
+    },
+    {
+      "node": 7,
+      "time_s": 9.5657,
+      "x": 700.00,
+      "y": 0.00,
+      "velocity_ms": 91.0000,
+      "lateral_g": 0.0000,
+      "longitudinal_g": 0.0000,
+      "lateral_force_N": 0.0,
+      "drag_force_N": 5325.7,
+      "fuel_L": 109.2454,
+      "tire_wear": {
+        "FL": 0.002271,
+        "FR": 0.002271,
+        "RL": 0.002271,
+        "RR": 0.002271
+      }
+    },
+    {
+      "node": 8,
+      "time_s": 10.5452,
+      "x": 775.00,
+      "y": -20.00,
+      "velocity_ms": 79.4130,
+      "lateral_g": 4.5000,
+      "longitudinal_g": -1.2939,
+      "lateral_force_N": 35227.7,
+      "drag_force_N": 5325.7,
+      "fuel_L": 109.2144,
+      "tire_wear": {
+        "FL": 0.002998,
+        "FR": 0.010558,
+        "RL": 0.002998,
+        "RR": 0.010558
+      }
+    },
+    {
+      "node": 9,
+      "time_s": 11.5226,
+      "x": 830.00,
+      "y": -75.00,
+      "velocity_ms": 79.4130,
+      "lateral_g": 4.5000,
+      "longitudinal_g": 0.0000,
+      "lateral_force_N": 35227.7,
+      "drag_force_N": 4055.8,
+      "fuel_L": 109.1483,
+      "tire_wear": {
+        "FL": 0.003724,
+        "FR": 0.018829,
+        "RL": 0.003724,
+        "RR": 0.018829
+      }
+    },
+    {
+      "node": 10,
+      "time_s": 12.7819,
+      "x": 850.00,
+      "y": -150.00,
+      "velocity_ms": 79.4130,
+      "lateral_g": 4.5000,
+      "longitudinal_g": 0.0000,
+      "lateral_force_N": 35227.7,
+      "drag_force_N": 4055.8,
+      "fuel_L": 109.0631,
+      "tire_wear": {
+        "FL": 0.004659,
+        "FR": 0.029484,
+        "RL": 0.004659,
+        "RR": 0.029484
+      }
+    },
+    {
+      "node": 11,
+      "time_s": 13.9907,
+      "x": 850.00,
+      "y": -250.00,
+      "velocity_ms": 91.0000,
+      "lateral_g": 0.0000,
+      "longitudinal_g": 0.9149,
+      "lateral_force_N": 0.0,
+      "drag_force_N": 4055.8,
+      "fuel_L": 108.9468,
+      "tire_wear": {
+        "FL": 0.004989,
+        "FR": 0.029814,
+        "RL": 0.004989,
+        "RR": 0.029814
+      }
+    },
+    {
+      "node": 12,
+      "time_s": 14.5824,
+      "x": 850.00,
+      "y": -360.00,
+      "velocity_ms": 91.0000,
+      "lateral_g": 0.0000,
+      "longitudinal_g": 0.0000,
+      "lateral_force_N": 0.0,
+      "drag_force_N": 5325.7,
+      "fuel_L": 108.8992,
+      "tire_wear": {
+        "FL": 0.005151,
+        "FR": 0.029976,
+        "RL": 0.005151,
+        "RR": 0.029976
+      }
+    },
+    {
+      "node": 13,
+      "time_s": 15.4587,
+      "x": 830.00,
+      "y": -410.00,
+      "velocity_ms": 60.6527,
+      "lateral_g": 4.5000,
+      "longitudinal_g": -4.4133,
+      "lateral_force_N": 35227.7,
+      "drag_force_N": 5325.7,
+      "fuel_L": 108.8953,
+      "tire_wear": {
+        "FL": 0.010803,
+        "FR": 0.030462,
+        "RL": 0.010803,
+        "RR": 0.030462
+      }
+    },
+    {
+      "node": 14,
+      "time_s": 16.4210,
+      "x": 790.00,
+      "y": -445.00,
+      "velocity_ms": 54.2494,
+      "lateral_g": 4.5000,
+      "longitudinal_g": -0.7184,
+      "lateral_force_N": 35227.7,
+      "drag_force_N": 2365.9,
+      "fuel_L": 108.8671,
+      "tire_wear": {
+        "FL": 0.016351,
+        "FR": 0.030936,
+        "RL": 0.016351,
+        "RR": 0.030936
+      }
+    },
+    {
+      "node": 15,
+      "time_s": 17.0615,
+      "x": 740.00,
+      "y": -460.00,
+      "velocity_ms": 62.9374,
+      "lateral_g": 0.0000,
+      "longitudinal_g": 1.2873,
+      "lateral_force_N": 0.0,
+      "drag_force_N": 1892.7,
+      "fuel_L": 108.8233,
+      "tire_wear": {
+        "FL": 0.016460,
+        "FR": 0.031044,
+        "RL": 0.016460,
+        "RR": 0.031044
+      }
+    },
+    {
+      "node": 16,
+      "time_s": 17.7053,
+      "x": 700.00,
+      "y": -455.00,
+      "velocity_ms": 60.6527,
+      "lateral_g": 4.5000,
+      "longitudinal_g": -0.3685,
+      "lateral_force_N": 35227.7,
+      "drag_force_N": 2547.5,
+      "fuel_L": 108.7969,
+      "tire_wear": {
+        "FL": 0.016817,
+        "FR": 0.035197,
+        "RL": 0.016817,
+        "RR": 0.035197
+      }
+    },
+    {
+      "node": 17,
+      "time_s": 18.3700,
+      "x": 670.00,
+      "y": -430.00,
+      "velocity_ms": 54.2494,
+      "lateral_g": 4.5000,
+      "longitudinal_g": -1.0401,
+      "lateral_force_N": 35227.7,
+      "drag_force_N": 2365.9,
+      "fuel_L": 108.7817,
+      "tire_wear": {
+        "FL": 0.017144,
+        "FR": 0.039029,
+        "RL": 0.017144,
+        "RR": 0.039029
+      }
+    },
+    {
+      "node": 18,
+      "time_s": 19.5125,
+      "x": 650.00,
+      "y": -400.00,
+      "velocity_ms": 70.5637,
+      "lateral_g": 0.0000,
+      "longitudinal_g": 1.2873,
+      "lateral_force_N": 0.0,
+      "drag_force_N": 1892.7,
+      "fuel_L": 108.6941,
+      "tire_wear": {
+        "FL": 0.017368,
+        "FR": 0.039253,
+        "RL": 0.017368,
+        "RR": 0.039253
+      }
+    },
+    {
+      "node": 19,
+      "time_s": 20.6942,
+      "x": 570.00,
+      "y": -390.00,
+      "velocity_ms": 84.7314,
+      "lateral_g": 0.0000,
+      "longitudinal_g": 1.1200,
+      "lateral_force_N": 0.0,
+      "drag_force_N": 3202.3,
+      "fuel_L": 108.5857,
+      "tire_wear": {
+        "FL": 0.017661,
+        "FR": 0.039547,
+        "RL": 0.017661,
+        "RR": 0.039547
+      }
+    },
+    {
+      "node": 20,
+      "time_s": 21.7945,
+      "x": 470.00,
+      "y": -385.00,
+      "velocity_ms": 91.0000,
+      "lateral_g": 0.0000,
+      "longitudinal_g": 0.5608,
+      "lateral_force_N": 0.0,
+      "drag_force_N": 4617.3,
+      "fuel_L": 108.4864,
+      "tire_wear": {
+        "FL": 0.017962,
+        "FR": 0.039847,
+        "RL": 0.017962,
+        "RR": 0.039847
+      }
+    },
+    {
+      "node": 21,
+      "time_s": 22.8934,
+      "x": 370.00,
+      "y": -380.00,
+      "velocity_ms": 91.0000,
+      "lateral_g": 0.0000,
+      "longitudinal_g": 0.0000,
+      "lateral_force_N": 0.0,
+      "drag_force_N": 5325.7,
+      "fuel_L": 108.3981,
+      "tire_wear": {
+        "FL": 0.018262,
+        "FR": 0.040147,
+        "RL": 0.018262,
+        "RR": 0.040147
+      }
+    },
+    {
+      "node": 22,
+      "time_s": 23.9923,
+      "x": 270.00,
+      "y": -380.00,
+      "velocity_ms": 91.0000,
+      "lateral_g": 0.0000,
+      "longitudinal_g": 0.0000,
+      "lateral_force_N": 0.0,
+      "drag_force_N": 5325.7,
+      "fuel_L": 108.3097,
+      "tire_wear": {
+        "FL": 0.018562,
+        "FR": 0.040447,
+        "RL": 0.018562,
+        "RR": 0.040447
+      }
+    },
+    {
+      "node": 23,
+      "time_s": 24.9874,
+      "x": 170.00,
+      "y": -380.00,
+      "velocity_ms": 91.0000,
+      "lateral_g": 0.0000,
+      "longitudinal_g": 0.0000,
+      "lateral_force_N": 0.0,
+      "drag_force_N": 5325.7,
+      "fuel_L": 108.2297,
+      "tire_wear": {
+        "FL": 0.018833,
+        "FR": 0.040719,
+        "RL": 0.018833,
+        "RR": 0.040719
+      }
+    },
+    {
+      "node": 24,
+      "time_s": 25.5368,
+      "x": 80.00,
+      "y": -370.00,
+      "velocity_ms": 91.0000,
+      "lateral_g": 0.0000,
+      "longitudinal_g": 0.0000,
+      "lateral_force_N": 0.0,
+      "drag_force_N": 5325.7,
+      "fuel_L": 108.1856,
+      "tire_wear": {
+        "FL": 0.018983,
+        "FR": 0.040869,
+        "RL": 0.018983,
+        "RR": 0.040869
+      }
+    },
+    {
+      "node": 25,
+      "time_s": 26.2053,
+      "x": 30.00,
+      "y": -370.00,
+      "velocity_ms": 91.0000,
+      "lateral_g": 0.0000,
+      "longitudinal_g": 0.0000,
+      "lateral_force_N": 0.0,
+      "drag_force_N": 5325.7,
+      "fuel_L": 108.1318,
+      "tire_wear": {
+        "FL": 0.019166,
+        "FR": 0.041051,
+        "RL": 0.019166,
+        "RR": 0.041051
+      }
+    },
+    {
+      "node": 26,
+      "time_s": 26.5161,
+      "x": -30.00,
+      "y": -380.00,
+      "velocity_ms": 91.0000,
+      "lateral_g": 0.0000,
+      "longitudinal_g": 0.0000,
+      "lateral_force_N": 0.0,
+      "drag_force_N": 5325.7,
+      "fuel_L": 108.1068,
+      "tire_wear": {
+        "FL": 0.019251,
+        "FR": 0.041136,
+        "RL": 0.019251,
+        "RR": 0.041136
+      }
+    },
+    {
+      "node": 27,
+      "time_s": 27.3292,
+      "x": -10.00,
+      "y": -360.00,
+      "velocity_ms": 61.4898,
+      "lateral_g": 5.7813,
+      "longitudinal_g": -4.5872,
+      "lateral_force_N": 45258.6,
+      "drag_force_N": 5325.7,
+      "fuel_L": 108.1031,
+      "tire_wear": {
+        "FL": 0.019919,
+        "FR": 0.049826,
+        "RL": 0.019919,
+        "RR": 0.049826
+      }
+    },
+    {
+      "node": 28,
+      "time_s": 28.3104,
+      "x": -50.00,
+      "y": -330.00,
+      "velocity_ms": 42.0214,
+      "lateral_g": 4.5000,
+      "longitudinal_g": -2.4911,
+      "lateral_force_N": 35227.7,
+      "drag_force_N": 2431.7,
+      "fuel_L": 108.1000,
+      "tire_wear": {
+        "FL": 0.020288,
+        "FR": 0.054203,
+        "RL": 0.020288,
+        "RR": 0.054203
+      }
+    },
+    {
+      "node": 29,
+      "time_s": 29.2697,
+      "x": -60.00,
+      "y": -290.00,
+      "velocity_ms": 42.0214,
+      "lateral_g": 4.5000,
+      "longitudinal_g": 0.0000,
+      "lateral_force_N": 35227.7,
+      "drag_force_N": 1135.6,
+      "fuel_L": 108.0686,
+      "tire_wear": {
+        "FL": 0.020648,
+        "FR": 0.058481,
+        "RL": 0.020648,
+        "RR": 0.058481
+      }
+    },
+    {
+      "node": 30,
+      "time_s": 30.3808,
+      "x": -40.00,
+      "y": -255.00,
+      "velocity_ms": 46.9814,
+      "lateral_g": 4.5000,
+      "longitudinal_g": 0.4310,
+      "lateral_force_N": 35227.7,
+      "drag_force_N": 1135.6,
+      "fuel_L": 108.0229,
+      "tire_wear": {
+        "FL": 0.021118,
+        "FR": 0.064025,
+        "RL": 0.021118,
+        "RR": 0.064025
+      }
+    },
+    {
+      "node": 31,
+      "time_s": 31.4818,
+      "x": 10.00,
+      "y": -240.00,
+      "velocity_ms": 63.7411,
+      "lateral_g": 4.1416,
+      "longitudinal_g": 1.3477,
+      "lateral_force_N": 32422.1,
+      "drag_force_N": 1419.5,
+      "fuel_L": 107.9465,
+      "tire_wear": {
+        "FL": 0.021693,
+        "FR": 0.070378,
+        "RL": 0.021693,
+        "RR": 0.070378
+      }
+    },
+    {
+      "node": 32,
+      "time_s": 32.5199,
+      "x": 80.00,
+      "y": -235.00,
+      "velocity_ms": 77.0650,
+      "lateral_g": 0.0000,
+      "longitudinal_g": 1.1953,
+      "lateral_force_N": 0.0,
+      "drag_force_N": 2613.0,
+      "fuel_L": 107.8597,
+      "tire_wear": {
+        "FL": 0.021920,
+        "FR": 0.070605,
+        "RL": 0.021920,
+        "RR": 0.070605
+      }
+    },
+    {
+      "node": 33,
+      "time_s": 33.4392,
+      "x": 160.00,
+      "y": -235.00,
+      "velocity_ms": 87.0241,
+      "lateral_g": 0.0000,
+      "longitudinal_g": 1.0411,
+      "lateral_force_N": 0.0,
+      "drag_force_N": 3819.5,
+      "fuel_L": 107.7733,
+      "tire_wear": {
+        "FL": 0.022157,
+        "FR": 0.070842,
+        "RL": 0.022157,
+        "RR": 0.070842
+      }
+    },
+    {
+      "node": 34,
+      "time_s": 34.2259,
+      "x": 240.00,
+      "y": -235.00,
+      "velocity_ms": 91.0000,
+      "lateral_g": 0.0000,
+      "longitudinal_g": 0.5039,
+      "lateral_force_N": 0.0,
+      "drag_force_N": 4870.5,
+      "fuel_L": 107.7028,
+      "tire_wear": {
+        "FL": 0.022372,
+        "FR": 0.071057,
+        "RL": 0.022372,
+        "RR": 0.071057
+      }
+    },
+    {
+      "node": 35,
+      "time_s": 34.9402,
+      "x": 310.00,
+      "y": -220.00,
+      "velocity_ms": 91.0000,
+      "lateral_g": 4.2207,
+      "longitudinal_g": 0.0000,
+      "lateral_force_N": 33041.2,
+      "drag_force_N": 5325.7,
+      "fuel_L": 107.6454,
+      "tire_wear": {
+        "FL": 0.028495,
+        "FR": 0.071622,
+        "RL": 0.028495,
+        "RR": 0.071622
+      }
+    },
+    {
+      "node": 36,
+      "time_s": 35.5809,
+      "x": 370.00,
+      "y": -195.00,
+      "velocity_ms": 91.0000,
+      "lateral_g": 4.2207,
+      "longitudinal_g": 0.0000,
+      "lateral_force_N": 33041.2,
+      "drag_force_N": 5325.7,
+      "fuel_L": 107.5939,
+      "tire_wear": {
+        "FL": 0.033989,
+        "FR": 0.072130,
+        "RL": 0.033989,
+        "RR": 0.072130
+      }
+    },
+    {
+      "node": 37,
+      "time_s": 36.1650,
+      "x": 420.00,
+      "y": -165.00,
+      "velocity_ms": 91.0000,
+      "lateral_g": 4.2207,
+      "longitudinal_g": 0.0000,
+      "lateral_force_N": 33041.2,
+      "drag_force_N": 5325.7,
+      "fuel_L": 107.5469,
+      "tire_wear": {
+        "FL": 0.038996,
+        "FR": 0.072592,
+        "RL": 0.038996,
+        "RR": 0.072592
+      }
+    },
+    {
+      "node": 38,
+      "time_s": 36.6716,
+      "x": 460.00,
+      "y": -130.00,
+      "velocity_ms": 91.0000,
+      "lateral_g": 0.0000,
+      "longitudinal_g": 0.0000,
+      "lateral_force_N": 0.0,
+      "drag_force_N": 5325.7,
+      "fuel_L": 107.5062,
+      "tire_wear": {
+        "FL": 0.039134,
+        "FR": 0.072730,
+        "RL": 0.039134,
+        "RR": 0.072730
+      }
+    },
+    {
+      "node": 39,
+      "time_s": 37.1630,
+      "x": 490.00,
+      "y": -95.00,
+      "velocity_ms": 91.0000,
+      "lateral_g": 0.0000,
+      "longitudinal_g": 0.0000,
+      "lateral_force_N": 0.0,
+      "drag_force_N": 5325.7,
+      "fuel_L": 107.4667,
+      "tire_wear": {
+        "FL": 0.039268,
+        "FR": 0.072864,
+        "RL": 0.039268,
+        "RR": 0.072864
+      }
+    },
+    {
+      "node": 40,
+      "time_s": 37.7729,
+      "x": 510.00,
+      "y": -55.00,
+      "velocity_ms": 67.6033,
+      "lateral_g": 4.6587,
+      "longitudinal_g": -4.5872,
+      "lateral_force_N": 36470.2,
+      "drag_force_N": 5325.7,
+      "fuel_L": 107.4636,
+      "tire_wear": {
+        "FL": 0.039668,
+        "FR": 0.077559,
+        "RL": 0.039668,
+        "RR": 0.077559
+      }
+    },
+    {
+      "node": 41,
+      "time_s": 38.3935,
+      "x": 520.00,
+      "y": -15.00,
+      "velocity_ms": 66.4417,
+      "lateral_g": 4.5000,
+      "longitudinal_g": -0.1925,
+      "lateral_force_N": 35227.7,
+      "drag_force_N": 2939.2,
+      "fuel_L": 107.4326,
+      "tire_wear": {
+        "FL": 0.040047,
+        "FR": 0.081947,
+        "RL": 0.040047,
+        "RR": 0.081947
+      }
+    },
+    {
+      "node": 42,
+      "time_s": 39.0320,
+      "x": 510.00,
+      "y": 25.00,
+      "velocity_ms": 66.4417,
+      "lateral_g": 4.5000,
+      "longitudinal_g": 0.0000,
+      "lateral_force_N": 35227.7,
+      "drag_force_N": 2839.1,
+      "fuel_L": 107.3977,
+      "tire_wear": {
+        "FL": 0.040438,
+        "FR": 0.086461,
+        "RL": 0.040438,
+        "RR": 0.086461
+      }
+    },
+    {
+      "node": 43,
+      "time_s": 39.8303,
+      "x": 480.00,
+      "y": 55.00,
+      "velocity_ms": 76.2005,
+      "lateral_g": 0.0000,
+      "longitudinal_g": 1.1664,
+      "lateral_force_N": 0.0,
+      "drag_force_N": 2839.1,
+      "fuel_L": 107.3318,
+      "tire_wear": {
+        "FL": 0.040611,
+        "FR": 0.086634,
+        "RL": 0.040611,
+        "RR": 0.086634
+      }
+    },
+    {
+      "node": 44,
+      "time_s": 40.6598,
+      "x": 420.00,
+      "y": 65.00,
+      "velocity_ms": 85.2411,
+      "lateral_g": 0.0000,
+      "longitudinal_g": 1.0520,
+      "lateral_force_N": 0.0,
+      "drag_force_N": 3734.3,
+      "fuel_L": 107.2554,
+      "tire_wear": {
+        "FL": 0.040818,
+        "FR": 0.086841,
+        "RL": 0.040818,
+        "RR": 0.086841
+      }
+    },
+    {
+      "node": 45,
+      "time_s": 41.4465,
+      "x": 350.00,
+      "y": 55.00,
+      "velocity_ms": 91.0000,
+      "lateral_g": 0.0000,
+      "longitudinal_g": 0.7226,
+      "lateral_force_N": 0.0,
+      "drag_force_N": 4673.0,
+      "fuel_L": 107.1817,
+      "tire_wear": {
+        "FL": 0.041033,
+        "FR": 0.087056,
+        "RL": 0.041033,
+        "RR": 0.087056
+      }
+    },
+    {
+      "node": 46,
+      "time_s": 42.4271,
+      "x": 280.00,
+      "y": 40.00,
+      "velocity_ms": 57.0074,
+      "lateral_g": 5.6317,
+      "longitudinal_g": -4.5872,
+      "lateral_force_N": 44087.4,
+      "drag_force_N": 5325.7,
+      "fuel_L": 107.1775,
+      "tire_wear": {
+        "FL": 0.041747,
+        "FR": 0.096281,
+        "RL": 0.041747,
+        "RR": 0.096281
+      }
+    },
+    {
+      "node": 47,
+      "time_s": 43.4701,
+      "x": 230.00,
+      "y": 15.00,
+      "velocity_ms": 50.9585,
+      "lateral_g": 4.5000,
+      "longitudinal_g": -0.6263,
+      "lateral_force_N": 35227.7,
+      "drag_force_N": 2090.1,
+      "fuel_L": 107.1474,
+      "tire_wear": {
+        "FL": 0.042228,
+        "FR": 0.101928,
+        "RL": 0.042228,
+        "RR": 0.101928
+      }
+    },
+    {
+      "node": 48,
+      "time_s": 44.6678,
+      "x": 190.00,
+      "y": -20.00,
+      "velocity_ms": 50.9585,
+      "lateral_g": 4.5000,
+      "longitudinal_g": 0.0000,
+      "lateral_force_N": 35227.7,
+      "drag_force_N": 1670.0,
+      "fuel_L": 107.0990,
+      "tire_wear": {
+        "FL": 0.042780,
+        "FR": 0.108412,
+        "RL": 0.042780,
+        "RR": 0.108412
+      }
+    },
+    {
+      "node": 49,
+      "time_s": 45.3980,
+      "x": 140.00,
+      "y": -55.00,
+      "velocity_ms": 61.2472,
+      "lateral_g": 0.0000,
+      "longitudinal_g": 1.3157,
+      "lateral_force_N": 0.0,
+      "drag_force_N": 1670.0,
+      "fuel_L": 107.0504,
+      "tire_wear": {
+        "FL": 0.042899,
+        "FR": 0.108531,
+        "RL": 0.042899,
+        "RR": 0.108531
+      }
+    },
+    {
+      "node": 50,
+      "time_s": 46.0420,
+      "x": 100.00,
+      "y": -75.00,
+      "velocity_ms": 69.4439,
+      "lateral_g": 0.0000,
+      "longitudinal_g": 1.2209,
+      "lateral_force_N": 0.0,
+      "drag_force_N": 2412.5,
+      "fuel_L": 107.0019,
+      "tire_wear": {
+        "FL": 0.043023,
+        "FR": 0.108655,
+        "RL": 0.043023,
+        "RR": 0.108655
+      }
+    },
+    {
+      "node": 51,
+      "time_s": 46.6576,
+      "x": 60.00,
+      "y": -55.00,
+      "velocity_ms": 76.6218,
+      "lateral_g": 0.0000,
+      "longitudinal_g": 1.1329,
+      "lateral_force_N": 0.0,
+      "drag_force_N": 3101.4,
+      "fuel_L": 106.9508,
+      "tire_wear": {
+        "FL": 0.043157,
+        "FR": 0.108789,
+        "RL": 0.043157,
+        "RR": 0.108789
+      }
+    },
+    {
+      "node": 52,
+      "time_s": 47.1010,
+      "x": 20.00,
+      "y": -30.00,
+      "velocity_ms": 81.3104,
+      "lateral_g": 3.3697,
+      "longitudinal_g": 1.0467,
+      "lateral_force_N": 26379.4,
+      "drag_force_N": 3775.7,
+      "fuel_L": 106.9119,
+      "tire_wear": {
+        "FL": 0.043392,
+        "FR": 0.110989,
+        "RL": 0.043392,
+        "RR": 0.110989
+      }
+    },
+    {
+      "node": 53,
+      "time_s": 47.1133,
+      "x": 0.00,
+      "y": 0.00,
+      "velocity_ms": 81.4292,
+      "lateral_g": 0.0000,
+      "longitudinal_g": 0.9859,
+      "lateral_force_N": 0.0,
+      "drag_force_N": 4251.9,
+      "fuel_L": 106.9108,
+      "tire_wear": {
+        "FL": 0.043395,
+        "FR": 0.110992,
+        "RL": 0.043395,
+        "RR": 0.110992
+      }
+    }
+  ]
+}
