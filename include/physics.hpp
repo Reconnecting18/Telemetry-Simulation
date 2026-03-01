@@ -1,6 +1,7 @@
 #pragma once
 
 #include "types.hpp"
+#include <vector>
 
 // ============================================================
 //  Physics Engine — Racing Telemetry Simulation
@@ -15,6 +16,23 @@ double calculateForceFromCurvature(double mass, double velocity, double curvatur
 double calculateLateralG(double velocity, double curvature);
 
 // ------------------------------------------------------------------
+// RACING LINE
+// ------------------------------------------------------------------
+
+// A single node along the ideal racing line.
+struct RacingLineNode {
+    double x, y;                   // real-space position (m)
+    double effective_curvature;    // signed curvature along the RL path (1/m)
+};
+
+// Compute the ideal racing line as a lateral offset from the track centerline.
+// Negative curvature (right turn) → car moves right at apex; positive → left.
+// max_offset: maximum lateral deviation in meters (default 5 m).
+std::vector<RacingLineNode> computeRacingLine(
+    const std::vector<TrackNode>& nodes,
+    double max_offset = 5.0);
+
+// ------------------------------------------------------------------
 // VELOCITY PLANNING
 // ------------------------------------------------------------------
 
@@ -25,11 +43,15 @@ double adjustVelocity(double current_v, double target_v,
                       double max_accel, double max_brake,
                       double& longitudinal_g_out);
 
-// Look-ahead: pre-computes a velocity profile with forward+backward passes.
-// Uses power-limited acceleration and drag-assisted braking.
+// Look-ahead velocity profile (3-pass: corner limits → backward brake → forward accel).
+// rl_curvatures: per-node effective curvatures along the racing line (replaces node curvatures
+//                in Pass 1 if provided; must be same size as nodes, else nodes curvatures used).
+// grade:         per-node sin(slope) values, positive = uphill (affects accel/brake passes).
 std::vector<double> computeVelocityProfile(
     const std::vector<TrackNode>& nodes,
-    const VehicleConfig& config);
+    const VehicleConfig& config,
+    const std::vector<double>& rl_curvatures = {},
+    const std::vector<double>& grade = {});
 
 // ------------------------------------------------------------------
 // GEARBOX

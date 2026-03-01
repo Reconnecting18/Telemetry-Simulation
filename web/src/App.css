@@ -256,39 +256,154 @@ header {
   min-width: 140px;
 }
 
-/* ---- Tire Pressure ---- */
-.pressure-card {
-  min-width: 120px;
+/* ---- Tire Temp Display ---- */
+.tire-temp-card {
+  min-width: 200px;
+  align-items: stretch;
 }
 
-.pressure-grid {
+.tire-temp-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  margin-bottom: 6px;
+}
+
+.tire-temp-header h4 {
+  margin-bottom: 0;
+}
+
+.mode-toggle {
+  display: flex;
+  gap: 3px;
+}
+
+.mode-btn {
+  background: #222;
+  color: #666;
+  border: 1px solid #333;
+  border-radius: 3px;
+  width: 22px;
+  height: 18px;
+  font-size: 0.65rem;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.mode-btn.active {
+  background: #e10600;
+  color: white;
+  border-color: #e10600;
+}
+.mode-btn:hover { border-color: #e10600; }
+
+/* Mode 1 */
+.tire-simple-grid {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 8px;
-  margin-top: 4px;
+  gap: 6px;
+  margin-bottom: 6px;
 }
 
-.pressure-item {
+.tire-simple-block {
   display: flex;
   flex-direction: column;
   align-items: center;
+  gap: 3px;
 }
 
-.pressure-label {
-  font-size: 0.6rem;
+.tire-corner-label {
+  font-size: 0.55rem;
   text-transform: uppercase;
   color: #666;
+  letter-spacing: 0.08em;
 }
 
-.pressure-value {
+.tire-temp-swatch {
+  width: 32px;
+  height: 20px;
+  border-radius: 3px;
+  opacity: 0.85;
+}
+
+.tire-temp-value {
   font-family: 'Courier New', monospace;
-  font-size: 0.9rem;
+  font-size: 0.75rem;
   font-weight: 700;
 }
 
-.pressure-unit {
+/* Mode 2 */
+.tire-detail-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 4px;
+  margin-bottom: 6px;
+}
+
+.tire-detail-col {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+}
+
+.tire-zones {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  width: 100%;
+}
+
+.zone-bar {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+
+.zone-swatch {
+  width: 10px;
+  height: 10px;
+  border-radius: 2px;
+  flex-shrink: 0;
+}
+
+.zone-temp {
+  font-family: 'Courier New', monospace;
+  font-size: 0.6rem;
+  font-weight: 600;
+  min-width: 22px;
+}
+
+.zone-label {
+  font-size: 0.5rem;
+  color: #555;
+}
+
+.tire-psi {
+  font-family: 'Courier New', monospace;
+  font-size: 0.6rem;
+  margin-top: 2px;
+}
+
+/* Temp legend shared */
+.temp-legend {
+  display: flex;
+  align-items: center;
+  gap: 4px;
   font-size: 0.55rem;
   color: #555;
+  flex-wrap: wrap;
+  margin-top: 4px;
+}
+
+.temp-legend-dot {
+  display: inline-block;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  margin-left: 4px;
 }
 
 /* ---- Wear Indicators ---- */
@@ -335,12 +450,33 @@ header {
 
 /* ---- Camber Display ---- */
 .camber-card {
-  min-width: 140px;
+  min-width: 190px;
+  align-items: stretch;
 }
 
-.camber-grid {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
+.camber-axle-row {
+  display: flex;
+  gap: 10px;
+  justify-content: center;
+  margin-bottom: 8px;
+}
+
+.camber-axle {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+}
+
+.camber-axle-label {
+  font-size: 0.55rem;
+  text-transform: uppercase;
+  color: #555;
+  letter-spacing: 0.08em;
+}
+
+.camber-wheels {
+  display: flex;
   gap: 4px;
 }
 
@@ -348,30 +484,105 @@ header {
   display: flex;
   flex-direction: column;
   align-items: center;
+  gap: 1px;
 }
 
-.camber-label {
-  font-size: 0.55rem;
+.camber-corner {
+  font-size: 0.5rem;
+  color: #555;
   text-transform: uppercase;
-  color: #666;
 }
 
 .camber-value {
   font-family: 'Courier New', monospace;
-  font-size: 0.7rem;
+  font-size: 0.75rem;
   color: #aaa;
 }
 
-.toe-row {
+/* Input rows */
+.camber-inputs {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  border-top: 1px solid #222;
+  padding-top: 6px;
+  margin-bottom: 6px;
+}
+
+.camber-input-row {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 0.6rem;
+  color: #888;
+}
+
+.camber-input-row span:first-child {
+  flex: 1;
+  white-space: nowrap;
+}
+
+.camber-input-row input {
+  width: 52px;
+  background: #222;
+  border: 1px solid #333;
+  border-radius: 3px;
+  color: #e0e0e0;
+  font-family: 'Courier New', monospace;
+  font-size: 0.65rem;
+  padding: 2px 4px;
+  text-align: right;
+}
+.camber-input-row input:focus {
+  outline: none;
+  border-color: #e10600;
+}
+
+/* Performance hints */
+.camber-perf {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  font-size: 0.55rem;
+  color: #555;
+  border-top: 1px solid #222;
+  padding-top: 4px;
+}
+.perf-front::before { content: 'F: '; color: #444; }
+.perf-rear::before  { content: 'R: '; color: #444; }
+
+/* ---- Track Legend ---- */
+.track-legend {
   display: flex;
   gap: 12px;
   margin-top: 6px;
+  flex-wrap: wrap;
 }
 
-.toe-item {
+.legend-item {
+  display: flex;
+  align-items: center;
+  gap: 5px;
   font-size: 0.6rem;
-  color: #666;
+  color: #888;
 }
+
+.legend-line {
+  display: inline-block;
+  width: 18px;
+  height: 2px;
+  border-radius: 1px;
+}
+
+.legend-dot {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+}
+
+.legend-yellow { background: #f5c518; }
+.legend-red    { background: #e10600; }
 
 /* ---- Charts Grid ---- */
 .charts-grid {

@@ -15,15 +15,18 @@
 struct TrackNode {
     double x;          // m — track-local X coordinate
     double y;          // m — track-local Y coordinate
+    double z;          // m — elevation above datum
     double curvature;  // 1/m — signed: positive = left turn, negative = right turn
     double distance;   // m — cumulative arc-length from start
+    int    kerb;       // 0=none  1=left kerb  2=right kerb  3=both
 };
 
 struct Track {
     std::string name;
     std::vector<TrackNode> nodes;
 
-    // Loads nodes from a CSV file (header: x,y,curvature).
+    // Loads nodes from a CSV file.
+    // Supports 3-column (x,y,curvature) and 5-column (x,y,z,curvature,kerb) formats.
     // Computes cumulative Euclidean distance between consecutive nodes.
     bool loadFromCSV(const std::string& path);
 
@@ -72,7 +75,7 @@ struct VehicleConfig {
 };
 
 struct VehicleState {
-    double x, y;                    // m — current position
+    double x, y;                    // m — current position (on racing line)
     double velocity;                // m/s
     double fuel;                    // L remaining
     double tire_wear[4];            // FL/FR/RL/RR: 0.0 = new, 1.0 = worn
@@ -81,7 +84,6 @@ struct VehicleState {
     double timestamp;               // s from lap start
     int    node_index;
 
-    // New fields
     int    gear;                    // current gear 1-N
     double rpm;                     // engine RPM
     double throttle;                // 0.0 – 1.0
@@ -102,7 +104,9 @@ VehicleConfig   defaultVehicleConfig();
 struct TelemetryFrame {
     int    node_index;
     double timestamp;               // s
-    double x, y;                    // m
+    double x, y;                    // m — racing line position
+    double elevation_m;             // m — track elevation at this node
+    bool   on_kerb;                 // car is at a kerb node
     double velocity_ms;             // m/s
     double lateral_g;               // G
     double longitudinal_g;          // G
@@ -111,7 +115,6 @@ struct TelemetryFrame {
     double fuel_L;                  // L
     double tire_wear[4];            // FL FR RL RR
 
-    // New fields
     int    gear;
     double rpm;
     double throttle;                // 0–1

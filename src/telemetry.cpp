@@ -41,20 +41,23 @@ bool TelemetrySession::writeJSON(const std::string& path) const {
 
     // --- session block ---
     out << "  \"session\": {\n";
-    out << "    \"track\": "       << jStr(track_name)   << ",\n";
-    out << "    \"total_nodes\": " << frames.size()      << "\n";
+    out << "    \"track\": "       << jStr(track_name) << ",\n";
+    out << "    \"total_nodes\": " << frames.size()    << "\n";
     out << "  },\n";
 
     // --- track geometry block ---
     out << "  \"track\": {\n";
-    out << "    \"name\": "             << jStr(track_name)                    << ",\n";
-    out << "    \"total_distance_m\": " << jVal(total_distance_m, 2)          << ",\n";
+    out << "    \"name\": "             << jStr(track_name)           << ",\n";
+    out << "    \"total_distance_m\": " << jVal(total_distance_m, 2) << ",\n";
     out << "    \"nodes\": [\n";
     for (std::size_t i = 0; i < track_nodes.size(); ++i) {
         const TrackNode& n = track_nodes[i];
-        out << "      {\"x\": " << jVal(n.x, 2)
-            << ", \"y\": "      << jVal(n.y, 2)
+        out << "      {"
+            << "\"x\": "         << jVal(n.x, 2)
+            << ", \"y\": "       << jVal(n.y, 2)
+            << ", \"z\": "       << jVal(n.z, 2)
             << ", \"curvature\": " << jVal(n.curvature, 6)
+            << ", \"kerb\": "    << n.kerb
             << "}";
         if (i + 1 < track_nodes.size()) out << ",";
         out << "\n";
@@ -62,24 +65,24 @@ bool TelemetrySession::writeJSON(const std::string& path) const {
     out << "    ]\n";
     out << "  },\n";
 
-    // --- vehicle block (extended) ---
+    // --- vehicle block ---
     out << "  \"vehicle\": {\n";
-    out << "    \"mass_kg\": "           << jVal(vc.mass, 1)           << ",\n";
-    out << "    \"max_lateral_g\": "     << jVal(vc.max_lateral_g)     << ",\n";
-    out << "    \"max_speed_ms\": "      << jVal(vc.max_speed, 1)      << ",\n";
-    out << "    \"fuel_capacity_L\": "   << jVal(vc.fuel_capacity, 1)  << ",\n";
-    out << "    \"num_gears\": "         << vc.num_gears               << ",\n";
-    out << "    \"max_rpm\": "           << jVal(vc.max_rpm, 0)        << ",\n";
-    out << "    \"shift_rpm\": "         << jVal(vc.shift_rpm, 0)      << ",\n";
+    out << "    \"mass_kg\": "              << jVal(vc.mass, 1)           << ",\n";
+    out << "    \"max_lateral_g\": "        << jVal(vc.max_lateral_g)     << ",\n";
+    out << "    \"max_speed_ms\": "         << jVal(vc.max_speed, 1)      << ",\n";
+    out << "    \"fuel_capacity_L\": "      << jVal(vc.fuel_capacity, 1)  << ",\n";
+    out << "    \"num_gears\": "            << vc.num_gears               << ",\n";
+    out << "    \"max_rpm\": "              << jVal(vc.max_rpm, 0)        << ",\n";
+    out << "    \"shift_rpm\": "            << jVal(vc.shift_rpm, 0)      << ",\n";
     out << "    \"tire_optimal_temp_C\": "  << jVal(vc.tire_optimal_temp, 1)  << ",\n";
     out << "    \"tire_overheat_temp_C\": " << jVal(vc.tire_overheat_temp, 1) << ",\n";
     out << "    \"cold_pressure_psi\": "    << jVal(vc.tire_cold_pressure, 1) << ",\n";
     out << "    \"suspension_travel_mm\": " << jVal(vc.suspension_travel * 1000.0, 1) << ",\n";
-    out << "    \"camber_deg\": {\"FL\": " << jVal(vc.camber_deg[0], 1)
+    out << "    \"camber_deg\": {\"FL\": "  << jVal(vc.camber_deg[0], 1)
         << ", \"FR\": " << jVal(vc.camber_deg[1], 1)
         << ", \"RL\": " << jVal(vc.camber_deg[2], 1)
         << ", \"RR\": " << jVal(vc.camber_deg[3], 1) << "},\n";
-    out << "    \"toe_deg\": {\"FL\": " << jVal(vc.toe_deg[0], 2)
+    out << "    \"toe_deg\": {\"FL\": "     << jVal(vc.toe_deg[0], 2)
         << ", \"FR\": " << jVal(vc.toe_deg[1], 2)
         << ", \"RL\": " << jVal(vc.toe_deg[2], 2)
         << ", \"RR\": " << jVal(vc.toe_deg[3], 2) << "}\n";
@@ -90,20 +93,22 @@ bool TelemetrySession::writeJSON(const std::string& path) const {
     for (std::size_t i = 0; i < frames.size(); ++i) {
         const TelemetryFrame& f = frames[i];
         out << "    {\n";
-        out << "      \"node\": "           << f.node_index                       << ",\n";
-        out << "      \"time_s\": "         << jVal(f.timestamp)                  << ",\n";
-        out << "      \"x\": "              << jVal(f.x, 2)                       << ",\n";
-        out << "      \"y\": "              << jVal(f.y, 2)                       << ",\n";
-        out << "      \"velocity_ms\": "    << jVal(f.velocity_ms)                << ",\n";
-        out << "      \"lateral_g\": "      << jVal(f.lateral_g)                  << ",\n";
-        out << "      \"longitudinal_g\": " << jVal(f.longitudinal_g)             << ",\n";
-        out << "      \"lateral_force_N\": "<< jVal(f.lateral_force_N, 1)         << ",\n";
-        out << "      \"drag_force_N\": "   << jVal(f.drag_force_N, 1)            << ",\n";
-        out << "      \"fuel_L\": "         << jVal(f.fuel_L)                     << ",\n";
-        out << "      \"gear\": "           << f.gear                             << ",\n";
-        out << "      \"rpm\": "            << jVal(f.rpm, 0)                     << ",\n";
-        out << "      \"throttle\": "       << jVal(f.throttle, 3)                << ",\n";
-        out << "      \"brake\": "          << jVal(f.brake, 3)                   << ",\n";
+        out << "      \"node\": "            << f.node_index                      << ",\n";
+        out << "      \"time_s\": "          << jVal(f.timestamp)                 << ",\n";
+        out << "      \"x\": "               << jVal(f.x, 2)                      << ",\n";
+        out << "      \"y\": "               << jVal(f.y, 2)                      << ",\n";
+        out << "      \"elevation_m\": "     << jVal(f.elevation_m, 2)            << ",\n";
+        out << "      \"on_kerb\": "         << (f.on_kerb ? "true" : "false")    << ",\n";
+        out << "      \"velocity_ms\": "     << jVal(f.velocity_ms)               << ",\n";
+        out << "      \"lateral_g\": "       << jVal(f.lateral_g)                 << ",\n";
+        out << "      \"longitudinal_g\": "  << jVal(f.longitudinal_g)            << ",\n";
+        out << "      \"lateral_force_N\": " << jVal(f.lateral_force_N, 1)        << ",\n";
+        out << "      \"drag_force_N\": "    << jVal(f.drag_force_N, 1)           << ",\n";
+        out << "      \"fuel_L\": "          << jVal(f.fuel_L)                    << ",\n";
+        out << "      \"gear\": "            << f.gear                            << ",\n";
+        out << "      \"rpm\": "             << jVal(f.rpm, 0)                    << ",\n";
+        out << "      \"throttle\": "        << jVal(f.throttle, 3)               << ",\n";
+        out << "      \"brake\": "           << jVal(f.brake, 3)                  << ",\n";
         // Tire wear
         out << "      \"tire_wear\": {";
         out << "\"FL\": " << jVal(f.tire_wear[0], 6) << ", ";

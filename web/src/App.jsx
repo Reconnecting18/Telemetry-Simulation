@@ -13,7 +13,7 @@ import GearDisplay from './components/GearDisplay'
 import GForceMeter from './components/GForceMeter'
 import ThrottleBrakeBar from './components/ThrottleBrakeBar'
 import CarDiagram from './components/CarDiagram'
-import TirePressure from './components/TirePressure'
+import TireTempDisplay from './components/TireTempDisplay'
 import WearIndicators from './components/WearIndicators'
 import CamberDisplay from './components/CamberDisplay'
 
@@ -88,9 +88,9 @@ export default function App() {
           </div>
           <div className="indicators-row">
             <CarDiagram frame={f} vehicle={v} />
-            <TirePressure frame={f} coldPressure={v?.cold_pressure_psi} />
+            <TireTempDisplay frame={f} vehicle={v} />
             <WearIndicators frame={f} />
-            <CamberDisplay frame={f} vehicle={v} />
+            <CamberDisplay vehicle={v} />
           </div>
         </div>
       </div>
