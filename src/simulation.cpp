@@ -74,48 +74,50 @@ VehicleState makeInitialState(const VehicleConfig& config) {
 
 VehicleConfig defaultVehicleConfig() {
     VehicleConfig cfg{};
-    cfg.mass           = 798.0;
-    cfg.max_lateral_g  = 3.5;
-    cfg.max_speed      = 91.0;
-    cfg.max_accel      = 15.0;
-    cfg.max_brake      = 45.0;
-    cfg.drag_coeff     = 0.7;
-    cfg.frontal_area   = 1.5;
-    cfg.fuel_capacity  = 110.0;
-    cfg.base_fuel_rate = 75.0;
-    cfg.cog_height     = 0.30;
-    cfg.track_width    = 1.52;
 
-    // Gearbox — typical F1-style 6-speed
+    // GT3-class vehicle (Porsche 911 GT3 R inspired)
+    cfg.mass           = 1300.0;   // kg (with driver)
+    cfg.max_lateral_g  = 2.0;     // G — GT3 tire grip
+    cfg.max_speed      = 74.0;    // m/s ≈ 267 km/h
+    cfg.max_accel      = 9.5;     // m/s² ≈ ~1G traction-limited launch
+    cfg.max_brake      = 16.0;    // m/s² ≈ 1.6G
+    cfg.drag_coeff     = 0.75;    // high-downforce GT3
+    cfg.frontal_area   = 2.0;     // m²
+    cfg.fuel_capacity  = 120.0;   // L endurance tank
+    cfg.base_fuel_rate = 35.0;    // L/100 km cruise
+    cfg.cog_height     = 0.45;    // m
+    cfg.track_width    = 1.65;    // m
+
+    // Gearbox — 6-speed sequential (911 GT3 R style)
     cfg.num_gears = 6;
-    cfg.gear_ratios[0] = 0.0;   // unused
-    cfg.gear_ratios[1] = 3.23;
+    cfg.gear_ratios[0] = 0.0;     // unused
+    cfg.gear_ratios[1] = 3.09;
     cfg.gear_ratios[2] = 2.19;
-    cfg.gear_ratios[3] = 1.63;
-    cfg.gear_ratios[4] = 1.29;
-    cfg.gear_ratios[5] = 1.06;
-    cfg.gear_ratios[6] = 0.87;
-    cfg.gear_ratios[7] = 0.0;   // unused
-    cfg.final_drive  = 3.42;
-    cfg.max_rpm      = 15000.0;
-    cfg.idle_rpm     = 4000.0;
-    cfg.shift_rpm    = 14500.0;
-    cfg.tire_radius  = 0.33;
+    cfg.gear_ratios[3] = 1.69;
+    cfg.gear_ratios[4] = 1.35;
+    cfg.gear_ratios[5] = 1.12;
+    cfg.gear_ratios[6] = 0.93;
+    cfg.gear_ratios[7] = 0.0;     // unused
+    cfg.final_drive  = 3.44;
+    cfg.max_rpm      = 9000.0;
+    cfg.idle_rpm     = 3500.0;
+    cfg.shift_rpm    = 8500.0;
+    cfg.tire_radius  = 0.33;      // m
 
     // Tire thermal
     cfg.tire_ambient_temp  = 25.0;
-    cfg.tire_optimal_temp  = 90.0;
-    cfg.tire_overheat_temp = 120.0;
-    cfg.tire_cold_pressure = 21.0;
+    cfg.tire_optimal_temp  = 85.0;
+    cfg.tire_overheat_temp = 110.0;
+    cfg.tire_cold_pressure = 25.0;   // psi
 
     // Suspension & alignment
-    cfg.suspension_stiffness = 200000.0;
-    cfg.suspension_travel    = 0.030;
-    cfg.wheelbase            = 3.60;
-    cfg.camber_deg[0] = -3.5;  cfg.camber_deg[1] = -3.5;
-    cfg.camber_deg[2] = -2.0;  cfg.camber_deg[3] = -2.0;
-    cfg.toe_deg[0] = 0.1;  cfg.toe_deg[1] = 0.1;
-    cfg.toe_deg[2] = 0.0;  cfg.toe_deg[3] = 0.0;
+    cfg.suspension_stiffness = 120000.0;   // N/m (per corner)
+    cfg.suspension_travel    = 0.040;      // m
+    cfg.wheelbase            = 2.50;       // m
+    cfg.camber_deg[0] = -3.0;  cfg.camber_deg[1] = -3.0;
+    cfg.camber_deg[2] = -1.8;  cfg.camber_deg[3] = -1.8;
+    cfg.toe_deg[0] = 0.05;  cfg.toe_deg[1] = 0.05;
+    cfg.toe_deg[2] = 0.00;  cfg.toe_deg[3] = 0.00;
 
     return cfg;
 }
@@ -247,11 +249,15 @@ TelemetrySession runSimulation(const Track& track, const VehicleConfig& config) 
     for (int i = 0; i < static_cast<int>(track.nodes.size()); ++i) {
         const TrackNode& node = track.nodes[i];
 
-        // Segment length to next node
-        double seg_len = 1.0;
-        if (i + 1 < static_cast<int>(track.nodes.size())) {
-            double dx = track.nodes[i + 1].x - node.x;
-            double dy = track.nodes[i + 1].y - node.y;
+        // Segment length FROM previous node (distance just traveled)
+        // This matches the velocity profile's backward pass which uses
+        // segmentLength(i) = distance from node i to i+1, constraining v[i]
+        // based on v[i+1] and that segment. When we arrive at node i+1,
+        // we use that same segment length for the velocity adjustment.
+        double seg_len = 0.1;
+        if (i > 0) {
+            double dx = node.x - track.nodes[i - 1].x;
+            double dy = node.y - track.nodes[i - 1].y;
             seg_len = std::max(std::sqrt(dx * dx + dy * dy), 0.1);
         }
 
@@ -267,10 +273,12 @@ TelemetrySession runSimulation(const Track& track, const VehicleConfig& config) 
         double eff_accel = std::max(max_engine_accel - drag_decel, 0.0);
 
         // Velocity planning (uses look-ahead profile)
+        // Effective braking includes drag assistance (consistent with velocity profile)
         double target_v = v_profile[i];
         double long_g = 0.0;
+        double eff_brake = config.max_brake + drag_decel;
         state.velocity = adjustVelocity(state.velocity, target_v, seg_len,
-                                        eff_accel, config.max_brake, long_g);
+                                        eff_accel, eff_brake, long_g);
 
         // Forces
         state.lateral_g      = calculateLateralG(state.velocity, node.curvature);
@@ -286,8 +294,9 @@ TelemetrySession runSimulation(const Track& track, const VehicleConfig& config) 
                                   config.final_drive, config.tire_radius);
 
         // Throttle / brake from force balance:
-        //   engine_effort = net_accel + drag_decel  (how much engine accel is needed)
-        //   At max speed on straight: net_accel=0, effort=drag_decel=max_engine_accel → 100%
+        //   engine_effort = net_accel + drag_decel  (how much engine force is needed)
+        //   At max speed: net_accel=0, effort=drag_decel=max_engine_accel → throttle=100%
+        //   Braking: pedal force = total_decel - drag (drag assists, reducing pedal input)
         double net_accel = long_g * 9.81;
         double engine_effort = net_accel + drag_decel;
         if (engine_effort >= 0.0) {
@@ -295,7 +304,9 @@ TelemetrySession runSimulation(const Track& track, const VehicleConfig& config) 
             state.brake    = 0.0;
         } else {
             state.throttle = 0.0;
-            state.brake    = std::clamp(-engine_effort / config.max_brake, 0.0, 1.0);
+            // Brake pedal = mechanical brake needed (total decel minus drag contribution)
+            double mech_brake = std::max(-net_accel - drag_decel, 0.0);
+            state.brake    = std::clamp(mech_brake / config.max_brake, 0.0, 1.0);
         }
 
         // Tire wear

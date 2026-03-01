@@ -16,8 +16,7 @@ export function usePlayback(frames) {
       setCurrentTime(prev => {
         const next = prev + dt * playbackSpeed
         if (next >= maxTime) {
-          setIsPlaying(false)
-          return maxTime
+          return next - maxTime  // loop back to start
         }
         return next
       })

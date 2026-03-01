@@ -4,7 +4,7 @@
 #include "types.hpp"
 
 int main(int argc, char* argv[]) {
-    std::string track_path  = (argc > 1) ? argv[1] : "data/circuit_alpha.csv";
+    std::string track_path  = (argc > 1) ? argv[1] : "data/monza.csv";
     std::string output_path = (argc > 2) ? argv[2] : "output/telemetry.json";
 
     std::cout << "=== Racing Telemetry Simulation ===\n";
@@ -13,7 +13,13 @@ int main(int argc, char* argv[]) {
 
     // Load track
     Track track;
-    track.name = track_path;
+    // Extract clean track name from filename
+    std::string tname = track_path;
+    auto slash = tname.find_last_of("/\\");
+    if (slash != std::string::npos) tname = tname.substr(slash + 1);
+    auto dot = tname.find_last_of('.');
+    if (dot != std::string::npos) tname = tname.substr(0, dot);
+    track.name = tname;
     if (!track.loadFromCSV(track_path)) {
         return 1;
     }

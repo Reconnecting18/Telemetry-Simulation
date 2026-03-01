@@ -5,7 +5,7 @@ function CamberWheel({ label, camberDeg, isLeftSide }) {
   // Left side: inward = rightward in SVG = clockwise = positive angle → negate camberDeg
   // Right side: inward = leftward in SVG = counterclockwise = keep camberDeg sign
   // Scale 3x so small angles (~3-4 deg) are visible in the icon.
-  const visualAngle = (isLeftSide ? -camberDeg : camberDeg) * 3
+  const visualAngle = (isLeftSide ? -camberDeg : camberDeg) * 2
 
   return (
     <div className="camber-item">
