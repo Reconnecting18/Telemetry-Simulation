@@ -1,142 +1,168 @@
-import { useEffect, useState } from 'react'
-import {
-  LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer,
-} from 'recharts'
+import { useMemo } from 'react'
+import { useTelemetryData } from './hooks/useTelemetryData'
+import { usePlayback } from './hooks/usePlayback'
+import { COLORS } from './utils/colors'
 
-const COLORS = {
-  velocity:   '#e10600',
-  lateral_g:  '#f5a623',
-  long_g:     '#4a90e2',
-  drag:       '#7ed321',
-  fuel:       '#9b9b9b',
-  FL:         '#e10600',
-  FR:         '#f5a623',
-  RL:         '#4a90e2',
-  RR:         '#7ed321',
-}
-
-function Chart({ title, data, lines }) {
-  return (
-    <div className="chart-card">
-      <h3>{title}</h3>
-      <ResponsiveContainer width="100%" height={220}>
-        <LineChart data={data} margin={{ top: 4, right: 16, left: 0, bottom: 4 }}>
-          <CartesianGrid strokeDasharray="3 3" stroke="#2a2a2a" />
-          <XAxis dataKey="node" tick={{ fontSize: 11, fill: '#888' }} label={{ value: 'Node', position: 'insideBottomRight', offset: -4, fill: '#666', fontSize: 11 }} />
-          <YAxis tick={{ fontSize: 11, fill: '#888' }} width={52} />
-          <Tooltip contentStyle={{ background: '#1a1a1a', border: '1px solid #333', fontSize: 12 }} />
-          <Legend wrapperStyle={{ fontSize: 12 }} />
-          {lines.map(({ key, name, color, dot }) => (
-            <Line
-              key={key}
-              type="monotone"
-              dataKey={key}
-              name={name}
-              stroke={color}
-              dot={dot ?? false}
-              strokeWidth={1.5}
-              isAnimationActive={false}
-            />
-          ))}
-        </LineChart>
-      </ResponsiveContainer>
-    </div>
-  )
-}
+import Header from './components/Header'
+import PlaybackControls from './components/PlaybackControls'
+import TrackMap from './components/TrackMap'
+import TimeChart from './components/TimeChart'
+import Speedometer from './components/Speedometer'
+import RevCounter from './components/RevCounter'
+import GearDisplay from './components/GearDisplay'
+import GForceMeter from './components/GForceMeter'
+import ThrottleBrakeBar from './components/ThrottleBrakeBar'
+import CarDiagram from './components/CarDiagram'
+import TirePressure from './components/TirePressure'
+import WearIndicators from './components/WearIndicators'
+import CamberDisplay from './components/CamberDisplay'
 
 export default function App() {
-  const [data, setData] = useState(null)
-  const [error, setError] = useState(null)
+  const { data, error } = useTelemetryData()
+  const {
+    currentTime, maxTime, isPlaying, playbackSpeed,
+    interpolatedFrame, toggle, seekTo, setPlaybackSpeed,
+  } = usePlayback(data?.frames)
 
-  useEffect(() => {
-    fetch('/telemetry.json')
-      .then(r => {
-        if (!r.ok) throw new Error(`HTTP ${r.status}`)
-        return r.json()
-      })
-      .then(json => {
-        const frames = json.frames.map(f => ({
-          node:        f.node,
-          velocity_ms: +f.velocity_ms.toFixed(2),
-          lateral_g:   +f.lateral_g.toFixed(3),
-          long_g:      +f.longitudinal_g.toFixed(3),
-          drag_N:      +f.drag_force_N.toFixed(0),
-          fuel_L:      +f.fuel_L.toFixed(3),
-          tire_FL:     +(f.tire_wear.FL * 100).toFixed(4),
-          tire_FR:     +(f.tire_wear.FR * 100).toFixed(4),
-          tire_RL:     +(f.tire_wear.RL * 100).toFixed(4),
-          tire_RR:     +(f.tire_wear.RR * 100).toFixed(4),
-        }))
-        setData({ meta: json, frames })
-      })
-      .catch(e => setError(e.message))
-  }, [])
+  // Pre-compute chart data with rounded values
+  const chartData = useMemo(() => {
+    if (!data) return []
+    return data.frames.map(f => ({
+      time_s:      +f.time_s.toFixed(2),
+      velocity_ms: +f.velocity_ms.toFixed(2),
+      lateral_g:   +f.lateral_g.toFixed(3),
+      long_g:      +f.longitudinal_g.toFixed(3),
+      drag_N:      +f.drag_force_N.toFixed(0),
+      fuel_L:      +f.fuel_L.toFixed(3),
+      throttle:    +(f.throttle * 100).toFixed(1),
+      brake:       +(f.brake * 100).toFixed(1),
+      tire_FL:     +(f.tire_wear.FL * 100).toFixed(3),
+      tire_FR:     +(f.tire_wear.FR * 100).toFixed(3),
+      tire_RL:     +(f.tire_wear.RL * 100).toFixed(3),
+      tire_RR:     +(f.tire_wear.RR * 100).toFixed(3),
+      temp_FL:     +f.tire_temp_C.FL.toFixed(1),
+      temp_FR:     +f.tire_temp_C.FR.toFixed(1),
+      temp_RL:     +f.tire_temp_C.RL.toFixed(1),
+      temp_RR:     +f.tire_temp_C.RR.toFixed(1),
+    }))
+  }, [data])
 
   if (error) return <div className="state-msg error">Failed to load telemetry: {error}</div>
-  if (!data)  return <div className="state-msg">Loading telemetry data…</div>
+  if (!data) return <div className="state-msg">Loading telemetry data...</div>
 
-  const { meta, frames } = data
-  const v = meta.vehicle
+  const f = interpolatedFrame
+  const v = data.vehicle
 
   return (
     <div className="dashboard">
-      <header>
-        <div className="header-title">
-          <span className="accent">&#9632;</span> Telemetry Dashboard
-        </div>
-        <div className="header-stats">
-          <Stat label="Track"   value={meta.session.track.split('/').pop()} />
-          <Stat label="Nodes"   value={meta.session.total_nodes} />
-          <Stat label="Mass"    value={`${v.mass_kg} kg`} />
-          <Stat label="Top Speed" value={`${v.max_speed_ms} m/s`} />
-          <Stat label="Fuel Cap" value={`${v.fuel_capacity_L} L`} />
-        </div>
-      </header>
+      <Header session={data.session} vehicle={v} track={data.track} />
 
-      <main className="grid">
-        <Chart
+      <PlaybackControls
+        currentTime={currentTime}
+        maxTime={maxTime}
+        isPlaying={isPlaying}
+        playbackSpeed={playbackSpeed}
+        onToggle={toggle}
+        onSeek={seekTo}
+        onSetSpeed={setPlaybackSpeed}
+      />
+
+      <div className="main-panels">
+        {/* Left: Track Map */}
+        <div className="track-panel">
+          <TrackMap
+            trackNodes={data.track?.nodes}
+            carX={f?.x}
+            carY={f?.y}
+          />
+        </div>
+
+        {/* Right: Gauges and indicators */}
+        <div className="instruments-panel">
+          <div className="gauges-row">
+            <Speedometer velocity_ms={f?.velocity_ms || 0} maxSpeed={v?.max_speed_ms || 91} />
+            <RevCounter rpm={f?.rpm || 0} maxRpm={v?.max_rpm || 15000} shiftRpm={v?.shift_rpm || 14500} />
+            <GearDisplay gear={f?.gear || 1} />
+            <GForceMeter lateralG={f?.lateral_g || 0} longitudinalG={f?.longitudinal_g || 0} />
+            <ThrottleBrakeBar throttle={f?.throttle || 0} brake={f?.brake || 0} />
+          </div>
+          <div className="indicators-row">
+            <CarDiagram frame={f} vehicle={v} />
+            <TirePressure frame={f} coldPressure={v?.cold_pressure_psi} />
+            <WearIndicators frame={f} />
+            <CamberDisplay frame={f} vehicle={v} />
+          </div>
+        </div>
+      </div>
+
+      {/* Charts grid */}
+      <div className="charts-grid">
+        <TimeChart
           title="Velocity (m/s)"
-          data={frames}
+          data={chartData}
           lines={[{ key: 'velocity_ms', name: 'Velocity', color: COLORS.velocity }]}
+          currentTime={currentTime}
+          onSeek={seekTo}
         />
-        <Chart
+        <TimeChart
           title="G-Forces"
-          data={frames}
+          data={chartData}
           lines={[
-            { key: 'lateral_g', name: 'Lateral G',      color: COLORS.lateral_g },
-            { key: 'long_g',    name: 'Longitudinal G', color: COLORS.long_g },
+            { key: 'lateral_g', name: 'Lateral G', color: COLORS.lateral_g },
+            { key: 'long_g', name: 'Longitudinal G', color: COLORS.long_g },
           ]}
+          currentTime={currentTime}
+          onSeek={seekTo}
         />
-        <Chart
+        <TimeChart
+          title="Throttle / Brake (%)"
+          data={chartData}
+          lines={[
+            { key: 'throttle', name: 'Throttle', color: COLORS.throttle },
+            { key: 'brake', name: 'Brake', color: COLORS.brake },
+          ]}
+          currentTime={currentTime}
+          onSeek={seekTo}
+        />
+        <TimeChart
           title="Tire Wear (%)"
-          data={frames}
+          data={chartData}
           lines={[
             { key: 'tire_FL', name: 'FL', color: COLORS.FL },
             { key: 'tire_FR', name: 'FR', color: COLORS.FR },
             { key: 'tire_RL', name: 'RL', color: COLORS.RL },
             { key: 'tire_RR', name: 'RR', color: COLORS.RR },
           ]}
+          currentTime={currentTime}
+          onSeek={seekTo}
         />
-        <Chart
+        <TimeChart
+          title="Tire Temperature (C)"
+          data={chartData}
+          lines={[
+            { key: 'temp_FL', name: 'FL', color: COLORS.FL },
+            { key: 'temp_FR', name: 'FR', color: COLORS.FR },
+            { key: 'temp_RL', name: 'RL', color: COLORS.RL },
+            { key: 'temp_RR', name: 'RR', color: COLORS.RR },
+          ]}
+          currentTime={currentTime}
+          onSeek={seekTo}
+        />
+        <TimeChart
           title="Drag Force (N)"
-          data={frames}
+          data={chartData}
           lines={[{ key: 'drag_N', name: 'Drag', color: COLORS.drag }]}
+          currentTime={currentTime}
+          onSeek={seekTo}
         />
-        <Chart
+        <TimeChart
           title="Fuel Level (L)"
-          data={frames}
+          data={chartData}
           lines={[{ key: 'fuel_L', name: 'Fuel', color: COLORS.fuel }]}
+          currentTime={currentTime}
+          onSeek={seekTo}
         />
-      </main>
-    </div>
-  )
-}
-
-function Stat({ label, value }) {
-  return (
-    <div className="stat">
-      <span className="stat-label">{label}</span>
-      <span className="stat-value">{value}</span>
+      </div>
     </div>
   )
 }

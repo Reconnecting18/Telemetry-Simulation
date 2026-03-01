@@ -63,11 +63,17 @@ double Track::totalDistance() const {
 VehicleState makeInitialState(const VehicleConfig& config) {
     VehicleState s{};
     s.fuel = config.fuel_capacity;
+    s.gear = 1;
+    for (int i = 0; i < 4; ++i) {
+        s.tire_temp[i]     = config.tire_ambient_temp;
+        s.tire_pressure[i] = config.tire_cold_pressure;
+        s.dynamic_camber[i] = config.camber_deg[i];
+    }
     return s;
 }
 
 VehicleConfig defaultVehicleConfig() {
-    VehicleConfig cfg;
+    VehicleConfig cfg{};
     cfg.mass           = 798.0;
     cfg.max_lateral_g  = 4.5;
     cfg.max_speed      = 91.0;
@@ -79,17 +85,46 @@ VehicleConfig defaultVehicleConfig() {
     cfg.base_fuel_rate = 75.0;
     cfg.cog_height     = 0.30;
     cfg.track_width    = 1.52;
+
+    // Gearbox — typical F1-style 6-speed
+    cfg.num_gears = 6;
+    cfg.gear_ratios[0] = 0.0;   // unused
+    cfg.gear_ratios[1] = 3.23;
+    cfg.gear_ratios[2] = 2.19;
+    cfg.gear_ratios[3] = 1.63;
+    cfg.gear_ratios[4] = 1.29;
+    cfg.gear_ratios[5] = 1.06;
+    cfg.gear_ratios[6] = 0.87;
+    cfg.gear_ratios[7] = 0.0;   // unused
+    cfg.final_drive  = 3.42;
+    cfg.max_rpm      = 15000.0;
+    cfg.idle_rpm     = 4000.0;
+    cfg.shift_rpm    = 14500.0;
+    cfg.tire_radius  = 0.33;
+
+    // Tire thermal
+    cfg.tire_ambient_temp  = 25.0;
+    cfg.tire_optimal_temp  = 90.0;
+    cfg.tire_overheat_temp = 120.0;
+    cfg.tire_cold_pressure = 21.0;
+
+    // Suspension & alignment
+    cfg.suspension_stiffness = 200000.0;
+    cfg.suspension_travel    = 0.030;
+    cfg.wheelbase            = 3.60;
+    cfg.camber_deg[0] = -3.5;  cfg.camber_deg[1] = -3.5;
+    cfg.camber_deg[2] = -2.0;  cfg.camber_deg[3] = -2.0;
+    cfg.toe_deg[0] = 0.1;  cfg.toe_deg[1] = 0.1;
+    cfg.toe_deg[2] = 0.0;  cfg.toe_deg[3] = 0.0;
+
     return cfg;
 }
 
 // ============================================================
-//  Simulation loop
+//  Simulation helpers
 // ============================================================
 
 // Lateral load transfer factors [FL, FR, RL, RR].
-// transfer = |lateral_g| * cog_height / track_width, clamped to [0, 0.30].
-// outer = 0.5 + transfer, inner = 0.5 - transfer.
-// Positive curvature = left turn (right tyres outer); negative = right turn.
 static void computeTireFactors(double lateral_g, double curvature,
                                 double cog_height, double track_width,
                                 double out[4]) {
@@ -108,15 +143,98 @@ static void computeTireFactors(double lateral_g, double curvature,
     }
 }
 
+// Tire temperature step — heat from friction, cool toward ambient.
+static void updateTireTemps(double tire_temp[4], const double factors[4],
+                             double lateral_g, double velocity, double max_speed,
+                             double longitudinal_g, double ambient, double dt) {
+    static constexpr double K_LAT   = 0.50;   // heat per lat_g^2
+    static constexpr double K_SPEED = 0.15;   // heat per (v/vmax)^2
+    static constexpr double K_BRAKE = 0.30;   // heat per brake_g^2
+    static constexpr double K_COOL  = 0.08;   // cooling rate toward ambient
+
+    double speed_ratio = (max_speed > 0.0) ? velocity / max_speed : 0.0;
+    double brake_g     = std::max(-longitudinal_g, 0.0);
+
+    double heat_base = K_LAT * lateral_g * lateral_g
+                     + K_SPEED * speed_ratio * speed_ratio
+                     + K_BRAKE * brake_g * brake_g;
+
+    for (int i = 0; i < 4; ++i) {
+        double heat    = heat_base * (0.5 + factors[i]);  // outer tires get more heat
+        double cooling = K_COOL * (tire_temp[i] - ambient);
+        tire_temp[i]  += (heat - cooling) * dt;
+        tire_temp[i]   = std::max(tire_temp[i], ambient);
+    }
+}
+
+// Tire pressure from temperature via ideal gas law approximation.
+static void updateTirePressures(double pressure[4], const double temp[4],
+                                 double cold_pressure, double ambient_temp) {
+    double T_ref = ambient_temp + 273.15;
+    for (int i = 0; i < 4; ++i) {
+        pressure[i] = cold_pressure * (temp[i] + 273.15) / T_ref;
+    }
+}
+
+// Suspension deflection from lateral and longitudinal forces.
+static void computeSuspension(double defl[4], double dynamic_camber[4],
+                               const double static_camber[4],
+                               double lateral_g, double longitudinal_g,
+                               double curvature,
+                               double mass, double cog_height, double wheelbase,
+                               double stiffness, double max_travel) {
+    static constexpr double G = 9.81;
+    static constexpr double K_CAMBER_GAIN = 50.0; // deg per m of deflection
+
+    // Lateral load transfer deflection (per side)
+    double lat_force_half = mass * std::abs(lateral_g) * G / 2.0;
+    double lat_defl = (stiffness > 0.0) ? lat_force_half / stiffness : 0.0;
+    lat_defl = std::min(lat_defl, max_travel);
+
+    // Longitudinal pitch deflection (front vs rear)
+    double long_force = mass * std::abs(longitudinal_g) * G * cog_height / wheelbase;
+    double long_defl = (stiffness > 0.0) ? long_force / stiffness : 0.0;
+    long_defl = std::min(long_defl, max_travel);
+
+    // Determine which side is outer (compressed) vs inner (extended)
+    double lat_sign_LR = 0.0; // positive = right side compressed
+    if (curvature > 0.0)      lat_sign_LR =  1.0; // left turn -> right outer
+    else if (curvature < 0.0) lat_sign_LR = -1.0; // right turn -> left outer
+
+    double long_sign_FB = (longitudinal_g < 0.0) ? 1.0 : -1.0; // braking -> front compressed
+
+    // FL=0, FR=1, RL=2, RR=3
+    defl[0] = -lat_sign_LR * lat_defl + long_sign_FB * long_defl;  // FL
+    defl[1] =  lat_sign_LR * lat_defl + long_sign_FB * long_defl;  // FR
+    defl[2] = -lat_sign_LR * lat_defl - long_sign_FB * long_defl;  // RL
+    defl[3] =  lat_sign_LR * lat_defl - long_sign_FB * long_defl;  // RR
+
+    for (int i = 0; i < 4; ++i) {
+        defl[i] = std::clamp(defl[i], -max_travel, max_travel);
+        dynamic_camber[i] = static_camber[i] + K_CAMBER_GAIN * defl[i];
+    }
+}
+
+// ============================================================
+//  Simulation loop
+// ============================================================
+
 TelemetrySession runSimulation(const Track& track, const VehicleConfig& config) {
     TelemetrySession session;
-    session.track_name     = track.name;
-    session.vehicle_config = config;
+    session.track_name      = track.name;
+    session.vehicle_config  = config;
+    session.track_nodes     = track.nodes;
+    session.total_distance_m = track.totalDistance();
 
     if (track.nodes.empty()) {
         std::cerr << "[Simulation] ERROR: track has no nodes.\n";
         return session;
     }
+
+    // --- Look-ahead velocity profile ---
+    std::vector<double> v_profile = computeVelocityProfile(
+        track.nodes, config.max_lateral_g, config.max_speed,
+        config.max_accel, config.max_brake);
 
     VehicleState state = makeInitialState(config);
     state.x = track.nodes[0].x;
@@ -139,9 +257,8 @@ TelemetrySession runSimulation(const Track& track, const VehicleConfig& config) 
         double drag_decel = drag_force / config.mass;
         double eff_accel  = std::max(config.max_accel - drag_decel, 0.0);
 
-        // Velocity planning
-        double target_v = calculateOptimalVelocity(node.curvature,
-                                                   config.max_lateral_g, config.max_speed);
+        // Velocity planning (uses look-ahead profile)
+        double target_v = v_profile[i];
         double long_g = 0.0;
         state.velocity = adjustVelocity(state.velocity, target_v, seg_len,
                                         eff_accel, config.max_brake, long_g);
@@ -152,6 +269,19 @@ TelemetrySession runSimulation(const Track& track, const VehicleConfig& config) 
         double lat_force_N   = calculateForceFromCurvature(config.mass,
                                                            state.velocity, node.curvature);
 
+        // Gearbox
+        state.gear = selectGear(state.velocity, config.num_gears, config.gear_ratios,
+                                config.final_drive, config.tire_radius,
+                                config.idle_rpm, config.max_rpm);
+        state.rpm  = calculateRPM(state.velocity, state.gear, config.gear_ratios,
+                                  config.final_drive, config.tire_radius);
+
+        // Throttle / brake (derived from longitudinal G)
+        double max_accel_g = config.max_accel / 9.81;
+        double max_brake_g = config.max_brake / 9.81;
+        state.throttle = std::clamp(long_g / max_accel_g, 0.0, 1.0);
+        state.brake    = std::clamp(-long_g / max_brake_g, 0.0, 1.0);
+
         // Tire wear
         double factors[4];
         computeTireFactors(state.lateral_g, node.curvature,
@@ -161,6 +291,25 @@ TelemetrySession runSimulation(const Track& track, const VehicleConfig& config) 
                                                state.velocity, config.max_speed);
             state.tire_wear[t] = std::min(state.tire_wear[t] + rate * seg_len, 1.0);
         }
+
+        // Time step for thermal model
+        double dt = seg_len / std::max(state.velocity, 0.1);
+
+        // Tire temperature
+        updateTireTemps(state.tire_temp, factors,
+                        state.lateral_g, state.velocity, config.max_speed,
+                        state.longitudinal_g, config.tire_ambient_temp, dt);
+
+        // Tire pressure
+        updateTirePressures(state.tire_pressure, state.tire_temp,
+                            config.tire_cold_pressure, config.tire_ambient_temp);
+
+        // Suspension & dynamic camber
+        computeSuspension(state.suspension_deflection, state.dynamic_camber,
+                          config.camber_deg,
+                          state.lateral_g, state.longitudinal_g, node.curvature,
+                          config.mass, config.cog_height, config.wheelbase,
+                          config.suspension_stiffness, config.suspension_travel);
 
         // Fuel consumption
         double drag_ratio      = (config.max_accel > 0.0) ? drag_decel / config.max_accel : 0.0;
@@ -175,10 +324,10 @@ TelemetrySession runSimulation(const Track& track, const VehicleConfig& config) 
         state.x = node.x;
         state.y = node.y;
         state.node_index = i;
-        state.timestamp += seg_len / std::max(state.velocity, 0.1);
+        state.timestamp += dt;
 
         // Record frame
-        TelemetryFrame f;
+        TelemetryFrame f{};
         f.node_index      = i;
         f.timestamp       = state.timestamp;
         f.x               = state.x;
@@ -189,7 +338,17 @@ TelemetrySession runSimulation(const Track& track, const VehicleConfig& config) 
         f.lateral_force_N = lat_force_N;
         f.drag_force_N    = drag_force;
         f.fuel_L          = state.fuel;
-        for (int t = 0; t < 4; ++t) f.tire_wear[t] = state.tire_wear[t];
+        f.gear            = state.gear;
+        f.rpm             = state.rpm;
+        f.throttle        = state.throttle;
+        f.brake           = state.brake;
+        for (int t = 0; t < 4; ++t) {
+            f.tire_wear[t]     = state.tire_wear[t];
+            f.tire_temp[t]     = state.tire_temp[t];
+            f.tire_pressure[t] = state.tire_pressure[t];
+            f.suspension_mm[t] = state.suspension_deflection[t] * 1000.0; // m -> mm
+            f.camber_deg[t]    = state.dynamic_camber[t];
+        }
         session.frames.push_back(f);
     }
 

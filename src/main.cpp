@@ -4,7 +4,6 @@
 #include "types.hpp"
 
 int main(int argc, char* argv[]) {
-    // Paths — override via command-line args if provided
     std::string track_path  = (argc > 1) ? argv[1] : "data/circuit_alpha.csv";
     std::string output_path = (argc > 2) ? argv[2] : "output/telemetry.json";
 
@@ -29,12 +28,13 @@ int main(int argc, char* argv[]) {
 
     // Print summary to console
     std::cout << "\n--- Telemetry Summary ---\n";
-    std::cout << "Node | X      | Y      | Vel(m/s) | Lat-G  | Long-G | Fuel(L) | TireFL\n";
-    std::cout << "-----|--------|--------|----------|--------|--------|---------|-------\n";
+    std::cout << "Node | X      | Y      | Vel(m/s) | Lat-G  | Long-G | Gear | RPM   | Thr  | Brk  | Fuel(L)\n";
+    std::cout << "-----|--------|--------|----------|--------|--------|------|-------|------|------|--------\n";
     for (const auto& f : session.frames) {
-        printf("  %2d | %6.1f | %6.1f | %8.2f | %6.3f | %6.3f | %7.3f | %.5f\n",
+        printf("  %2d | %6.1f | %6.1f | %8.2f | %6.3f | %6.3f | %4d | %5.0f | %4.2f | %4.2f | %7.3f\n",
                f.node_index, f.x, f.y, f.velocity_ms,
-               f.lateral_g, f.longitudinal_g, f.fuel_L, f.tire_wear[0]);
+               f.lateral_g, f.longitudinal_g,
+               f.gear, f.rpm, f.throttle, f.brake, f.fuel_L);
     }
 
     // Write JSON telemetry

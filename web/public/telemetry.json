@@ -3,11 +3,80 @@
     "track": "data/circuit_alpha.csv",
     "total_nodes": 54
   },
+  "track": {
+    "name": "data/circuit_alpha.csv",
+    "total_distance_m": 3551.74,
+    "nodes": [
+      {"x": 0.00, "y": 0.00, "curvature": 0.000000},
+      {"x": 100.00, "y": 0.00, "curvature": 0.000000},
+      {"x": 200.00, "y": 0.00, "curvature": 0.000000},
+      {"x": 300.00, "y": 0.00, "curvature": 0.000000},
+      {"x": 400.00, "y": 0.00, "curvature": 0.000000},
+      {"x": 500.00, "y": 0.00, "curvature": 0.000000},
+      {"x": 600.00, "y": 0.00, "curvature": 0.000000},
+      {"x": 700.00, "y": 0.00, "curvature": 0.000000},
+      {"x": 775.00, "y": -20.00, "curvature": 0.007000},
+      {"x": 830.00, "y": -75.00, "curvature": 0.007000},
+      {"x": 850.00, "y": -150.00, "curvature": 0.007000},
+      {"x": 850.00, "y": -250.00, "curvature": 0.000000},
+      {"x": 850.00, "y": -360.00, "curvature": 0.000000},
+      {"x": 830.00, "y": -410.00, "curvature": -0.012000},
+      {"x": 790.00, "y": -445.00, "curvature": -0.015000},
+      {"x": 740.00, "y": -460.00, "curvature": 0.000000},
+      {"x": 700.00, "y": -455.00, "curvature": 0.012000},
+      {"x": 670.00, "y": -430.00, "curvature": 0.015000},
+      {"x": 650.00, "y": -400.00, "curvature": 0.000000},
+      {"x": 570.00, "y": -390.00, "curvature": 0.000000},
+      {"x": 470.00, "y": -385.00, "curvature": 0.000000},
+      {"x": 370.00, "y": -380.00, "curvature": 0.000000},
+      {"x": 270.00, "y": -380.00, "curvature": 0.000000},
+      {"x": 170.00, "y": -380.00, "curvature": 0.000000},
+      {"x": 80.00, "y": -370.00, "curvature": 0.000000},
+      {"x": 30.00, "y": -370.00, "curvature": 0.000000},
+      {"x": -30.00, "y": -380.00, "curvature": 0.000000},
+      {"x": -10.00, "y": -360.00, "curvature": 0.015000},
+      {"x": -50.00, "y": -330.00, "curvature": 0.025000},
+      {"x": -60.00, "y": -290.00, "curvature": 0.025000},
+      {"x": -40.00, "y": -255.00, "curvature": 0.020000},
+      {"x": 10.00, "y": -240.00, "curvature": 0.010000},
+      {"x": 80.00, "y": -235.00, "curvature": 0.000000},
+      {"x": 160.00, "y": -235.00, "curvature": 0.000000},
+      {"x": 240.00, "y": -235.00, "curvature": 0.000000},
+      {"x": 310.00, "y": -220.00, "curvature": -0.005000},
+      {"x": 370.00, "y": -195.00, "curvature": -0.005000},
+      {"x": 420.00, "y": -165.00, "curvature": -0.005000},
+      {"x": 460.00, "y": -130.00, "curvature": 0.000000},
+      {"x": 490.00, "y": -95.00, "curvature": 0.000000},
+      {"x": 510.00, "y": -55.00, "curvature": 0.010000},
+      {"x": 520.00, "y": -15.00, "curvature": 0.010000},
+      {"x": 510.00, "y": 25.00, "curvature": 0.010000},
+      {"x": 480.00, "y": 55.00, "curvature": 0.000000},
+      {"x": 420.00, "y": 65.00, "curvature": 0.000000},
+      {"x": 350.00, "y": 55.00, "curvature": 0.000000},
+      {"x": 280.00, "y": 40.00, "curvature": 0.017000},
+      {"x": 230.00, "y": 15.00, "curvature": 0.017000},
+      {"x": 190.00, "y": -20.00, "curvature": 0.017000},
+      {"x": 140.00, "y": -55.00, "curvature": 0.000000},
+      {"x": 100.00, "y": -75.00, "curvature": 0.000000},
+      {"x": 60.00, "y": -55.00, "curvature": 0.000000},
+      {"x": 20.00, "y": -30.00, "curvature": 0.005000},
+      {"x": 0.00, "y": 0.00, "curvature": 0.000000}
+    ]
+  },
   "vehicle": {
     "mass_kg": 798.0,
     "max_lateral_g": 4.5000,
     "max_speed_ms": 91.0,
-    "fuel_capacity_L": 110.0
+    "fuel_capacity_L": 110.0,
+    "num_gears": 6,
+    "max_rpm": 15000,
+    "shift_rpm": 14500,
+    "tire_optimal_temp_C": 90.0,
+    "tire_overheat_temp_C": 120.0,
+    "cold_pressure_psi": 21.0,
+    "suspension_travel_mm": 30.0,
+    "camber_deg": {"FL": -3.5, "FR": -3.5, "RL": -2.0, "RR": -2.0},
+    "toe_deg": {"FL": 0.10, "FR": 0.10, "RL": 0.00, "RR": 0.00}
   },
   "frames": [
     {
@@ -21,12 +90,15 @@
       "lateral_force_N": 0.0,
       "drag_force_N": 0.0,
       "fuel_L": 109.8906,
-      "tire_wear": {
-        "FL": 0.000260,
-        "FR": 0.000260,
-        "RL": 0.000260,
-        "RR": 0.000260
-      }
+      "gear": 6,
+      "rpm": 4716,
+      "throttle": 1.000,
+      "brake": 0.000,
+      "tire_wear": {"FL": 0.000260, "FR": 0.000260, "RL": 0.000260, "RR": 0.000260},
+      "tire_temp_C": {"FL": 25.1, "FR": 25.1, "RL": 25.1, "RR": 25.1},
+      "tire_pressure_psi": {"FL": 21.01, "FR": 21.01, "RL": 21.01, "RR": 21.01},
+      "suspension_mm": {"FL": -4.99, "FR": -4.99, "RL": 4.99, "RR": 4.99},
+      "camber_deg": {"FL": -3.75, "FR": -3.75, "RL": -1.75, "RR": -1.75}
     },
     {
       "node": 1,
@@ -39,12 +111,15 @@
       "lateral_force_N": 0.0,
       "drag_force_N": 1929.4,
       "fuel_L": 109.7819,
-      "tire_wear": {
-        "FL": 0.000542,
-        "FR": 0.000542,
-        "RL": 0.000542,
-        "RR": 0.000542
-      }
+      "gear": 6,
+      "rpm": 6395,
+      "throttle": 0.839,
+      "brake": 0.000,
+      "tire_wear": {"FL": 0.000542, "FR": 0.000542, "RL": 0.000542, "RR": 0.000542},
+      "tire_temp_C": {"FL": 25.2, "FR": 25.2, "RL": 25.2, "RR": 25.2},
+      "tire_pressure_psi": {"FL": 21.02, "FR": 21.02, "RL": 21.02, "RR": 21.02},
+      "suspension_mm": {"FL": -4.18, "FR": -4.18, "RL": 4.18, "RR": 4.18},
+      "camber_deg": {"FL": -3.71, "FR": -3.71, "RL": -1.79, "RR": -1.79}
     },
     {
       "node": 2,
@@ -57,12 +132,15 @@
       "lateral_force_N": 0.0,
       "drag_force_N": 3547.8,
       "fuel_L": 109.6738,
-      "tire_wear": {
-        "FL": 0.000838,
-        "FR": 0.000838,
-        "RL": 0.000838,
-        "RR": 0.000838
-      }
+      "gear": 6,
+      "rpm": 7519,
+      "throttle": 0.704,
+      "brake": 0.000,
+      "tire_wear": {"FL": 0.000838, "FR": 0.000838, "RL": 0.000838, "RR": 0.000838},
+      "tire_temp_C": {"FL": 25.4, "FR": 25.4, "RL": 25.4, "RR": 25.4},
+      "tire_pressure_psi": {"FL": 21.03, "FR": 21.03, "RL": 21.03, "RR": 21.03},
+      "suspension_mm": {"FL": -3.51, "FR": -3.51, "RL": 3.51, "RR": 3.51},
+      "camber_deg": {"FL": -3.68, "FR": -3.68, "RL": -1.82, "RR": -1.82}
     },
     {
       "node": 3,
@@ -75,12 +153,15 @@
       "lateral_force_N": 0.0,
       "drag_force_N": 4905.3,
       "fuel_L": 109.5790,
-      "tire_wear": {
-        "FL": 0.001138,
-        "FR": 0.001138,
-        "RL": 0.001138,
-        "RR": 0.001138
-      }
+      "gear": 6,
+      "rpm": 7835,
+      "throttle": 0.218,
+      "brake": 0.000,
+      "tire_wear": {"FL": 0.001138, "FR": 0.001138, "RL": 0.001138, "RR": 0.001138},
+      "tire_temp_C": {"FL": 25.5, "FR": 25.5, "RL": 25.5, "RR": 25.5},
+      "tire_pressure_psi": {"FL": 21.03, "FR": 21.03, "RL": 21.03, "RR": 21.03},
+      "suspension_mm": {"FL": -1.09, "FR": -1.09, "RL": 1.09, "RR": 1.09},
+      "camber_deg": {"FL": -3.55, "FR": -3.55, "RL": -1.95, "RR": -1.95}
     },
     {
       "node": 4,
@@ -93,12 +174,15 @@
       "lateral_force_N": 0.0,
       "drag_force_N": 5325.7,
       "fuel_L": 109.4907,
-      "tire_wear": {
-        "FL": 0.001438,
-        "FR": 0.001438,
-        "RL": 0.001438,
-        "RR": 0.001438
-      }
+      "gear": 6,
+      "rpm": 7835,
+      "throttle": 0.000,
+      "brake": -0.000,
+      "tire_wear": {"FL": 0.001438, "FR": 0.001438, "RL": 0.001438, "RR": 0.001438},
+      "tire_temp_C": {"FL": 25.6, "FR": 25.6, "RL": 25.6, "RR": 25.6},
+      "tire_pressure_psi": {"FL": 21.04, "FR": 21.04, "RL": 21.04, "RR": 21.04},
+      "suspension_mm": {"FL": -0.00, "FR": 0.00, "RL": 0.00, "RR": 0.00},
+      "camber_deg": {"FL": -3.50, "FR": -3.50, "RL": -2.00, "RR": -2.00}
     },
     {
       "node": 5,
@@ -111,12 +195,15 @@
       "lateral_force_N": 0.0,
       "drag_force_N": 5325.7,
       "fuel_L": 109.4023,
-      "tire_wear": {
-        "FL": 0.001738,
-        "FR": 0.001738,
-        "RL": 0.001738,
-        "RR": 0.001738
-      }
+      "gear": 6,
+      "rpm": 7835,
+      "throttle": 0.000,
+      "brake": -0.000,
+      "tire_wear": {"FL": 0.001738, "FR": 0.001738, "RL": 0.001738, "RR": 0.001738},
+      "tire_temp_C": {"FL": 25.7, "FR": 25.7, "RL": 25.7, "RR": 25.7},
+      "tire_pressure_psi": {"FL": 21.05, "FR": 21.05, "RL": 21.05, "RR": 21.05},
+      "suspension_mm": {"FL": -0.00, "FR": 0.00, "RL": 0.00, "RR": 0.00},
+      "camber_deg": {"FL": -3.50, "FR": -3.50, "RL": -2.00, "RR": -2.00}
     },
     {
       "node": 6,
@@ -129,12 +216,15 @@
       "lateral_force_N": 0.0,
       "drag_force_N": 5325.7,
       "fuel_L": 109.3140,
-      "tire_wear": {
-        "FL": 0.002038,
-        "FR": 0.002038,
-        "RL": 0.002038,
-        "RR": 0.002038
-      }
+      "gear": 6,
+      "rpm": 7835,
+      "throttle": 0.000,
+      "brake": -0.000,
+      "tire_wear": {"FL": 0.002038, "FR": 0.002038, "RL": 0.002038, "RR": 0.002038},
+      "tire_temp_C": {"FL": 25.8, "FR": 25.8, "RL": 25.8, "RR": 25.8},
+      "tire_pressure_psi": {"FL": 21.06, "FR": 21.06, "RL": 21.06, "RR": 21.06},
+      "suspension_mm": {"FL": -0.00, "FR": 0.00, "RL": 0.00, "RR": 0.00},
+      "camber_deg": {"FL": -3.50, "FR": -3.50, "RL": -2.00, "RR": -2.00}
     },
     {
       "node": 7,
@@ -147,12 +237,15 @@
       "lateral_force_N": 0.0,
       "drag_force_N": 5325.7,
       "fuel_L": 109.2454,
-      "tire_wear": {
-        "FL": 0.002271,
-        "FR": 0.002271,
-        "RL": 0.002271,
-        "RR": 0.002271
-      }
+      "gear": 6,
+      "rpm": 7835,
+      "throttle": 0.000,
+      "brake": -0.000,
+      "tire_wear": {"FL": 0.002271, "FR": 0.002271, "RL": 0.002271, "RR": 0.002271},
+      "tire_temp_C": {"FL": 25.9, "FR": 25.9, "RL": 25.9, "RR": 25.9},
+      "tire_pressure_psi": {"FL": 21.06, "FR": 21.06, "RL": 21.06, "RR": 21.06},
+      "suspension_mm": {"FL": -0.00, "FR": 0.00, "RL": 0.00, "RR": 0.00},
+      "camber_deg": {"FL": -3.50, "FR": -3.50, "RL": -2.00, "RR": -2.00}
     },
     {
       "node": 8,
@@ -165,12 +258,15 @@
       "lateral_force_N": 35227.7,
       "drag_force_N": 5325.7,
       "fuel_L": 109.2144,
-      "tire_wear": {
-        "FL": 0.002998,
-        "FR": 0.010558,
-        "RL": 0.002998,
-        "RR": 0.010558
-      }
+      "gear": 6,
+      "rpm": 6837,
+      "throttle": 0.000,
+      "brake": 0.282,
+      "tire_wear": {"FL": 0.002998, "FR": 0.010558, "RL": 0.002998, "RR": 0.010558},
+      "tire_temp_C": {"FL": 33.2, "FR": 39.5, "RL": 33.2, "RR": 39.5},
+      "tire_pressure_psi": {"FL": 21.58, "FR": 22.02, "RL": 21.58, "RR": 22.02},
+      "suspension_mm": {"FL": -25.78, "FR": 30.00, "RL": -30.00, "RR": 25.78},
+      "camber_deg": {"FL": -4.79, "FR": -2.00, "RL": -3.50, "RR": -0.71}
     },
     {
       "node": 9,
@@ -183,12 +279,15 @@
       "lateral_force_N": 35227.7,
       "drag_force_N": 4055.8,
       "fuel_L": 109.1483,
-      "tire_wear": {
-        "FL": 0.003724,
-        "FR": 0.018829,
-        "RL": 0.003724,
-        "RR": 0.018829
-      }
+      "gear": 6,
+      "rpm": 6837,
+      "throttle": 0.000,
+      "brake": -0.000,
+      "tire_wear": {"FL": 0.003724, "FR": 0.018829, "RL": 0.003724, "RR": 0.018829},
+      "tire_temp_C": {"FL": 39.6, "FR": 51.4, "RL": 39.6, "RR": 51.4},
+      "tire_pressure_psi": {"FL": 22.03, "FR": 22.86, "RL": 22.03, "RR": 22.86},
+      "suspension_mm": {"FL": -30.00, "FR": 30.00, "RL": -30.00, "RR": 30.00},
+      "camber_deg": {"FL": -5.00, "FR": -2.00, "RL": -3.50, "RR": -0.50}
     },
     {
       "node": 10,
@@ -201,12 +300,15 @@
       "lateral_force_N": 35227.7,
       "drag_force_N": 4055.8,
       "fuel_L": 109.0631,
-      "tire_wear": {
-        "FL": 0.004659,
-        "FR": 0.029484,
-        "RL": 0.004659,
-        "RR": 0.029484
-      }
+      "gear": 6,
+      "rpm": 6837,
+      "throttle": 0.000,
+      "brake": -0.000,
+      "tire_wear": {"FL": 0.004659, "FR": 0.029484, "RL": 0.004659, "RR": 0.029484},
+      "tire_temp_C": {"FL": 47.1, "FR": 65.5, "RL": 47.1, "RR": 65.5},
+      "tire_pressure_psi": {"FL": 22.56, "FR": 23.85, "RL": 22.56, "RR": 23.85},
+      "suspension_mm": {"FL": -30.00, "FR": 30.00, "RL": -30.00, "RR": 30.00},
+      "camber_deg": {"FL": -5.00, "FR": -2.00, "RL": -3.50, "RR": -0.50}
     },
     {
       "node": 11,
@@ -219,12 +321,15 @@
       "lateral_force_N": 0.0,
       "drag_force_N": 4055.8,
       "fuel_L": 108.9468,
-      "tire_wear": {
-        "FL": 0.004989,
-        "FR": 0.029814,
-        "RL": 0.004989,
-        "RR": 0.029814
-      }
+      "gear": 6,
+      "rpm": 7835,
+      "throttle": 0.598,
+      "brake": 0.000,
+      "tire_wear": {"FL": 0.004989, "FR": 0.029814, "RL": 0.004989, "RR": 0.029814},
+      "tire_temp_C": {"FL": 45.2, "FR": 61.8, "RL": 45.2, "RR": 61.8},
+      "tire_pressure_psi": {"FL": 22.42, "FR": 23.59, "RL": 22.42, "RR": 23.59},
+      "suspension_mm": {"FL": -2.98, "FR": -2.98, "RL": 2.98, "RR": 2.98},
+      "camber_deg": {"FL": -3.65, "FR": -3.65, "RL": -1.85, "RR": -1.85}
     },
     {
       "node": 12,
@@ -237,12 +342,15 @@
       "lateral_force_N": 0.0,
       "drag_force_N": 5325.7,
       "fuel_L": 108.8992,
-      "tire_wear": {
-        "FL": 0.005151,
-        "FR": 0.029976,
-        "RL": 0.005151,
-        "RR": 0.029976
-      }
+      "gear": 6,
+      "rpm": 7835,
+      "throttle": 0.000,
+      "brake": -0.000,
+      "tire_wear": {"FL": 0.005151, "FR": 0.029976, "RL": 0.005151, "RR": 0.029976},
+      "tire_temp_C": {"FL": 44.3, "FR": 60.1, "RL": 44.3, "RR": 60.1},
+      "tire_pressure_psi": {"FL": 22.36, "FR": 23.47, "RL": 22.36, "RR": 23.47},
+      "suspension_mm": {"FL": -0.00, "FR": 0.00, "RL": 0.00, "RR": 0.00},
+      "camber_deg": {"FL": -3.50, "FR": -3.50, "RL": -2.00, "RR": -2.00}
     },
     {
       "node": 13,
@@ -255,12 +363,15 @@
       "lateral_force_N": 35227.7,
       "drag_force_N": 5325.7,
       "fuel_L": 108.8953,
-      "tire_wear": {
-        "FL": 0.010803,
-        "FR": 0.030462,
-        "RL": 0.010803,
-        "RR": 0.030462
-      }
+      "gear": 6,
+      "rpm": 5222,
+      "throttle": 0.000,
+      "brake": 0.962,
+      "tire_wear": {"FL": 0.010803, "FR": 0.030462, "RL": 0.010803, "RR": 0.030462},
+      "tire_temp_C": {"FL": 61.2, "FR": 67.5, "RL": 61.2, "RR": 67.5},
+      "tire_pressure_psi": {"FL": 23.55, "FR": 23.99, "RL": 23.55, "RR": 23.99},
+      "suspension_mm": {"FL": 30.00, "FR": -15.60, "RL": 15.60, "RR": -30.00},
+      "camber_deg": {"FL": -2.00, "FR": -4.28, "RL": -1.22, "RR": -3.50}
     },
     {
       "node": 14,
@@ -273,12 +384,15 @@
       "lateral_force_N": 35227.7,
       "drag_force_N": 2365.9,
       "fuel_L": 108.8671,
-      "tire_wear": {
-        "FL": 0.016351,
-        "FR": 0.030936,
-        "RL": 0.016351,
-        "RR": 0.030936
-      }
+      "gear": 6,
+      "rpm": 4671,
+      "throttle": 0.000,
+      "brake": 0.157,
+      "tire_wear": {"FL": 0.016351, "FR": 0.030936, "RL": 0.016351, "RR": 0.030936},
+      "tire_temp_C": {"FL": 71.3, "FR": 71.2, "RL": 71.3, "RR": 71.2},
+      "tire_pressure_psi": {"FL": 24.26, "FR": 24.25, "RL": 24.26, "RR": 24.25},
+      "suspension_mm": {"FL": 30.00, "FR": -27.66, "RL": 27.66, "RR": -30.00},
+      "camber_deg": {"FL": -2.00, "FR": -4.88, "RL": -0.62, "RR": -3.50}
     },
     {
       "node": 15,
@@ -291,12 +405,15 @@
       "lateral_force_N": 0.0,
       "drag_force_N": 1892.7,
       "fuel_L": 108.8233,
-      "tire_wear": {
-        "FL": 0.016460,
-        "FR": 0.031044,
-        "RL": 0.016460,
-        "RR": 0.031044
-      }
+      "gear": 6,
+      "rpm": 5419,
+      "throttle": 0.842,
+      "brake": 0.000,
+      "tire_wear": {"FL": 0.016460, "FR": 0.031044, "RL": 0.016460, "RR": 0.031044},
+      "tire_temp_C": {"FL": 69.0, "FR": 68.8, "RL": 69.0, "RR": 68.8},
+      "tire_pressure_psi": {"FL": 24.10, "FR": 24.09, "RL": 24.10, "RR": 24.09},
+      "suspension_mm": {"FL": -4.20, "FR": -4.20, "RL": 4.20, "RR": 4.20},
+      "camber_deg": {"FL": -3.71, "FR": -3.71, "RL": -1.79, "RR": -1.79}
     },
     {
       "node": 16,
@@ -309,12 +426,15 @@
       "lateral_force_N": 35227.7,
       "drag_force_N": 2547.5,
       "fuel_L": 108.7969,
-      "tire_wear": {
-        "FL": 0.016817,
-        "FR": 0.035197,
-        "RL": 0.016817,
-        "RR": 0.035197
-      }
+      "gear": 6,
+      "rpm": 5222,
+      "throttle": 0.000,
+      "brake": 0.080,
+      "tire_wear": {"FL": 0.016817, "FR": 0.035197, "RL": 0.016817, "RR": 0.035197},
+      "tire_temp_C": {"FL": 71.4, "FR": 75.2, "RL": 71.4, "RR": 75.2},
+      "tire_pressure_psi": {"FL": 24.27, "FR": 24.53, "RL": 24.27, "RR": 24.53},
+      "suspension_mm": {"FL": -28.80, "FR": 30.00, "RL": -30.00, "RR": 28.80},
+      "camber_deg": {"FL": -4.94, "FR": -2.00, "RL": -3.50, "RR": -0.56}
     },
     {
       "node": 17,
@@ -327,70 +447,82 @@
       "lateral_force_N": 35227.7,
       "drag_force_N": 2365.9,
       "fuel_L": 108.7817,
-      "tire_wear": {
-        "FL": 0.017144,
-        "FR": 0.039029,
-        "RL": 0.017144,
-        "RR": 0.039029
-      }
+      "gear": 6,
+      "rpm": 4671,
+      "throttle": 0.000,
+      "brake": 0.227,
+      "tire_wear": {"FL": 0.017144, "FR": 0.039029, "RL": 0.017144, "RR": 0.039029},
+      "tire_temp_C": {"FL": 73.8, "FR": 81.6, "RL": 73.8, "RR": 81.6},
+      "tire_pressure_psi": {"FL": 24.44, "FR": 24.98, "RL": 24.44, "RR": 24.98},
+      "suspension_mm": {"FL": -26.61, "FR": 30.00, "RL": -30.00, "RR": 26.61},
+      "camber_deg": {"FL": -4.83, "FR": -2.00, "RL": -3.50, "RR": -0.67}
     },
     {
       "node": 18,
-      "time_s": 19.5125,
+      "time_s": 19.6408,
       "x": 650.00,
       "y": -400.00,
-      "velocity_ms": 70.5637,
+      "velocity_ms": 63.4403,
       "lateral_g": 0.0000,
-      "longitudinal_g": 1.2873,
+      "longitudinal_g": 0.6838,
       "lateral_force_N": 0.0,
       "drag_force_N": 1892.7,
-      "fuel_L": 108.6941,
-      "tire_wear": {
-        "FL": 0.017368,
-        "FR": 0.039253,
-        "RL": 0.017368,
-        "RR": 0.039253
-      }
+      "fuel_L": 108.7051,
+      "gear": 6,
+      "rpm": 5462,
+      "throttle": 0.447,
+      "brake": 0.000,
+      "tire_wear": {"FL": 0.017361, "FR": 0.039247, "RL": 0.017361, "RR": 0.039247},
+      "tire_temp_C": {"FL": 68.9, "FR": 75.9, "RL": 68.9, "RR": 75.9},
+      "tire_pressure_psi": {"FL": 24.09, "FR": 24.59, "RL": 24.09, "RR": 24.59},
+      "suspension_mm": {"FL": -2.23, "FR": -2.23, "RL": 2.23, "RR": 2.23},
+      "camber_deg": {"FL": -3.61, "FR": -3.61, "RL": -1.89, "RR": -1.89}
     },
     {
       "node": 19,
-      "time_s": 20.6942,
+      "time_s": 20.8944,
       "x": 570.00,
       "y": -390.00,
-      "velocity_ms": 84.7314,
+      "velocity_ms": 79.8680,
       "lateral_g": 0.0000,
-      "longitudinal_g": 1.1200,
+      "longitudinal_g": 1.1984,
       "lateral_force_N": 0.0,
-      "drag_force_N": 3202.3,
-      "fuel_L": 108.5857,
-      "tire_wear": {
-        "FL": 0.017661,
-        "FR": 0.039547,
-        "RL": 0.017661,
-        "RR": 0.039547
-      }
+      "drag_force_N": 2588.4,
+      "fuel_L": 108.5965,
+      "gear": 6,
+      "rpm": 6877,
+      "throttle": 0.784,
+      "brake": 0.000,
+      "tire_wear": {"FL": 0.017650, "FR": 0.039535, "RL": 0.017650, "RR": 0.039535},
+      "tire_temp_C": {"FL": 64.7, "FR": 70.9, "RL": 64.7, "RR": 70.9},
+      "tire_pressure_psi": {"FL": 23.79, "FR": 24.24, "RL": 23.79, "RR": 24.24},
+      "suspension_mm": {"FL": -3.91, "FR": -3.91, "RL": 3.91, "RR": 3.91},
+      "camber_deg": {"FL": -3.70, "FR": -3.70, "RL": -1.80, "RR": -1.80}
     },
     {
       "node": 20,
-      "time_s": 21.7945,
+      "time_s": 21.9947,
       "x": 470.00,
       "y": -385.00,
       "velocity_ms": 91.0000,
       "lateral_g": 0.0000,
-      "longitudinal_g": 0.5608,
+      "longitudinal_g": 0.9683,
       "lateral_force_N": 0.0,
-      "drag_force_N": 4617.3,
-      "fuel_L": 108.4864,
-      "tire_wear": {
-        "FL": 0.017962,
-        "FR": 0.039847,
-        "RL": 0.017962,
-        "RR": 0.039847
-      }
+      "drag_force_N": 4102.4,
+      "fuel_L": 108.4893,
+      "gear": 6,
+      "rpm": 7835,
+      "throttle": 0.633,
+      "brake": 0.000,
+      "tire_wear": {"FL": 0.017950, "FR": 0.039835, "RL": 0.017950, "RR": 0.039835},
+      "tire_temp_C": {"FL": 61.3, "FR": 67.1, "RL": 61.3, "RR": 67.1},
+      "tire_pressure_psi": {"FL": 23.56, "FR": 23.96, "RL": 23.56, "RR": 23.96},
+      "suspension_mm": {"FL": -3.16, "FR": -3.16, "RL": 3.16, "RR": 3.16},
+      "camber_deg": {"FL": -3.66, "FR": -3.66, "RL": -1.84, "RR": -1.84}
     },
     {
       "node": 21,
-      "time_s": 22.8934,
+      "time_s": 23.0936,
       "x": 370.00,
       "y": -380.00,
       "velocity_ms": 91.0000,
@@ -398,17 +530,20 @@
       "longitudinal_g": 0.0000,
       "lateral_force_N": 0.0,
       "drag_force_N": 5325.7,
-      "fuel_L": 108.3981,
-      "tire_wear": {
-        "FL": 0.018262,
-        "FR": 0.040147,
-        "RL": 0.018262,
-        "RR": 0.040147
-      }
+      "fuel_L": 108.4009,
+      "gear": 6,
+      "rpm": 7835,
+      "throttle": 0.000,
+      "brake": -0.000,
+      "tire_wear": {"FL": 0.018250, "FR": 0.040135, "RL": 0.018250, "RR": 0.040135},
+      "tire_temp_C": {"FL": 58.3, "FR": 63.5, "RL": 58.3, "RR": 63.5},
+      "tire_pressure_psi": {"FL": 23.35, "FR": 23.71, "RL": 23.35, "RR": 23.71},
+      "suspension_mm": {"FL": -0.00, "FR": 0.00, "RL": 0.00, "RR": 0.00},
+      "camber_deg": {"FL": -3.50, "FR": -3.50, "RL": -2.00, "RR": -2.00}
     },
     {
       "node": 22,
-      "time_s": 23.9923,
+      "time_s": 24.1925,
       "x": 270.00,
       "y": -380.00,
       "velocity_ms": 91.0000,
@@ -416,17 +551,20 @@
       "longitudinal_g": 0.0000,
       "lateral_force_N": 0.0,
       "drag_force_N": 5325.7,
-      "fuel_L": 108.3097,
-      "tire_wear": {
-        "FL": 0.018562,
-        "FR": 0.040447,
-        "RL": 0.018562,
-        "RR": 0.040447
-      }
+      "fuel_L": 108.3126,
+      "gear": 6,
+      "rpm": 7835,
+      "throttle": 0.000,
+      "brake": -0.000,
+      "tire_wear": {"FL": 0.018550, "FR": 0.040435, "RL": 0.018550, "RR": 0.040435},
+      "tire_temp_C": {"FL": 55.5, "FR": 60.3, "RL": 55.5, "RR": 60.3},
+      "tire_pressure_psi": {"FL": 23.15, "FR": 23.49, "RL": 23.15, "RR": 23.49},
+      "suspension_mm": {"FL": -0.00, "FR": 0.00, "RL": 0.00, "RR": 0.00},
+      "camber_deg": {"FL": -3.50, "FR": -3.50, "RL": -2.00, "RR": -2.00}
     },
     {
       "node": 23,
-      "time_s": 24.9874,
+      "time_s": 25.1876,
       "x": 170.00,
       "y": -380.00,
       "velocity_ms": 91.0000,
@@ -434,17 +572,20 @@
       "longitudinal_g": 0.0000,
       "lateral_force_N": 0.0,
       "drag_force_N": 5325.7,
-      "fuel_L": 108.2297,
-      "tire_wear": {
-        "FL": 0.018833,
-        "FR": 0.040719,
-        "RL": 0.018833,
-        "RR": 0.040719
-      }
+      "fuel_L": 108.2326,
+      "gear": 6,
+      "rpm": 7835,
+      "throttle": 0.000,
+      "brake": -0.000,
+      "tire_wear": {"FL": 0.018822, "FR": 0.040707, "RL": 0.018822, "RR": 0.040707},
+      "tire_temp_C": {"FL": 53.3, "FR": 57.6, "RL": 53.3, "RR": 57.6},
+      "tire_pressure_psi": {"FL": 22.99, "FR": 23.30, "RL": 22.99, "RR": 23.30},
+      "suspension_mm": {"FL": -0.00, "FR": 0.00, "RL": 0.00, "RR": 0.00},
+      "camber_deg": {"FL": -3.50, "FR": -3.50, "RL": -2.00, "RR": -2.00}
     },
     {
       "node": 24,
-      "time_s": 25.5368,
+      "time_s": 25.7371,
       "x": 80.00,
       "y": -370.00,
       "velocity_ms": 91.0000,
@@ -452,17 +593,20 @@
       "longitudinal_g": 0.0000,
       "lateral_force_N": 0.0,
       "drag_force_N": 5325.7,
-      "fuel_L": 108.1856,
-      "tire_wear": {
-        "FL": 0.018983,
-        "FR": 0.040869,
-        "RL": 0.018983,
-        "RR": 0.040869
-      }
+      "fuel_L": 108.1884,
+      "gear": 6,
+      "rpm": 7835,
+      "throttle": 0.000,
+      "brake": -0.000,
+      "tire_wear": {"FL": 0.018972, "FR": 0.040857, "RL": 0.018972, "RR": 0.040857},
+      "tire_temp_C": {"FL": 52.1, "FR": 56.3, "RL": 52.1, "RR": 56.3},
+      "tire_pressure_psi": {"FL": 22.91, "FR": 23.20, "RL": 22.91, "RR": 23.20},
+      "suspension_mm": {"FL": -0.00, "FR": 0.00, "RL": 0.00, "RR": 0.00},
+      "camber_deg": {"FL": -3.50, "FR": -3.50, "RL": -2.00, "RR": -2.00}
     },
     {
       "node": 25,
-      "time_s": 26.2053,
+      "time_s": 26.4055,
       "x": 30.00,
       "y": -370.00,
       "velocity_ms": 91.0000,
@@ -470,71 +614,83 @@
       "longitudinal_g": 0.0000,
       "lateral_force_N": 0.0,
       "drag_force_N": 5325.7,
-      "fuel_L": 108.1318,
-      "tire_wear": {
-        "FL": 0.019166,
-        "FR": 0.041051,
-        "RL": 0.019166,
-        "RR": 0.041051
-      }
+      "fuel_L": 108.1347,
+      "gear": 6,
+      "rpm": 7835,
+      "throttle": 0.000,
+      "brake": -0.000,
+      "tire_wear": {"FL": 0.019154, "FR": 0.041039, "RL": 0.019154, "RR": 0.041039},
+      "tire_temp_C": {"FL": 50.7, "FR": 54.7, "RL": 50.7, "RR": 54.7},
+      "tire_pressure_psi": {"FL": 22.81, "FR": 23.09, "RL": 22.81, "RR": 23.09},
+      "suspension_mm": {"FL": -0.00, "FR": 0.00, "RL": 0.00, "RR": 0.00},
+      "camber_deg": {"FL": -3.50, "FR": -3.50, "RL": -2.00, "RR": -2.00}
     },
     {
       "node": 26,
-      "time_s": 26.5161,
+      "time_s": 26.7790,
       "x": -30.00,
       "y": -380.00,
-      "velocity_ms": 91.0000,
+      "velocity_ms": 75.7325,
       "lateral_g": 0.0000,
-      "longitudinal_g": 0.0000,
+      "longitudinal_g": -4.5872,
       "lateral_force_N": 0.0,
       "drag_force_N": 5325.7,
-      "fuel_L": 108.1068,
-      "tire_wear": {
-        "FL": 0.019251,
-        "FR": 0.041136,
-        "RL": 0.019251,
-        "RR": 0.041136
-      }
+      "fuel_L": 108.1325,
+      "gear": 6,
+      "rpm": 6521,
+      "throttle": 0.000,
+      "brake": 1.000,
+      "tire_wear": {"FL": 0.019234, "FR": 0.041119, "RL": 0.019234, "RR": 0.041119},
+      "tire_temp_C": {"FL": 52.4, "FR": 56.2, "RL": 52.4, "RR": 56.2},
+      "tire_pressure_psi": {"FL": 22.93, "FR": 23.20, "RL": 22.93, "RR": 23.20},
+      "suspension_mm": {"FL": 14.96, "FR": 14.96, "RL": -14.96, "RR": -14.96},
+      "camber_deg": {"FL": -2.75, "FR": -2.75, "RL": -2.75, "RR": -2.75}
     },
     {
       "node": 27,
-      "time_s": 27.3292,
+      "time_s": 27.7006,
       "x": -10.00,
       "y": -360.00,
-      "velocity_ms": 61.4898,
-      "lateral_g": 5.7813,
-      "longitudinal_g": -4.5872,
-      "lateral_force_N": 45258.6,
-      "drag_force_N": 5325.7,
-      "fuel_L": 108.1031,
-      "tire_wear": {
-        "FL": 0.019919,
-        "FR": 0.049826,
-        "RL": 0.019919,
-        "RR": 0.049826
-      }
+      "velocity_ms": 54.2494,
+      "lateral_g": 4.5000,
+      "longitudinal_g": -2.8465,
+      "lateral_force_N": 35227.7,
+      "drag_force_N": 3688.6,
+      "fuel_L": 108.1288,
+      "gear": 6,
+      "rpm": 4671,
+      "throttle": 0.000,
+      "brake": 0.621,
+      "tire_wear": {"FL": 0.019688, "FR": 0.046433, "RL": 0.019688, "RR": 0.046433},
+      "tire_temp_C": {"FL": 58.5, "FR": 69.0, "RL": 58.5, "RR": 69.0},
+      "tire_pressure_psi": {"FL": 23.36, "FR": 24.10, "RL": 23.36, "RR": 24.10},
+      "suspension_mm": {"FL": -20.72, "FR": 30.00, "RL": -30.00, "RR": 20.72},
+      "camber_deg": {"FL": -4.54, "FR": -2.00, "RL": -3.50, "RR": -0.96}
     },
     {
       "node": 28,
-      "time_s": 28.3104,
+      "time_s": 28.6818,
       "x": -50.00,
       "y": -330.00,
       "velocity_ms": 42.0214,
       "lateral_g": 4.5000,
-      "longitudinal_g": -2.4911,
+      "longitudinal_g": -1.4552,
       "lateral_force_N": 35227.7,
-      "drag_force_N": 2431.7,
-      "fuel_L": 108.1000,
-      "tire_wear": {
-        "FL": 0.020288,
-        "FR": 0.054203,
-        "RL": 0.020288,
-        "RR": 0.054203
-      }
+      "drag_force_N": 1892.7,
+      "fuel_L": 108.1184,
+      "gear": 5,
+      "rpm": 4408,
+      "throttle": 0.000,
+      "brake": 0.317,
+      "tire_wear": {"FL": 0.020057, "FR": 0.050810, "RL": 0.020057, "RR": 0.050810},
+      "tire_temp_C": {"FL": 63.3, "FR": 79.3, "RL": 63.3, "RR": 79.3},
+      "tire_pressure_psi": {"FL": 23.70, "FR": 24.83, "RL": 23.70, "RR": 24.83},
+      "suspension_mm": {"FL": -25.25, "FR": 30.00, "RL": -30.00, "RR": 25.25},
+      "camber_deg": {"FL": -4.76, "FR": -2.00, "RL": -3.50, "RR": -0.74}
     },
     {
       "node": 29,
-      "time_s": 29.2697,
+      "time_s": 29.6411,
       "x": -60.00,
       "y": -290.00,
       "velocity_ms": 42.0214,
@@ -542,17 +698,20 @@
       "longitudinal_g": 0.0000,
       "lateral_force_N": 35227.7,
       "drag_force_N": 1135.6,
-      "fuel_L": 108.0686,
-      "tire_wear": {
-        "FL": 0.020648,
-        "FR": 0.058481,
-        "RL": 0.020648,
-        "RR": 0.058481
-      }
+      "fuel_L": 108.0870,
+      "gear": 5,
+      "rpm": 4408,
+      "throttle": 0.000,
+      "brake": -0.000,
+      "tire_wear": {"FL": 0.020417, "FR": 0.055088, "RL": 0.020417, "RR": 0.055088},
+      "tire_temp_C": {"FL": 67.2, "FR": 87.8, "RL": 67.2, "RR": 87.8},
+      "tire_pressure_psi": {"FL": 23.97, "FR": 25.43, "RL": 23.97, "RR": 25.43},
+      "suspension_mm": {"FL": -30.00, "FR": 30.00, "RL": -30.00, "RR": 30.00},
+      "camber_deg": {"FL": -5.00, "FR": -2.00, "RL": -3.50, "RR": -0.50}
     },
     {
       "node": 30,
-      "time_s": 30.3808,
+      "time_s": 30.7523,
       "x": -40.00,
       "y": -255.00,
       "velocity_ms": 46.9814,
@@ -560,89 +719,104 @@
       "longitudinal_g": 0.4310,
       "lateral_force_N": 35227.7,
       "drag_force_N": 1135.6,
-      "fuel_L": 108.0229,
-      "tire_wear": {
-        "FL": 0.021118,
-        "FR": 0.064025,
-        "RL": 0.021118,
-        "RR": 0.064025
-      }
+      "fuel_L": 108.0413,
+      "gear": 6,
+      "rpm": 4045,
+      "throttle": 0.282,
+      "brake": 0.000,
+      "tire_wear": {"FL": 0.020887, "FR": 0.060632, "RL": 0.020887, "RR": 0.060632},
+      "tire_temp_C": {"FL": 71.3, "FR": 96.9, "RL": 71.3, "RR": 96.9},
+      "tire_pressure_psi": {"FL": 24.26, "FR": 26.07, "RL": 24.26, "RR": 26.07},
+      "suspension_mm": {"FL": -30.00, "FR": 28.59, "RL": -28.59, "RR": 30.00},
+      "camber_deg": {"FL": -5.00, "FR": -2.07, "RL": -3.43, "RR": -0.50}
     },
     {
       "node": 31,
-      "time_s": 31.4818,
+      "time_s": 31.8947,
       "x": 10.00,
       "y": -240.00,
-      "velocity_ms": 63.7411,
-      "lateral_g": 4.1416,
-      "longitudinal_g": 1.3477,
-      "lateral_force_N": 32422.1,
+      "velocity_ms": 61.4272,
+      "lateral_g": 3.8464,
+      "longitudinal_g": 1.1374,
+      "lateral_force_N": 30110.9,
       "drag_force_N": 1419.5,
-      "fuel_L": 107.9465,
-      "tire_wear": {
-        "FL": 0.021693,
-        "FR": 0.070378,
-        "RL": 0.021693,
-        "RR": 0.070378
-      }
+      "fuel_L": 107.9682,
+      "gear": 6,
+      "rpm": 5289,
+      "throttle": 0.744,
+      "brake": 0.000,
+      "tire_wear": {"FL": 0.021407, "FR": 0.066136, "RL": 0.021407, "RR": 0.066136},
+      "tire_temp_C": {"FL": 73.1, "FR": 101.5, "RL": 73.1, "RR": 101.5},
+      "tire_pressure_psi": {"FL": 24.38, "FR": 26.38, "RL": 24.38, "RR": 26.38},
+      "suspension_mm": {"FL": -30.00, "FR": 26.29, "RL": -26.29, "RR": 30.00},
+      "camber_deg": {"FL": -5.00, "FR": -2.19, "RL": -3.31, "RR": -0.50}
     },
     {
       "node": 32,
-      "time_s": 32.5199,
+      "time_s": 32.9556,
       "x": 80.00,
       "y": -235.00,
-      "velocity_ms": 77.0650,
+      "velocity_ms": 75.4105,
       "lateral_g": 0.0000,
-      "longitudinal_g": 1.1953,
+      "longitudinal_g": 1.2191,
       "lateral_force_N": 0.0,
-      "drag_force_N": 2613.0,
-      "fuel_L": 107.8597,
-      "tire_wear": {
-        "FL": 0.021920,
-        "FR": 0.070605,
-        "RL": 0.021920,
-        "RR": 0.070605
-      }
+      "drag_force_N": 2426.7,
+      "fuel_L": 107.8814,
+      "gear": 6,
+      "rpm": 6493,
+      "throttle": 0.797,
+      "brake": 0.000,
+      "tire_wear": {"FL": 0.021633, "FR": 0.066362, "RL": 0.021633, "RR": 0.066362},
+      "tire_temp_C": {"FL": 69.1, "FR": 95.1, "RL": 69.1, "RR": 95.1},
+      "tire_pressure_psi": {"FL": 24.11, "FR": 25.94, "RL": 24.11, "RR": 25.94},
+      "suspension_mm": {"FL": -3.98, "FR": -3.98, "RL": 3.98, "RR": 3.98},
+      "camber_deg": {"FL": -3.70, "FR": -3.70, "RL": -1.80, "RR": -1.80}
     },
     {
       "node": 33,
-      "time_s": 33.4392,
+      "time_s": 33.8885,
       "x": 160.00,
       "y": -235.00,
-      "velocity_ms": 87.0241,
+      "velocity_ms": 85.7523,
       "lateral_g": 0.0000,
-      "longitudinal_g": 1.0411,
+      "longitudinal_g": 1.0619,
       "lateral_force_N": 0.0,
-      "drag_force_N": 3819.5,
-      "fuel_L": 107.7733,
-      "tire_wear": {
-        "FL": 0.022157,
-        "FR": 0.070842,
-        "RL": 0.022157,
-        "RR": 0.070842
-      }
+      "drag_force_N": 3657.3,
+      "fuel_L": 107.7950,
+      "gear": 6,
+      "rpm": 7383,
+      "throttle": 0.694,
+      "brake": 0.000,
+      "tire_wear": {"FL": 0.021868, "FR": 0.066597, "RL": 0.021868, "RR": 0.066597},
+      "tire_temp_C": {"FL": 65.9, "FR": 90.0, "RL": 65.9, "RR": 90.0},
+      "tire_pressure_psi": {"FL": 23.88, "FR": 25.58, "RL": 23.88, "RR": 25.58},
+      "suspension_mm": {"FL": -3.46, "FR": -3.46, "RL": 3.46, "RR": 3.46},
+      "camber_deg": {"FL": -3.67, "FR": -3.67, "RL": -1.83, "RR": -1.83}
     },
     {
       "node": 34,
-      "time_s": 34.2259,
+      "time_s": 34.6752,
       "x": 240.00,
       "y": -235.00,
       "velocity_ms": 91.0000,
       "lateral_g": 0.0000,
-      "longitudinal_g": 0.5039,
+      "longitudinal_g": 0.6604,
       "lateral_force_N": 0.0,
-      "drag_force_N": 4870.5,
-      "fuel_L": 107.7028,
-      "tire_wear": {
-        "FL": 0.022372,
-        "FR": 0.071057,
-        "RL": 0.022372,
-        "RR": 0.071057
-      }
+      "drag_force_N": 4729.2,
+      "fuel_L": 107.7222,
+      "gear": 6,
+      "rpm": 7835,
+      "throttle": 0.432,
+      "brake": 0.000,
+      "tire_wear": {"FL": 0.022083, "FR": 0.066812, "RL": 0.022083, "RR": 0.066812},
+      "tire_temp_C": {"FL": 63.5, "FR": 86.0, "RL": 63.5, "RR": 86.0},
+      "tire_pressure_psi": {"FL": 23.71, "FR": 25.30, "RL": 23.71, "RR": 25.30},
+      "suspension_mm": {"FL": -2.15, "FR": -2.15, "RL": 2.15, "RR": 2.15},
+      "camber_deg": {"FL": -3.61, "FR": -3.61, "RL": -1.89, "RR": -1.89}
     },
     {
       "node": 35,
-      "time_s": 34.9402,
+      "time_s": 35.3895,
       "x": 310.00,
       "y": -220.00,
       "velocity_ms": 91.0000,
@@ -650,17 +824,20 @@
       "longitudinal_g": 0.0000,
       "lateral_force_N": 33041.2,
       "drag_force_N": 5325.7,
-      "fuel_L": 107.6454,
-      "tire_wear": {
-        "FL": 0.028495,
-        "FR": 0.071622,
-        "RL": 0.028495,
-        "RR": 0.071622
-      }
+      "fuel_L": 107.6647,
+      "gear": 6,
+      "rpm": 7835,
+      "throttle": 0.000,
+      "brake": -0.000,
+      "tire_wear": {"FL": 0.028207, "FR": 0.067378, "RL": 0.028207, "RR": 0.067378},
+      "tire_temp_C": {"FL": 69.7, "FR": 87.0, "RL": 69.7, "RR": 87.0},
+      "tire_pressure_psi": {"FL": 24.15, "FR": 25.37, "RL": 24.15, "RR": 25.37},
+      "suspension_mm": {"FL": 30.00, "FR": -30.00, "RL": 30.00, "RR": -30.00},
+      "camber_deg": {"FL": -2.00, "FR": -5.00, "RL": -0.50, "RR": -3.50}
     },
     {
       "node": 36,
-      "time_s": 35.5809,
+      "time_s": 36.0302,
       "x": 370.00,
       "y": -195.00,
       "velocity_ms": 91.0000,
@@ -668,17 +845,20 @@
       "longitudinal_g": 0.0000,
       "lateral_force_N": 33041.2,
       "drag_force_N": 5325.7,
-      "fuel_L": 107.5939,
-      "tire_wear": {
-        "FL": 0.033989,
-        "FR": 0.072130,
-        "RL": 0.033989,
-        "RR": 0.072130
-      }
+      "fuel_L": 107.6132,
+      "gear": 6,
+      "rpm": 7835,
+      "throttle": 0.000,
+      "brake": -0.000,
+      "tire_wear": {"FL": 0.033700, "FR": 0.067885, "RL": 0.033700, "RR": 0.067885},
+      "tire_temp_C": {"FL": 74.9, "FR": 87.9, "RL": 74.9, "RR": 87.9},
+      "tire_pressure_psi": {"FL": 24.52, "FR": 25.43, "RL": 24.52, "RR": 25.43},
+      "suspension_mm": {"FL": 30.00, "FR": -30.00, "RL": 30.00, "RR": -30.00},
+      "camber_deg": {"FL": -2.00, "FR": -5.00, "RL": -0.50, "RR": -3.50}
     },
     {
       "node": 37,
-      "time_s": 36.1650,
+      "time_s": 36.6143,
       "x": 420.00,
       "y": -165.00,
       "velocity_ms": 91.0000,
@@ -686,17 +866,20 @@
       "longitudinal_g": 0.0000,
       "lateral_force_N": 33041.2,
       "drag_force_N": 5325.7,
-      "fuel_L": 107.5469,
-      "tire_wear": {
-        "FL": 0.038996,
-        "FR": 0.072592,
-        "RL": 0.038996,
-        "RR": 0.072592
-      }
+      "fuel_L": 107.5663,
+      "gear": 6,
+      "rpm": 7835,
+      "throttle": 0.000,
+      "brake": -0.000,
+      "tire_wear": {"FL": 0.038707, "FR": 0.068347, "RL": 0.038707, "RR": 0.068347},
+      "tire_temp_C": {"FL": 79.5, "FR": 88.7, "RL": 79.5, "RR": 88.7},
+      "tire_pressure_psi": {"FL": 24.84, "FR": 25.49, "RL": 24.84, "RR": 25.49},
+      "suspension_mm": {"FL": 30.00, "FR": -30.00, "RL": 30.00, "RR": -30.00},
+      "camber_deg": {"FL": -2.00, "FR": -5.00, "RL": -0.50, "RR": -3.50}
     },
     {
       "node": 38,
-      "time_s": 36.6716,
+      "time_s": 37.1209,
       "x": 460.00,
       "y": -130.00,
       "velocity_ms": 91.0000,
@@ -704,17 +887,20 @@
       "longitudinal_g": 0.0000,
       "lateral_force_N": 0.0,
       "drag_force_N": 5325.7,
-      "fuel_L": 107.5062,
-      "tire_wear": {
-        "FL": 0.039134,
-        "FR": 0.072730,
-        "RL": 0.039134,
-        "RR": 0.072730
-      }
+      "fuel_L": 107.5255,
+      "gear": 6,
+      "rpm": 7835,
+      "throttle": 0.000,
+      "brake": -0.000,
+      "tire_wear": {"FL": 0.038846, "FR": 0.068486, "RL": 0.038846, "RR": 0.068486},
+      "tire_temp_C": {"FL": 77.3, "FR": 86.2, "RL": 77.3, "RR": 86.2},
+      "tire_pressure_psi": {"FL": 24.69, "FR": 25.31, "RL": 24.69, "RR": 25.31},
+      "suspension_mm": {"FL": -0.00, "FR": 0.00, "RL": 0.00, "RR": 0.00},
+      "camber_deg": {"FL": -3.50, "FR": -3.50, "RL": -2.00, "RR": -2.00}
     },
     {
       "node": 39,
-      "time_s": 37.1630,
+      "time_s": 37.6123,
       "x": 490.00,
       "y": -95.00,
       "velocity_ms": 91.0000,
@@ -722,17 +908,20 @@
       "longitudinal_g": 0.0000,
       "lateral_force_N": 0.0,
       "drag_force_N": 5325.7,
-      "fuel_L": 107.4667,
-      "tire_wear": {
-        "FL": 0.039268,
-        "FR": 0.072864,
-        "RL": 0.039268,
-        "RR": 0.072864
-      }
+      "fuel_L": 107.4860,
+      "gear": 6,
+      "rpm": 7835,
+      "throttle": 0.000,
+      "brake": -0.000,
+      "tire_wear": {"FL": 0.038980, "FR": 0.068620, "RL": 0.038980, "RR": 0.068620},
+      "tire_temp_C": {"FL": 75.4, "FR": 83.8, "RL": 75.4, "RR": 83.8},
+      "tire_pressure_psi": {"FL": 24.55, "FR": 25.14, "RL": 24.55, "RR": 25.14},
+      "suspension_mm": {"FL": -0.00, "FR": 0.00, "RL": 0.00, "RR": 0.00},
+      "camber_deg": {"FL": -3.50, "FR": -3.50, "RL": -2.00, "RR": -2.00}
     },
     {
       "node": 40,
-      "time_s": 37.7729,
+      "time_s": 38.2222,
       "x": 510.00,
       "y": -55.00,
       "velocity_ms": 67.6033,
@@ -740,17 +929,20 @@
       "longitudinal_g": -4.5872,
       "lateral_force_N": 36470.2,
       "drag_force_N": 5325.7,
-      "fuel_L": 107.4636,
-      "tire_wear": {
-        "FL": 0.039668,
-        "FR": 0.077559,
-        "RL": 0.039668,
-        "RR": 0.077559
-      }
+      "fuel_L": 107.4829,
+      "gear": 6,
+      "rpm": 5821,
+      "throttle": 0.000,
+      "brake": 1.000,
+      "tire_wear": {"FL": 0.039379, "FR": 0.073315, "RL": 0.039379, "RR": 0.073315},
+      "tire_temp_C": {"FL": 80.3, "FR": 94.7, "RL": 80.3, "RR": 94.7},
+      "tire_pressure_psi": {"FL": 24.89, "FR": 25.91, "RL": 24.89, "RR": 25.91},
+      "suspension_mm": {"FL": -15.04, "FR": 30.00, "RL": -30.00, "RR": 15.04},
+      "camber_deg": {"FL": -4.25, "FR": -2.00, "RL": -3.50, "RR": -1.25}
     },
     {
       "node": 41,
-      "time_s": 38.3935,
+      "time_s": 38.8428,
       "x": 520.00,
       "y": -15.00,
       "velocity_ms": 66.4417,
@@ -758,17 +950,20 @@
       "longitudinal_g": -0.1925,
       "lateral_force_N": 35227.7,
       "drag_force_N": 2939.2,
-      "fuel_L": 107.4326,
-      "tire_wear": {
-        "FL": 0.040047,
-        "FR": 0.081947,
-        "RL": 0.040047,
-        "RR": 0.081947
-      }
+      "fuel_L": 107.4520,
+      "gear": 6,
+      "rpm": 5721,
+      "throttle": 0.000,
+      "brake": 0.042,
+      "tire_wear": {"FL": 0.039759, "FR": 0.077702, "RL": 0.039759, "RR": 0.077702},
+      "tire_temp_C": {"FL": 82.0, "FR": 99.4, "RL": 82.0, "RR": 99.4},
+      "tire_pressure_psi": {"FL": 25.01, "FR": 26.24, "RL": 25.01, "RR": 26.24},
+      "suspension_mm": {"FL": -29.37, "FR": 30.00, "RL": -30.00, "RR": 29.37},
+      "camber_deg": {"FL": -4.97, "FR": -2.00, "RL": -3.50, "RR": -0.53}
     },
     {
       "node": 42,
-      "time_s": 39.0320,
+      "time_s": 39.4813,
       "x": 510.00,
       "y": 25.00,
       "velocity_ms": 66.4417,
@@ -776,71 +971,83 @@
       "longitudinal_g": 0.0000,
       "lateral_force_N": 35227.7,
       "drag_force_N": 2839.1,
-      "fuel_L": 107.3977,
-      "tire_wear": {
-        "FL": 0.040438,
-        "FR": 0.086461,
-        "RL": 0.040438,
-        "RR": 0.086461
-      }
+      "fuel_L": 107.4171,
+      "gear": 6,
+      "rpm": 5721,
+      "throttle": 0.000,
+      "brake": -0.000,
+      "tire_wear": {"FL": 0.040150, "FR": 0.082217, "RL": 0.040150, "RR": 0.082217},
+      "tire_temp_C": {"FL": 83.6, "FR": 104.1, "RL": 83.6, "RR": 104.1},
+      "tire_pressure_psi": {"FL": 25.13, "FR": 26.57, "RL": 25.13, "RR": 26.57},
+      "suspension_mm": {"FL": -30.00, "FR": 30.00, "RL": -30.00, "RR": 30.00},
+      "camber_deg": {"FL": -5.00, "FR": -2.00, "RL": -3.50, "RR": -0.50}
     },
     {
       "node": 43,
-      "time_s": 39.8303,
+      "time_s": 40.2879,
       "x": 480.00,
       "y": 55.00,
-      "velocity_ms": 76.2005,
+      "velocity_ms": 75.4141,
       "lateral_g": 0.0000,
-      "longitudinal_g": 1.1664,
+      "longitudinal_g": 1.0665,
       "lateral_force_N": 0.0,
       "drag_force_N": 2839.1,
-      "fuel_L": 107.3318,
-      "tire_wear": {
-        "FL": 0.040611,
-        "FR": 0.086634,
-        "RL": 0.040611,
-        "RR": 0.086634
-      }
+      "fuel_L": 107.3526,
+      "gear": 6,
+      "rpm": 6493,
+      "throttle": 0.697,
+      "brake": 0.000,
+      "tire_wear": {"FL": 0.040322, "FR": 0.082389, "RL": 0.040322, "RR": 0.082389},
+      "tire_temp_C": {"FL": 79.9, "FR": 99.1, "RL": 79.9, "RR": 99.1},
+      "tire_pressure_psi": {"FL": 24.87, "FR": 26.22, "RL": 24.87, "RR": 26.22},
+      "suspension_mm": {"FL": -3.48, "FR": -3.48, "RL": 3.48, "RR": 3.48},
+      "camber_deg": {"FL": -3.67, "FR": -3.67, "RL": -1.83, "RR": -1.83}
     },
     {
       "node": 44,
-      "time_s": 40.6598,
+      "time_s": 41.1236,
       "x": 420.00,
       "y": 65.00,
-      "velocity_ms": 85.2411,
+      "velocity_ms": 84.6192,
       "lateral_g": 0.0000,
-      "longitudinal_g": 1.0520,
+      "longitudinal_g": 1.0618,
       "lateral_force_N": 0.0,
-      "drag_force_N": 3734.3,
-      "fuel_L": 107.2554,
-      "tire_wear": {
-        "FL": 0.040818,
-        "FR": 0.086841,
-        "RL": 0.040818,
-        "RR": 0.086841
-      }
+      "drag_force_N": 3657.6,
+      "fuel_L": 107.2762,
+      "gear": 6,
+      "rpm": 7286,
+      "throttle": 0.694,
+      "brake": 0.000,
+      "tire_wear": {"FL": 0.040529, "FR": 0.082596, "RL": 0.040529, "RR": 0.082596},
+      "tire_temp_C": {"FL": 76.3, "FR": 94.2, "RL": 76.3, "RR": 94.2},
+      "tire_pressure_psi": {"FL": 24.62, "FR": 25.88, "RL": 24.62, "RR": 25.88},
+      "suspension_mm": {"FL": -3.46, "FR": -3.46, "RL": 3.46, "RR": 3.46},
+      "camber_deg": {"FL": -3.67, "FR": -3.67, "RL": -1.83, "RR": -1.83}
     },
     {
       "node": 45,
-      "time_s": 41.4465,
+      "time_s": 41.9102,
       "x": 350.00,
       "y": 55.00,
       "velocity_ms": 91.0000,
       "lateral_g": 0.0000,
-      "longitudinal_g": 0.7226,
+      "longitudinal_g": 0.7978,
       "lateral_force_N": 0.0,
-      "drag_force_N": 4673.0,
-      "fuel_L": 107.1817,
-      "tire_wear": {
-        "FL": 0.041033,
-        "FR": 0.087056,
-        "RL": 0.041033,
-        "RR": 0.087056
-      }
+      "drag_force_N": 4605.0,
+      "fuel_L": 107.2014,
+      "gear": 6,
+      "rpm": 7835,
+      "throttle": 0.522,
+      "brake": 0.000,
+      "tire_wear": {"FL": 0.040744, "FR": 0.082811, "RL": 0.040744, "RR": 0.082811},
+      "tire_temp_C": {"FL": 73.2, "FR": 90.0, "RL": 73.2, "RR": 90.0},
+      "tire_pressure_psi": {"FL": 24.40, "FR": 25.58, "RL": 24.40, "RR": 25.58},
+      "suspension_mm": {"FL": -2.60, "FR": -2.60, "RL": 2.60, "RR": 2.60},
+      "camber_deg": {"FL": -3.63, "FR": -3.63, "RL": -1.87, "RR": -1.87}
     },
     {
       "node": 46,
-      "time_s": 42.4271,
+      "time_s": 42.8908,
       "x": 280.00,
       "y": 40.00,
       "velocity_ms": 57.0074,
@@ -848,17 +1055,20 @@
       "longitudinal_g": -4.5872,
       "lateral_force_N": 44087.4,
       "drag_force_N": 5325.7,
-      "fuel_L": 107.1775,
-      "tire_wear": {
-        "FL": 0.041747,
-        "FR": 0.096281,
-        "RL": 0.041747,
-        "RR": 0.096281
-      }
+      "fuel_L": 107.1972,
+      "gear": 6,
+      "rpm": 4908,
+      "throttle": 0.000,
+      "brake": 1.000,
+      "tire_wear": {"FL": 0.041458, "FR": 0.092035, "RL": 0.041458, "RR": 0.092035},
+      "tire_temp_C": {"FL": 84.7, "FR": 113.2, "RL": 84.7, "RR": 113.2},
+      "tire_pressure_psi": {"FL": 25.21, "FR": 27.21, "RL": 25.21, "RR": 27.21},
+      "suspension_mm": {"FL": -15.04, "FR": 30.00, "RL": -30.00, "RR": 15.04},
+      "camber_deg": {"FL": -4.25, "FR": -2.00, "RL": -3.50, "RR": -1.25}
     },
     {
       "node": 47,
-      "time_s": 43.4701,
+      "time_s": 43.9339,
       "x": 230.00,
       "y": 15.00,
       "velocity_ms": 50.9585,
@@ -866,17 +1076,20 @@
       "longitudinal_g": -0.6263,
       "lateral_force_N": 35227.7,
       "drag_force_N": 2090.1,
-      "fuel_L": 107.1474,
-      "tire_wear": {
-        "FL": 0.042228,
-        "FR": 0.101928,
-        "RL": 0.042228,
-        "RR": 0.101928
-      }
+      "fuel_L": 107.1670,
+      "gear": 6,
+      "rpm": 4388,
+      "throttle": 0.000,
+      "brake": 0.137,
+      "tire_wear": {"FL": 0.041938, "FR": 0.097682, "RL": 0.041938, "RR": 0.097682},
+      "tire_temp_C": {"FL": 87.2, "FR": 119.8, "RL": 87.2, "RR": 119.8},
+      "tire_pressure_psi": {"FL": 25.38, "FR": 27.68, "RL": 25.38, "RR": 27.68},
+      "suspension_mm": {"FL": -27.96, "FR": 30.00, "RL": -30.00, "RR": 27.96},
+      "camber_deg": {"FL": -4.90, "FR": -2.00, "RL": -3.50, "RR": -0.60}
     },
     {
       "node": 48,
-      "time_s": 44.6678,
+      "time_s": 45.1316,
       "x": 190.00,
       "y": -20.00,
       "velocity_ms": 50.9585,
@@ -884,17 +1097,20 @@
       "longitudinal_g": 0.0000,
       "lateral_force_N": 35227.7,
       "drag_force_N": 1670.0,
-      "fuel_L": 107.0990,
-      "tire_wear": {
-        "FL": 0.042780,
-        "FR": 0.108412,
-        "RL": 0.042780,
-        "RR": 0.108412
-      }
+      "fuel_L": 107.1187,
+      "gear": 6,
+      "rpm": 4388,
+      "throttle": 0.000,
+      "brake": -0.000,
+      "tire_wear": {"FL": 0.042490, "FR": 0.104166, "RL": 0.042490, "RR": 0.104166},
+      "tire_temp_C": {"FL": 89.8, "FR": 126.6, "RL": 89.8, "RR": 126.6},
+      "tire_pressure_psi": {"FL": 25.56, "FR": 28.15, "RL": 25.56, "RR": 28.15},
+      "suspension_mm": {"FL": -30.00, "FR": 30.00, "RL": -30.00, "RR": 30.00},
+      "camber_deg": {"FL": -5.00, "FR": -2.00, "RL": -3.50, "RR": -0.50}
     },
     {
       "node": 49,
-      "time_s": 45.3980,
+      "time_s": 45.8617,
       "x": 140.00,
       "y": -55.00,
       "velocity_ms": 61.2472,
@@ -902,17 +1118,20 @@
       "longitudinal_g": 1.3157,
       "lateral_force_N": 0.0,
       "drag_force_N": 1670.0,
-      "fuel_L": 107.0504,
-      "tire_wear": {
-        "FL": 0.042899,
-        "FR": 0.108531,
-        "RL": 0.042899,
-        "RR": 0.108531
-      }
+      "fuel_L": 107.0700,
+      "gear": 6,
+      "rpm": 5273,
+      "throttle": 0.860,
+      "brake": 0.000,
+      "tire_wear": {"FL": 0.042610, "FR": 0.104286, "RL": 0.042610, "RR": 0.104286},
+      "tire_temp_C": {"FL": 86.1, "FR": 120.7, "RL": 86.1, "RR": 120.7},
+      "tire_pressure_psi": {"FL": 25.30, "FR": 27.74, "RL": 25.30, "RR": 27.74},
+      "suspension_mm": {"FL": -4.29, "FR": -4.29, "RL": 4.29, "RR": 4.29},
+      "camber_deg": {"FL": -3.71, "FR": -3.71, "RL": -1.79, "RR": -1.79}
     },
     {
       "node": 50,
-      "time_s": 46.0420,
+      "time_s": 46.5057,
       "x": 100.00,
       "y": -75.00,
       "velocity_ms": 69.4439,
@@ -920,17 +1139,20 @@
       "longitudinal_g": 1.2209,
       "lateral_force_N": 0.0,
       "drag_force_N": 2412.5,
-      "fuel_L": 107.0019,
-      "tire_wear": {
-        "FL": 0.043023,
-        "FR": 0.108655,
-        "RL": 0.043023,
-        "RR": 0.108655
-      }
+      "fuel_L": 107.0215,
+      "gear": 6,
+      "rpm": 5979,
+      "throttle": 0.798,
+      "brake": 0.000,
+      "tire_wear": {"FL": 0.042733, "FR": 0.104409, "RL": 0.042733, "RR": 0.104409},
+      "tire_temp_C": {"FL": 83.0, "FR": 115.8, "RL": 83.0, "RR": 115.8},
+      "tire_pressure_psi": {"FL": 25.08, "FR": 27.40, "RL": 25.08, "RR": 27.40},
+      "suspension_mm": {"FL": -3.98, "FR": -3.98, "RL": 3.98, "RR": 3.98},
+      "camber_deg": {"FL": -3.70, "FR": -3.70, "RL": -1.80, "RR": -1.80}
     },
     {
       "node": 51,
-      "time_s": 46.6576,
+      "time_s": 47.1214,
       "x": 60.00,
       "y": -55.00,
       "velocity_ms": 76.6218,
@@ -938,17 +1160,20 @@
       "longitudinal_g": 1.1329,
       "lateral_force_N": 0.0,
       "drag_force_N": 3101.4,
-      "fuel_L": 106.9508,
-      "tire_wear": {
-        "FL": 0.043157,
-        "FR": 0.108789,
-        "RL": 0.043157,
-        "RR": 0.108789
-      }
+      "fuel_L": 106.9704,
+      "gear": 6,
+      "rpm": 6597,
+      "throttle": 0.741,
+      "brake": 0.000,
+      "tire_wear": {"FL": 0.042867, "FR": 0.104543, "RL": 0.042867, "RR": 0.104543},
+      "tire_temp_C": {"FL": 80.2, "FR": 111.4, "RL": 80.2, "RR": 111.4},
+      "tire_pressure_psi": {"FL": 24.89, "FR": 27.09, "RL": 24.89, "RR": 27.09},
+      "suspension_mm": {"FL": -3.70, "FR": -3.70, "RL": 3.70, "RR": 3.70},
+      "camber_deg": {"FL": -3.68, "FR": -3.68, "RL": -1.82, "RR": -1.82}
     },
     {
       "node": 52,
-      "time_s": 47.1010,
+      "time_s": 47.5648,
       "x": 20.00,
       "y": -30.00,
       "velocity_ms": 81.3104,
@@ -956,17 +1181,20 @@
       "longitudinal_g": 1.0467,
       "lateral_force_N": 26379.4,
       "drag_force_N": 3775.7,
-      "fuel_L": 106.9119,
-      "tire_wear": {
-        "FL": 0.043392,
-        "FR": 0.110989,
-        "RL": 0.043392,
-        "RR": 0.110989
-      }
+      "fuel_L": 106.9315,
+      "gear": 6,
+      "rpm": 7001,
+      "throttle": 0.685,
+      "brake": 0.000,
+      "tire_wear": {"FL": 0.043103, "FR": 0.106744, "RL": 0.043103, "RR": 0.106744},
+      "tire_temp_C": {"FL": 80.0, "FR": 111.7, "RL": 80.0, "RR": 111.7},
+      "tire_pressure_psi": {"FL": 24.88, "FR": 27.11, "RL": 24.88, "RR": 27.11},
+      "suspension_mm": {"FL": -30.00, "FR": 26.59, "RL": -26.59, "RR": 30.00},
+      "camber_deg": {"FL": -5.00, "FR": -2.17, "RL": -3.33, "RR": -0.50}
     },
     {
       "node": 53,
-      "time_s": 47.1133,
+      "time_s": 47.5771,
       "x": 0.00,
       "y": 0.00,
       "velocity_ms": 81.4292,
@@ -974,13 +1202,16 @@
       "longitudinal_g": 0.9859,
       "lateral_force_N": 0.0,
       "drag_force_N": 4251.9,
-      "fuel_L": 106.9108,
-      "tire_wear": {
-        "FL": 0.043395,
-        "FR": 0.110992,
-        "RL": 0.043395,
-        "RR": 0.110992
-      }
+      "fuel_L": 106.9304,
+      "gear": 6,
+      "rpm": 7011,
+      "throttle": 0.645,
+      "brake": 0.000,
+      "tire_wear": {"FL": 0.043106, "FR": 0.106747, "RL": 0.043106, "RR": 0.106747},
+      "tire_temp_C": {"FL": 80.0, "FR": 111.6, "RL": 80.0, "RR": 111.6},
+      "tire_pressure_psi": {"FL": 24.87, "FR": 27.10, "RL": 24.87, "RR": 27.10},
+      "suspension_mm": {"FL": -3.22, "FR": -3.22, "RL": 3.22, "RR": 3.22},
+      "camber_deg": {"FL": -3.66, "FR": -3.66, "RL": -1.84, "RR": -1.84}
     }
   ]
 }
