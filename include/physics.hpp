@@ -1,8 +1,6 @@
 #pragma once
 
-#include <vector>
-
-struct TrackNode;  // forward declaration
+#include "types.hpp"
 
 // ============================================================
 //  Physics Engine — Racing Telemetry Simulation
@@ -28,11 +26,10 @@ double adjustVelocity(double current_v, double target_v,
                       double& longitudinal_g_out);
 
 // Look-ahead: pre-computes a velocity profile with forward+backward passes.
-// Returns one target velocity per track node.
+// Uses power-limited acceleration and drag-assisted braking.
 std::vector<double> computeVelocityProfile(
     const std::vector<TrackNode>& nodes,
-    double max_lateral_g, double max_speed,
-    double max_accel, double max_brake);
+    const VehicleConfig& config);
 
 // ------------------------------------------------------------------
 // GEARBOX

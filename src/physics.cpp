@@ -5,8 +5,9 @@
 #include <algorithm>
 #include <vector>
 
-static constexpr double G_TO_MS2 = 9.81;
-static constexpr double PI       = 3.14159265358979323846;
+static constexpr double G_TO_MS2     = 9.81;
+static constexpr double PI           = 3.14159265358979323846;
+static constexpr double AIR_DENSITY  = 1.225;
 
 // ------------------------------------------------------------------
 // LATERAL FORCES
@@ -73,29 +74,48 @@ static double segmentLength(const std::vector<TrackNode>& nodes, int i) {
 
 std::vector<double> computeVelocityProfile(
     const std::vector<TrackNode>& nodes,
-    double max_lateral_g, double max_speed,
-    double max_accel, double max_brake)
+    const VehicleConfig& config)
 {
     int N = static_cast<int>(nodes.size());
     std::vector<double> v(N);
 
+    // Engine power: at max_speed, engine force equals drag force (equilibrium).
+    // P = F_drag(Vmax) * Vmax
+    double drag_at_vmax = 0.5 * AIR_DENSITY * config.drag_coeff
+                        * config.frontal_area * config.max_speed * config.max_speed;
+    double engine_power = drag_at_vmax * config.max_speed;
+
     // Pass 1: cornering speed limit per node
     for (int i = 0; i < N; ++i) {
-        v[i] = calculateOptimalVelocity(nodes[i].curvature, max_lateral_g, max_speed);
+        v[i] = calculateOptimalVelocity(nodes[i].curvature,
+                                         config.max_lateral_g, config.max_speed);
     }
 
-    // Pass 2 (backward): propagate braking constraints
-    // If node[i+1] is slow, node[i] must be slow enough to brake in time.
+    // Pass 2 (backward): braking constraints — drag assists braking
     for (int i = N - 2; i >= 0; --i) {
         double seg = segmentLength(nodes, i);
-        double v_reachable = std::sqrt(v[i + 1] * v[i + 1] + 2.0 * max_brake * seg);
+        double v_next = v[i + 1];
+        double drag_decel = 0.5 * AIR_DENSITY * config.drag_coeff
+                          * config.frontal_area * v_next * v_next / config.mass;
+        double total_decel = config.max_brake + drag_decel;
+        double v_reachable = std::sqrt(v_next * v_next + 2.0 * total_decel * seg);
         v[i] = std::min(v[i], v_reachable);
     }
 
-    // Pass 3 (forward): propagate acceleration constraints
+    // Pass 3 (forward): acceleration constraints — power-limited at high speed
     for (int i = 1; i < N; ++i) {
         double seg = segmentLength(nodes, i - 1);
-        double v_reachable = std::sqrt(v[i - 1] * v[i - 1] + 2.0 * max_accel * seg);
+        double v_prev = v[i - 1];
+
+        // Engine accel: min of traction limit and power limit
+        double engine_accel = (v_prev > 1.0)
+            ? std::min(config.max_accel, engine_power / (config.mass * v_prev))
+            : config.max_accel;
+        double drag_decel = 0.5 * AIR_DENSITY * config.drag_coeff
+                          * config.frontal_area * v_prev * v_prev / config.mass;
+        double net_accel = std::max(engine_accel - drag_decel, 0.0);
+
+        double v_reachable = std::sqrt(v_prev * v_prev + 2.0 * net_accel * seg);
         v[i] = std::min(v[i], v_reachable);
     }
 

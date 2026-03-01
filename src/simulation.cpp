@@ -75,7 +75,7 @@ VehicleState makeInitialState(const VehicleConfig& config) {
 VehicleConfig defaultVehicleConfig() {
     VehicleConfig cfg{};
     cfg.mass           = 798.0;
-    cfg.max_lateral_g  = 4.5;
+    cfg.max_lateral_g  = 3.5;
     cfg.max_speed      = 91.0;
     cfg.max_accel      = 15.0;
     cfg.max_brake      = 45.0;
@@ -232,9 +232,13 @@ TelemetrySession runSimulation(const Track& track, const VehicleConfig& config) 
     }
 
     // --- Look-ahead velocity profile ---
-    std::vector<double> v_profile = computeVelocityProfile(
-        track.nodes, config.max_lateral_g, config.max_speed,
-        config.max_accel, config.max_brake);
+    std::vector<double> v_profile = computeVelocityProfile(track.nodes, config);
+
+    // Engine power: at max_speed, engine force = drag force (equilibrium)
+    static constexpr double AIR_DENSITY = 1.225;
+    double drag_at_vmax = 0.5 * AIR_DENSITY * config.drag_coeff
+                        * config.frontal_area * config.max_speed * config.max_speed;
+    double engine_power = drag_at_vmax * config.max_speed;
 
     VehicleState state = makeInitialState(config);
     state.x = track.nodes[0].x;
@@ -255,7 +259,12 @@ TelemetrySession runSimulation(const Track& track, const VehicleConfig& config) 
         double drag_force = calculateDragForce(state.velocity,
                                                config.drag_coeff, config.frontal_area);
         double drag_decel = drag_force / config.mass;
-        double eff_accel  = std::max(config.max_accel - drag_decel, 0.0);
+
+        // Power-limited engine acceleration at current speed
+        double max_engine_accel = (state.velocity > 1.0)
+            ? std::min(config.max_accel, engine_power / (config.mass * state.velocity))
+            : config.max_accel;
+        double eff_accel = std::max(max_engine_accel - drag_decel, 0.0);
 
         // Velocity planning (uses look-ahead profile)
         double target_v = v_profile[i];
@@ -276,11 +285,18 @@ TelemetrySession runSimulation(const Track& track, const VehicleConfig& config) 
         state.rpm  = calculateRPM(state.velocity, state.gear, config.gear_ratios,
                                   config.final_drive, config.tire_radius);
 
-        // Throttle / brake (derived from longitudinal G)
-        double max_accel_g = config.max_accel / 9.81;
-        double max_brake_g = config.max_brake / 9.81;
-        state.throttle = std::clamp(long_g / max_accel_g, 0.0, 1.0);
-        state.brake    = std::clamp(-long_g / max_brake_g, 0.0, 1.0);
+        // Throttle / brake from force balance:
+        //   engine_effort = net_accel + drag_decel  (how much engine accel is needed)
+        //   At max speed on straight: net_accel=0, effort=drag_decel=max_engine_accel → 100%
+        double net_accel = long_g * 9.81;
+        double engine_effort = net_accel + drag_decel;
+        if (engine_effort >= 0.0) {
+            state.throttle = std::clamp(engine_effort / max_engine_accel, 0.0, 1.0);
+            state.brake    = 0.0;
+        } else {
+            state.throttle = 0.0;
+            state.brake    = std::clamp(-engine_effort / config.max_brake, 0.0, 1.0);
+        }
 
         // Tire wear
         double factors[4];
@@ -311,12 +327,8 @@ TelemetrySession runSimulation(const Track& track, const VehicleConfig& config) 
                           config.mass, config.cog_height, config.wheelbase,
                           config.suspension_stiffness, config.suspension_travel);
 
-        // Fuel consumption
-        double drag_ratio      = (config.max_accel > 0.0) ? drag_decel / config.max_accel : 0.0;
-        double throttle_factor = std::max(1.0 + std::max(long_g, 0.0) * 0.3
-                                              - std::max(-long_g, 0.0) * 0.5
-                                              + drag_ratio * 0.4,
-                                          0.1);
+        // Fuel consumption — proportional to throttle position
+        double throttle_factor = 0.3 + state.throttle * 1.2;
         state.fuel = std::max(state.fuel - calculateFuelConsumptionDelta(
                                   seg_len, config.base_fuel_rate, throttle_factor), 0.0);
 
