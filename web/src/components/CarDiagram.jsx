@@ -1,5 +1,5 @@
 import { memo } from 'react'
-import { tempToColor } from '../utils/colors'
+import { tempToColorSmooth } from '../utils/colors'
 
 // Top-down F1-style car with tire temp colors and suspension deflection
 function CarDiagram({ frame, vehicle }) {
@@ -28,7 +28,7 @@ function CarDiagram({ frame, vehicle }) {
         <line x1={60} y1={18} x2={60} y2={175} stroke="#333" strokeWidth={0.5} strokeDasharray="3 3" />
 
         {tires.map(t => {
-          const color = tempToColor(t.temp || 25, opt, ovr)
+          const color = tempToColorSmooth(t.temp || 25, opt, ovr)
           const suspFrac = Math.abs(t.susp || 0) / maxTravel
           const suspH = Math.min(suspFrac * 20, 20)
           const suspColor = (t.susp || 0) > 0 ? '#e10600' : '#4a90e2'

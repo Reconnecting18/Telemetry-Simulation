@@ -121,7 +121,7 @@ header {
 
 .main-panels {
   display: grid;
-  grid-template-columns: 340px 1fr;
+  grid-template-columns: 360px 1fr;
   gap: 12px;
   padding: 12px 16px;
 }
@@ -133,18 +133,73 @@ header {
   padding: 12px;
 }
 
-.track-map h3 {
+.track-map-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 6px;
+}
+
+.track-map-header h3 {
   font-size: 0.7rem;
   text-transform: uppercase;
   letter-spacing: 0.1em;
   color: #888;
-  margin-bottom: 8px;
+  margin: 0;
 }
 
-.track-map svg {
+.track-map-btns {
+  display: flex;
+  gap: 4px;
+}
+
+.map-btn {
+  background: #222;
+  color: #888;
+  border: 1px solid #333;
+  border-radius: 3px;
+  width: 24px;
+  height: 20px;
+  font-size: 0.75rem;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.map-btn:hover { border-color: #e10600; color: #e0e0e0; }
+
+.track-map-viewport {
   width: 100%;
-  height: auto;
-  max-height: 400px;
+  height: 340px;
+  overflow: hidden;
+  border-radius: 4px;
+  background: #0c0c0c;
+  user-select: none;
+}
+
+.track-elev-legend {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 5px 0 4px;
+}
+
+.elev-label {
+  font-size: 0.55rem;
+  color: #555;
+  white-space: nowrap;
+}
+
+.elev-gradient-bar {
+  flex: 1;
+  height: 5px;
+  border-radius: 3px;
+  background: linear-gradient(to right,
+    rgb(74,144,226),
+    rgb(100,234,35),
+    rgb(245,166,35),
+    rgb(225,80,10));
+  opacity: 0.7;
 }
 
 .instruments-panel {
@@ -206,8 +261,7 @@ header {
 .pedal-bars {
   display: flex;
   gap: 10px;
-  align-items: flex-end;
-  height: 120px;
+  align-items: flex-start;
 }
 
 .pedal-col {
@@ -267,7 +321,7 @@ header {
   align-items: center;
   justify-content: space-between;
   width: 100%;
-  margin-bottom: 6px;
+  margin-bottom: 4px;
 }
 
 .tire-temp-header h4 {
@@ -299,111 +353,37 @@ header {
 }
 .mode-btn:hover { border-color: #e10600; }
 
-/* Mode 1 */
-.tire-simple-grid {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 6px;
-  margin-bottom: 6px;
+.tire-svg {
+  display: block;
+  overflow: visible;
 }
 
-.tire-simple-block {
+/* Smooth gradient temperature legend */
+.temp-gradient-legend {
   display: flex;
-  flex-direction: column;
   align-items: center;
-  gap: 3px;
-}
-
-.tire-corner-label {
-  font-size: 0.55rem;
-  text-transform: uppercase;
-  color: #666;
-  letter-spacing: 0.08em;
-}
-
-.tire-temp-swatch {
-  width: 32px;
-  height: 20px;
-  border-radius: 3px;
-  opacity: 0.85;
-}
-
-.tire-temp-value {
-  font-family: 'Courier New', monospace;
-  font-size: 0.75rem;
-  font-weight: 700;
-}
-
-/* Mode 2 */
-.tire-detail-grid {
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 4px;
-  margin-bottom: 6px;
-}
-
-.tire-detail-col {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 3px;
-}
-
-.tire-zones {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
+  gap: 5px;
+  margin-top: 5px;
   width: 100%;
 }
 
-.zone-bar {
-  display: flex;
-  align-items: center;
-  gap: 2px;
-}
-
-.zone-swatch {
-  width: 10px;
-  height: 10px;
-  border-radius: 2px;
-  flex-shrink: 0;
-}
-
-.zone-temp {
-  font-family: 'Courier New', monospace;
-  font-size: 0.6rem;
-  font-weight: 600;
-  min-width: 22px;
-}
-
-.zone-label {
-  font-size: 0.5rem;
-  color: #555;
-}
-
-.tire-psi {
-  font-family: 'Courier New', monospace;
-  font-size: 0.6rem;
-  margin-top: 2px;
-}
-
-/* Temp legend shared */
-.temp-legend {
-  display: flex;
-  align-items: center;
-  gap: 4px;
+.temp-grad-label {
   font-size: 0.55rem;
   color: #555;
-  flex-wrap: wrap;
-  margin-top: 4px;
+  white-space: nowrap;
 }
 
-.temp-legend-dot {
-  display: inline-block;
-  width: 7px;
-  height: 7px;
-  border-radius: 50%;
-  margin-left: 4px;
+.temp-grad-bar {
+  flex: 1;
+  height: 5px;
+  border-radius: 3px;
+  background: linear-gradient(to right,
+    rgb(20,60,200),
+    rgb(140,20,200),
+    rgb(245,155,15),
+    rgb(230,25,25),
+    rgb(255,255,255));
+  opacity: 0.8;
 }
 
 /* ---- Wear Indicators ---- */

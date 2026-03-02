@@ -1,105 +1,117 @@
 import { useState, memo } from 'react'
-import { tempToColor } from '../utils/colors'
+import { tempToColorSmooth } from '../utils/colors'
 
 const OPTIMAL  = 85
-const OVERHEAT = 110
+const OVERHEAT = 115
 
-// Simulate 3-zone temps from a single average: negative camber makes
-// inner edge run ~(|camber| * 2.5)°C hotter, outer correspondingly cooler.
 function zoneTemps(avgTemp, camber) {
-  const offset = Math.abs(camber || 0) * 2.5
-  return {
-    outer: avgTemp - offset,
-    mid:   avgTemp,
-    inner: avgTemp + offset,
-  }
+  const off = Math.abs(camber || 0) * 2.5
+  return { outer: avgTemp - off, mid: avgTemp, inner: avgTemp + off }
 }
 
-// ── Mode 1: Simple top-down 4-block layout ───────────────────────────────────
+// ── Mode 1: Simple GT7-style ─────────────────────────────────────────────────
 function SimpleView({ frame, optimal, overheat }) {
   if (!frame) return null
-  const tires = [
-    { id: 'FL', temp: frame.tire_temp_C?.FL },
-    { id: 'FR', temp: frame.tire_temp_C?.FR },
-    { id: 'RL', temp: frame.tire_temp_C?.RL },
-    { id: 'RR', temp: frame.tire_temp_C?.RR },
+  const TW = 34, TH = 56
+  const tirePos = [
+    { id: 'FL', x: 10,  y: 30  },
+    { id: 'FR', x: 156, y: 30  },
+    { id: 'RL', x: 10,  y: 140 },
+    { id: 'RR', x: 156, y: 140 },
   ]
-
   return (
-    <div className="tire-simple-grid">
-      {tires.map(t => {
-        const color = tempToColor(t.temp || 0, optimal, overheat)
+    <svg viewBox="0 0 200 218" width="200" height="218" className="tire-svg">
+      <path d="M78,205 L65,155 L60,80 L72,22 L128,22 L140,80 L135,155 L122,205 Z"
+        fill="#111" stroke="#333" strokeWidth={1.5} />
+      <ellipse cx={100} cy={112} rx={20} ry={34} fill="#0a0a0a" stroke="#222" strokeWidth={1} />
+      {tirePos.map(({ id, x, y }) => {
+        const temp  = frame.tire_temp_C?.[id] || 25
+        const color = tempToColorSmooth(temp, optimal, overheat)
         return (
-          <div key={t.id} className="tire-simple-block">
-            <span className="tire-corner-label">{t.id}</span>
-            <div className="tire-temp-swatch" style={{ background: color }} />
-            <span className="tire-temp-value" style={{ color }}>
-              {(t.temp || 0).toFixed(0)}&deg;C
-            </span>
-          </div>
+          <g key={id}>
+            <rect x={x} y={y} width={TW} height={TH} rx={4} fill={color} opacity={0.92} />
+            <rect x={x} y={y} width={TW} height={TH} rx={4}
+              fill="none" stroke="#000" strokeWidth={0.8} opacity={0.5} />
+            <text x={x + TW/2} y={y - 5} fill="#888" fontSize={8}
+              textAnchor="middle" fontFamily="monospace">{id}</text>
+            <text x={x + TW/2} y={y + TH/2 + 4} fill="#000" fontSize={9}
+              textAnchor="middle" fontFamily="monospace" fontWeight="700">
+              {temp.toFixed(0)}&deg;
+            </text>
+          </g>
         )
       })}
-    </div>
+    </svg>
   )
 }
 
-// ── Mode 2: 3-zone detailed per-tire strip ────────────────────────────────────
-function ZoneBar({ temp, label, optimal, overheat }) {
-  const color = tempToColor(temp, optimal, overheat)
-  return (
-    <div className="zone-bar">
-      <div className="zone-swatch" style={{ background: color }} />
-      <span className="zone-temp" style={{ color }}>{temp.toFixed(0)}</span>
-      <span className="zone-label">{label}</span>
-    </div>
-  )
-}
-
+// ── Mode 2: GT7 3-zone detailed ──────────────────────────────────────────────
 function DetailedView({ frame, vehicle, optimal, overheat }) {
   if (!frame) return null
-  const camDeg = vehicle?.camber_deg || {}
+  const camDeg  = vehicle?.camber_deg || {}
   const coldPsi = vehicle?.cold_pressure_psi || 25
+  const TW = 34, TH = 56, ZW = TW / 3
 
-  const corners = [
-    { id: 'FL', isLeft: true,  camber: camDeg.FL, temp: frame.tire_temp_C?.FL, psi: frame.tire_pressure_psi?.FL },
-    { id: 'FR', isLeft: false, camber: camDeg.FR, temp: frame.tire_temp_C?.FR, psi: frame.tire_pressure_psi?.FR },
-    { id: 'RL', isLeft: true,  camber: camDeg.RL, temp: frame.tire_temp_C?.RL, psi: frame.tire_pressure_psi?.RL },
-    { id: 'RR', isLeft: false, camber: camDeg.RR, temp: frame.tire_temp_C?.RR, psi: frame.tire_pressure_psi?.RR },
+  const tires = [
+    { id: 'FL', x: 8,   y: 30,  isLeft: true  },
+    { id: 'FR', x: 258, y: 30,  isLeft: false },
+    { id: 'RL', x: 8,   y: 140, isLeft: true  },
+    { id: 'RR', x: 258, y: 140, isLeft: false },
   ]
 
   return (
-    <div className="tire-detail-grid">
-      {corners.map(c => {
-        const { outer, mid, inner } = zoneTemps(c.temp || 0, c.camber || 0)
-        const psiDiff = Math.abs((c.psi || coldPsi) - coldPsi)
+    <svg viewBox="0 0 300 218" width="300" height="218" className="tire-svg">
+      <text x={150} y={12} fill="#444" fontSize={6.5} textAnchor="middle" fontFamily="monospace">
+        O·M·I (inner toward center) I·M·O
+      </text>
+      <path d="M118,205 L105,155 L100,80 L112,22 L188,22 L200,80 L195,155 L182,205 Z"
+        fill="#111" stroke="#333" strokeWidth={1.5} />
+      <ellipse cx={150} cy={112} rx={20} ry={34} fill="#0a0a0a" stroke="#222" strokeWidth={1} />
+
+      {tires.map(({ id, x, y, isLeft }) => {
+        const avgTemp = frame.tire_temp_C?.[id] || 25
+        const camber  = camDeg[id] || 0
+        const psi     = frame.tire_pressure_psi?.[id] || coldPsi
+        const { outer, mid, inner } = zoneTemps(avgTemp, camber)
+        const zones = isLeft ? [outer, mid, inner] : [inner, mid, outer]
+        const absZones = [outer, mid, inner]  // always O,M,I for text labels
+        const textX = isLeft ? x - 4 : x + TW + 4
+        const anchor = isLeft ? 'end' : 'start'
+        const psiDiff = Math.abs(psi - coldPsi)
         const psiColor = psiDiff < 1 ? '#7ed321' : psiDiff < 2.5 ? '#f5a623' : '#e10600'
-        // For left-side tires: inner is on the right; for right-side: inner on the left
-        const zones = c.isLeft
-          ? [{ t: outer, l: 'O' }, { t: mid, l: 'M' }, { t: inner, l: 'I' }]
-          : [{ t: inner, l: 'I' }, { t: mid, l: 'M' }, { t: outer, l: 'O' }]
 
         return (
-          <div key={c.id} className="tire-detail-col">
-            <span className="tire-corner-label">{c.id}</span>
-            <div className="tire-zones">
-              {zones.map(z => (
-                <ZoneBar key={z.l} temp={z.t} label={z.l} optimal={optimal} overheat={overheat} />
-              ))}
-            </div>
-            <span className="tire-psi" style={{ color: psiColor }}>
-              {(c.psi || coldPsi).toFixed(1)} psi
-            </span>
-          </div>
+          <g key={id}>
+            {zones.map((t, i) => (
+              <rect key={i} x={x + i*ZW} y={y} width={ZW} height={TH}
+                fill={tempToColorSmooth(t, optimal, overheat)} opacity={0.93}
+                rx={i === 0 ? 3 : 0} />
+            ))}
+            <line x1={x+ZW}   y1={y} x2={x+ZW}   y2={y+TH} stroke="#000" strokeWidth={0.5} opacity={0.4} />
+            <line x1={x+2*ZW} y1={y} x2={x+2*ZW} y2={y+TH} stroke="#000" strokeWidth={0.5} opacity={0.4} />
+            <rect x={x} y={y} width={TW} height={TH} rx={3} fill="none" stroke="#555" strokeWidth={0.8} />
+            <text x={x+TW/2} y={y-5} fill="#777" fontSize={7.5} textAnchor="middle" fontFamily="monospace">{id}</text>
+            {absZones.map((t, i) => (
+              <text key={i} x={textX} y={y + (i + 0.72) * (TH/3)}
+                fill={tempToColorSmooth(t, optimal, overheat)}
+                fontSize={7} textAnchor={anchor} fontFamily="monospace" fontWeight="600">
+                {['O','M','I'][i]} {t.toFixed(0)}&deg;
+              </text>
+            ))}
+            <text x={x+TW/2} y={y+TH+10} fill={psiColor} fontSize={6.5}
+              textAnchor="middle" fontFamily="monospace">
+              {psi.toFixed(1)} psi
+            </text>
+          </g>
         )
       })}
-    </div>
+    </svg>
   )
 }
 
-// ── Main component ─────────────────────────────────────────────────────────────
+// ── Main ────────────────────────────────────────────────────────────────────
 function TireTempDisplay({ frame, vehicle }) {
   const [mode, setMode] = useState(1)
-
   const optimal  = vehicle?.tire_optimal_temp_C  || OPTIMAL
   const overheat = vehicle?.tire_overheat_temp_C || OVERHEAT
 
@@ -108,31 +120,20 @@ function TireTempDisplay({ frame, vehicle }) {
       <div className="tire-temp-header">
         <h4>Tire Temp</h4>
         <div className="mode-toggle">
-          <button
-            className={`mode-btn ${mode === 1 ? 'active' : ''}`}
-            onClick={() => setMode(1)}
-            title="Simple view"
-          >1</button>
-          <button
-            className={`mode-btn ${mode === 2 ? 'active' : ''}`}
-            onClick={() => setMode(2)}
-            title="3-zone detail"
-          >2</button>
+          <button className={`mode-btn ${mode===1?'active':''}`} onClick={()=>setMode(1)} title="Simple">1</button>
+          <button className={`mode-btn ${mode===2?'active':''}`} onClick={()=>setMode(2)} title="3-zone">2</button>
         </div>
       </div>
 
       {mode === 1
-        ? <SimpleView  frame={frame} optimal={optimal} overheat={overheat} />
+        ? <SimpleView   frame={frame} optimal={optimal} overheat={overheat} />
         : <DetailedView frame={frame} vehicle={vehicle} optimal={optimal} overheat={overheat} />
       }
 
-      {/* Temperature scale legend */}
-      <div className="temp-legend">
-        <span className="temp-legend-dot" style={{ background: '#4a90e2' }} />Cold
-        <span className="temp-legend-dot" style={{ background: '#7ed321' }} />Warm
-        <span className="temp-legend-dot" style={{ background: '#f5a623' }} />Opt
-        <span className="temp-legend-dot" style={{ background: '#e10600' }} />Hot
-        <span className="temp-legend-dot" style={{ background: '#ff00ff' }} />Over
+      <div className="temp-gradient-legend">
+        <span className="temp-grad-label">Cold</span>
+        <div className="temp-grad-bar" />
+        <span className="temp-grad-label">Hot</span>
       </div>
     </div>
   )
