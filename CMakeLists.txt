@@ -23,10 +23,7 @@ add_custom_command(TARGET telemetry_sim POST_BUILD
     COMMAND ${CMAKE_COMMAND} -E make_directory
         $<TARGET_FILE_DIR:telemetry_sim>/data
     COMMAND ${CMAKE_COMMAND} -E copy_if_different
-        ${CMAKE_SOURCE_DIR}/data/trackt1_data.csv
-        $<TARGET_FILE_DIR:telemetry_sim>/data/trackt1_data.csv
-    COMMAND ${CMAKE_COMMAND} -E copy_if_different
-        ${CMAKE_SOURCE_DIR}/data/circuit_alpha.csv
-        $<TARGET_FILE_DIR:telemetry_sim>/data/circuit_alpha.csv
+        ${CMAKE_SOURCE_DIR}/data/monza.csv
+        $<TARGET_FILE_DIR:telemetry_sim>/data/monza.csv
     COMMENT "Copying track data to build directory"
 )

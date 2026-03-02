@@ -41,8 +41,10 @@ bool TelemetrySession::writeJSON(const std::string& path) const {
 
     // --- session block ---
     out << "  \"session\": {\n";
-    out << "    \"track\": "       << jStr(track_name) << ",\n";
-    out << "    \"total_nodes\": " << frames.size()    << "\n";
+    out << "    \"track\": "        << jStr(track_name)  << ",\n";
+    out << "    \"total_frames\": " << frames.size()     << ",\n";
+    out << "    \"total_laps\": "   << total_laps        << ",\n";
+    out << "    \"end_reason\": "   << jStr(end_reason)  << "\n";
     out << "  },\n";
 
     // --- track geometry block ---
@@ -94,6 +96,7 @@ bool TelemetrySession::writeJSON(const std::string& path) const {
         const TelemetryFrame& f = frames[i];
         out << "    {\n";
         out << "      \"node\": "            << f.node_index                      << ",\n";
+        out << "      \"lap\": "             << f.lap                             << ",\n";
         out << "      \"time_s\": "          << jVal(f.timestamp)                 << ",\n";
         out << "      \"x\": "               << jVal(f.x, 2)                      << ",\n";
         out << "      \"y\": "               << jVal(f.y, 2)                      << ",\n";

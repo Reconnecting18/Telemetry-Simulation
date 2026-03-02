@@ -103,7 +103,8 @@ VehicleConfig   defaultVehicleConfig();
 
 struct TelemetryFrame {
     int    node_index;
-    double timestamp;               // s
+    int    lap;                     // 1-indexed lap number
+    double timestamp;               // s — cumulative session time
     double x, y;                    // m — racing line position
     double elevation_m;             // m — track elevation at this node
     bool   on_kerb;                 // car is at a kerb node
@@ -131,6 +132,8 @@ struct TelemetrySession {
     std::vector<TelemetryFrame> frames;
     std::vector<TrackNode>    track_nodes;  // raw track geometry for frontend
     double                    total_distance_m;
+    int                       total_laps;   // laps completed before session end
+    std::string               end_reason;   // "fuel" | "tire_wear" | "tire_damage" | "max_laps"
 
     // Writes JSON to path, creating parent directories as needed.
     bool writeJSON(const std::string& path) const;

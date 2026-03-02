@@ -15,15 +15,19 @@ export function usePlayback(frames) {
       const dt = (timestamp - lastTsRef.current) / 1000
       setCurrentTime(prev => {
         const next = prev + dt * playbackSpeed
-        if (next >= maxTime) {
-          return next - maxTime  // loop back to start
-        }
-        return next
+        return next >= maxTime ? maxTime : next
       })
     }
     lastTsRef.current = timestamp
     rafRef.current = requestAnimationFrame(tick)
   }, [playbackSpeed, maxTime])
+
+  // Stop playback automatically when the session end is reached
+  useEffect(() => {
+    if (currentTime >= maxTime && isPlaying) {
+      setIsPlaying(false)
+    }
+  }, [currentTime, maxTime, isPlaying])
 
   useEffect(() => {
     if (isPlaying) {

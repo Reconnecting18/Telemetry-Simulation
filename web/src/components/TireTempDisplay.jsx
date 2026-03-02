@@ -10,26 +10,48 @@ function zoneTemps(avgTemp, camber) {
 }
 
 // ── Mode 1: Simple GT7-style ─────────────────────────────────────────────────
-function SimpleView({ frame, optimal, overheat }) {
+// Each tire block renders a left→right thermal gradient using outer/inner zone temps.
+// Outer zone is on the track edge (left for FL/RL, right for FR/RR).
+// Inner zone is warmer due to negative camber (inner sidewall takes more load).
+function SimpleView({ frame, vehicle, optimal, overheat }) {
   if (!frame) return null
   const TW = 34, TH = 56
+  const camDeg = vehicle?.camber_deg || {}
   const tirePos = [
-    { id: 'FL', x: 10,  y: 30  },
-    { id: 'FR', x: 156, y: 30  },
-    { id: 'RL', x: 10,  y: 140 },
-    { id: 'RR', x: 156, y: 140 },
+    { id: 'FL', x: 10,  y: 30,  isLeft: true  },
+    { id: 'FR', x: 156, y: 30,  isLeft: false },
+    { id: 'RL', x: 10,  y: 140, isLeft: true  },
+    { id: 'RR', x: 156, y: 140, isLeft: false },
   ]
   return (
     <svg viewBox="0 0 200 218" width="200" height="218" className="tire-svg">
+      <defs>
+        {tirePos.map(({ id, isLeft }) => {
+          const avgTemp = frame.tire_temp_C?.[id] || 25
+          const camber  = camDeg[id] || 0
+          const { outer, inner } = zoneTemps(avgTemp, camber)
+          const outerCol = tempToColorSmooth(outer, optimal, overheat)
+          const innerCol = tempToColorSmooth(inner, optimal, overheat)
+          // Left tires: x=0 is track-outer edge, x=1 is track-inner (hotter at camber)
+          // Right tires: x=0 is track-inner (hotter), x=1 is track-outer
+          return (
+            <linearGradient key={`g-${id}`} id={`tg-${id}`}
+              x1="0" y1="0" x2="1" y2="0" gradientUnits="objectBoundingBox">
+              <stop offset="0%"   stopColor={isLeft ? outerCol : innerCol} />
+              <stop offset="100%" stopColor={isLeft ? innerCol : outerCol} />
+            </linearGradient>
+          )
+        })}
+      </defs>
       <path d="M78,205 L65,155 L60,80 L72,22 L128,22 L140,80 L135,155 L122,205 Z"
         fill="#111" stroke="#333" strokeWidth={1.5} />
       <ellipse cx={100} cy={112} rx={20} ry={34} fill="#0a0a0a" stroke="#222" strokeWidth={1} />
       {tirePos.map(({ id, x, y }) => {
-        const temp  = frame.tire_temp_C?.[id] || 25
-        const color = tempToColorSmooth(temp, optimal, overheat)
+        const temp = frame.tire_temp_C?.[id] || 25
         return (
           <g key={id}>
-            <rect x={x} y={y} width={TW} height={TH} rx={4} fill={color} opacity={0.92} />
+            <rect x={x} y={y} width={TW} height={TH} rx={4}
+              fill={`url(#tg-${id})`} opacity={0.92} />
             <rect x={x} y={y} width={TW} height={TH} rx={4}
               fill="none" stroke="#000" strokeWidth={0.8} opacity={0.5} />
             <text x={x + TW/2} y={y - 5} fill="#888" fontSize={8}
@@ -126,7 +148,7 @@ function TireTempDisplay({ frame, vehicle }) {
       </div>
 
       {mode === 1
-        ? <SimpleView   frame={frame} optimal={optimal} overheat={overheat} />
+        ? <SimpleView   frame={frame} vehicle={vehicle} optimal={optimal} overheat={overheat} />
         : <DetailedView frame={frame} vehicle={vehicle} optimal={optimal} overheat={overheat} />
       }
 

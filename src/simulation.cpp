@@ -4,6 +4,7 @@
 #include <algorithm>
 #include <cmath>
 #include <fstream>
+#include <iomanip>
 #include <iostream>
 #include <sstream>
 
@@ -166,10 +167,16 @@ static void computeTireFactors(double lateral_g, double curvature,
 static void updateTireTemps(double tire_temp[4], const double factors[4],
                              double lateral_g, double velocity, double max_speed,
                              double longitudinal_g, double ambient, double dt) {
-    static constexpr double K_LAT   = 0.50;
-    static constexpr double K_SPEED = 0.15;
-    static constexpr double K_BRAKE = 0.30;
-    static constexpr double K_COOL  = 0.08;
+    // Retuned for realistic multi-lap thermal behaviour:
+    //   K_BRAKE is dominant — caliper friction generates enormous heat
+    //   K_COOL  is low     — rubber has high thermal mass, cools slowly
+    // Result: tires warm over 2-3 laps, spike visibly in braking zones,
+    //         cool ~5-8 °C on the main straight.
+    static constexpr double K_LAT   = 0.20;   // lateral g^2 heat
+    static constexpr double K_SPEED = 0.05;   // rolling-resistance/speed heat
+    static constexpr double K_BRAKE = 1.00;   // caliper friction heat (major source)
+    static constexpr double K_COOL  = 0.013;  // passive + convective cooling per °C above ambient
+                                               // Equilibrium ≈ 97°C; straight-line drop ~15°C
 
     double speed_ratio = (max_speed > 0.0) ? velocity / max_speed : 0.0;
     double brake_g     = std::max(-longitudinal_g, 0.0);
@@ -275,151 +282,196 @@ TelemetrySession runSimulation(const Track& track, const VehicleConfig& config) 
                         * config.frontal_area * config.max_speed * config.max_speed;
     double engine_power = drag_at_vmax * config.max_speed;
 
+    // ── Session constants ────────────────────────────────────────────────────
+    static constexpr int    MAX_LAPS          = 60;   // hard ceiling
+    static constexpr double TIRE_WEAR_LIMIT   = 0.95; // retire on any tire
+    static constexpr double TIRE_DAMAGE_TEMP  = 175.0;// instant failure threshold (C)
+
     VehicleState state = makeInitialState(config);
     state.x = rl[0].x;
     state.y = rl[0].y;
 
-    for (int i = 0; i < N; ++i) {
-        const TrackNode& node = track.nodes[i];
+    int         total_laps_run = 0;
+    std::string end_reason     = "max_laps";
+    bool        session_done   = false;
 
-        // Segment length from previous node (matches velocity profile phase)
-        double seg_len = 0.1;
-        if (i > 0) {
-            double dx = node.x - track.nodes[i - 1].x;
-            double dy = node.y - track.nodes[i - 1].y;
-            seg_len = std::max(std::sqrt(dx * dx + dy * dy), 0.1);
-        }
+    // ── Multi-lap loop ───────────────────────────────────────────────────────
+    for (int lap = 0; lap < MAX_LAPS && !session_done; ++lap) {
 
-        // Grade at this node
-        double grade_decel = 9.81 * grade[i];  // positive = uphill
+        for (int i = 0; i < N && !session_done; ++i) {
+            const TrackNode& node = track.nodes[i];
 
-        // Aerodynamic drag
-        double drag_force = calculateDragForce(state.velocity,
-                                               config.drag_coeff, config.frontal_area);
-        double drag_decel = drag_force / config.mass;
+            // Segment length from previous node (matches velocity profile phase)
+            double seg_len = 0.1;
+            if (i > 0) {
+                double dx = node.x - track.nodes[i - 1].x;
+                double dy = node.y - track.nodes[i - 1].y;
+                seg_len = std::max(std::sqrt(dx * dx + dy * dy), 0.1);
+            }
 
-        // Power-limited engine acceleration
-        double max_engine_accel = (state.velocity > 1.0)
-            ? std::min(config.max_accel, engine_power / (config.mass * state.velocity))
-            : config.max_accel;
+            // Grade at this node
+            double grade_decel = 9.81 * grade[i];  // positive = uphill
 
-        // Grade-corrected effective accel and brake
-        double eff_accel = std::max(max_engine_accel - drag_decel - grade_decel, 0.0);
-        double eff_brake = config.max_brake + drag_decel + grade_decel;
-        eff_brake        = std::max(eff_brake, config.max_brake * 0.1);
+            // Aerodynamic drag
+            double drag_force = calculateDragForce(state.velocity,
+                                                   config.drag_coeff, config.frontal_area);
+            double drag_decel = drag_force / config.mass;
 
-        double target_v = v_profile[i];
-        double long_g   = 0.0;
-        state.velocity = adjustVelocity(state.velocity, target_v, seg_len,
-                                        eff_accel, eff_brake, long_g);
+            // Power-limited engine acceleration
+            double max_engine_accel = (state.velocity > 1.0)
+                ? std::min(config.max_accel, engine_power / (config.mass * state.velocity))
+                : config.max_accel;
 
-        // Use RL effective curvature — the car is physically on the racing line
-        double curv_rl = rl_curv[i];
+            // Grade-corrected effective accel and brake
+            double eff_accel = std::max(max_engine_accel - drag_decel - grade_decel, 0.0);
+            double eff_brake = config.max_brake + drag_decel + grade_decel;
+            eff_brake        = std::max(eff_brake, config.max_brake * 0.1);
 
-        state.lateral_g      = calculateLateralG(state.velocity, curv_rl);
-        state.longitudinal_g = long_g;
-        double lat_force_N   = calculateForceFromCurvature(config.mass, state.velocity, curv_rl);
+            double target_v = v_profile[i];
+            double long_g   = 0.0;
+            state.velocity = adjustVelocity(state.velocity, target_v, seg_len,
+                                            eff_accel, eff_brake, long_g);
 
-        // Gearbox
-        state.gear = selectGear(state.velocity, config.num_gears, config.gear_ratios,
-                                config.final_drive, config.tire_radius,
-                                config.idle_rpm, config.max_rpm);
-        state.rpm  = calculateRPM(state.velocity, state.gear, config.gear_ratios,
-                                  config.final_drive, config.tire_radius);
+            // Use RL effective curvature — the car is physically on the racing line
+            double curv_rl = rl_curv[i];
 
-        // Throttle / brake from force balance (grade affects engine effort)
-        double net_accel     = long_g * 9.81;
-        double engine_effort = net_accel + drag_decel + grade_decel;
-        if (engine_effort >= 0.0) {
-            state.throttle = std::clamp(engine_effort / std::max(max_engine_accel, 0.01), 0.0, 1.0);
-            state.brake    = 0.0;
-        } else {
-            state.throttle = 0.0;
-            double mech_brake = std::max(-net_accel - drag_decel, 0.0);
-            state.brake    = std::clamp(mech_brake / config.max_brake, 0.0, 1.0);
-        }
+            state.lateral_g      = calculateLateralG(state.velocity, curv_rl);
+            state.longitudinal_g = long_g;
+            double lat_force_N   = calculateForceFromCurvature(config.mass, state.velocity, curv_rl);
 
-        // Tire wear — curvature sign from node (same turn direction as RL)
-        double factors[4];
-        computeTireFactors(state.lateral_g, node.curvature,
-                           config.cog_height, config.track_width, factors);
-        for (int t = 0; t < 4; ++t) {
-            double rate = calculateTireWearRate(state.lateral_g, factors[t],
-                                               state.velocity, config.max_speed);
-            state.tire_wear[t] = std::min(state.tire_wear[t] + rate * seg_len, 1.0);
-        }
+            // Gearbox
+            state.gear = selectGear(state.velocity, config.num_gears, config.gear_ratios,
+                                    config.final_drive, config.tire_radius,
+                                    config.idle_rpm, config.max_rpm);
+            state.rpm  = calculateRPM(state.velocity, state.gear, config.gear_ratios,
+                                      config.final_drive, config.tire_radius);
 
-        double dt = seg_len / std::max(state.velocity, 0.1);
+            // Throttle / brake from force balance (grade affects engine effort)
+            double net_accel     = long_g * 9.81;
+            double engine_effort = net_accel + drag_decel + grade_decel;
+            if (engine_effort >= 0.0) {
+                state.throttle = std::clamp(engine_effort / std::max(max_engine_accel, 0.01), 0.0, 1.0);
+                state.brake    = 0.0;
+            } else {
+                state.throttle = 0.0;
+                double mech_brake = std::max(-net_accel - drag_decel, 0.0);
+                state.brake    = std::clamp(mech_brake / config.max_brake, 0.0, 1.0);
+            }
 
-        // Tire temperature
-        updateTireTemps(state.tire_temp, factors,
-                        state.lateral_g, state.velocity, config.max_speed,
-                        state.longitudinal_g, config.tire_ambient_temp, dt);
-
-        // Kerb effect: thermal spike on kerb-side tires (kerb friction + vibration)
-        if (node.kerb > 0) {
+            // Tire wear — curvature sign from node (same turn direction as RL)
+            double factors[4];
+            computeTireFactors(state.lateral_g, node.curvature,
+                               config.cog_height, config.track_width, factors);
             for (int t = 0; t < 4; ++t) {
-                bool left_tire  = (t == 0 || t == 2);
-                bool right_tire = (t == 1 || t == 3);
-                bool kerb_side  = ((node.kerb & 1) && left_tire) ||
-                                  ((node.kerb & 2) && right_tire);
-                if (kerb_side) {
-                    state.tire_temp[t] += 2.5;
+                double rate = calculateTireWearRate(state.lateral_g, factors[t],
+                                                   state.velocity, config.max_speed);
+                state.tire_wear[t] = std::min(state.tire_wear[t] + rate * seg_len, 1.0);
+            }
+
+            double dt = seg_len / std::max(state.velocity, 0.1);
+
+            // Tire temperature
+            updateTireTemps(state.tire_temp, factors,
+                            state.lateral_g, state.velocity, config.max_speed,
+                            state.longitudinal_g, config.tire_ambient_temp, dt);
+
+            // Kerb effect: thermal spike on kerb-side tires (kerb friction + vibration)
+            if (node.kerb > 0) {
+                for (int t = 0; t < 4; ++t) {
+                    bool left_tire  = (t == 0 || t == 2);
+                    bool right_tire = (t == 1 || t == 3);
+                    bool kerb_side  = ((node.kerb & 1) && left_tire) ||
+                                      ((node.kerb & 2) && right_tire);
+                    if (kerb_side) {
+                        state.tire_temp[t] += 2.5;
+                    }
+                }
+            }
+
+            // Tire pressure
+            updateTirePressures(state.tire_pressure, state.tire_temp,
+                                config.tire_cold_pressure, config.tire_ambient_temp);
+
+            // Suspension & dynamic camber
+            computeSuspension(state.suspension_deflection, state.dynamic_camber,
+                              config.camber_deg,
+                              state.lateral_g, state.longitudinal_g, node.curvature,
+                              config.mass, config.cog_height, config.wheelbase,
+                              config.suspension_stiffness, config.suspension_travel);
+
+            // Fuel — proportional to throttle
+            double throttle_factor = 0.3 + state.throttle * 1.2;
+            state.fuel = std::max(state.fuel - calculateFuelConsumptionDelta(
+                                      seg_len, config.base_fuel_rate, throttle_factor), 0.0);
+
+            // Position on racing line
+            state.x          = rl[i].x;
+            state.y          = rl[i].y;
+            state.node_index = i;
+            state.timestamp += dt;
+
+            // Record telemetry frame
+            TelemetryFrame f{};
+            f.node_index      = i;
+            f.lap             = lap + 1;
+            f.timestamp       = state.timestamp;
+            f.x               = state.x;
+            f.y               = state.y;
+            f.elevation_m     = node.z;
+            f.on_kerb         = (node.kerb > 0);
+            f.velocity_ms     = state.velocity;
+            f.lateral_g       = state.lateral_g;
+            f.longitudinal_g  = state.longitudinal_g;
+            f.lateral_force_N = lat_force_N;
+            f.drag_force_N    = drag_force;
+            f.fuel_L          = state.fuel;
+            f.gear            = state.gear;
+            f.rpm             = state.rpm;
+            f.throttle        = state.throttle;
+            f.brake           = state.brake;
+            for (int t = 0; t < 4; ++t) {
+                f.tire_wear[t]     = state.tire_wear[t];
+                f.tire_temp[t]     = state.tire_temp[t];
+                f.tire_pressure[t] = state.tire_pressure[t];
+                f.suspension_mm[t] = state.suspension_deflection[t] * 1000.0;
+                f.camber_deg[t]    = state.dynamic_camber[t];
+            }
+            session.frames.push_back(f);
+
+            // ── Stop conditions ──────────────────────────────────────────────
+            if (state.fuel <= 0.0) {
+                end_reason = "fuel"; session_done = true; break;
+            }
+            for (int t = 0; t < 4; ++t) {
+                if (state.tire_wear[t] >= TIRE_WEAR_LIMIT) {
+                    end_reason = "tire_wear"; session_done = true; break;
+                }
+                if (state.tire_temp[t] >= TIRE_DAMAGE_TEMP) {
+                    end_reason = "tire_damage"; session_done = true; break;
                 }
             }
         }
 
-        // Tire pressure
-        updateTirePressures(state.tire_pressure, state.tire_temp,
-                            config.tire_cold_pressure, config.tire_ambient_temp);
+        total_laps_run = lap + (session_done ? 0 : 1);
 
-        // Suspension & dynamic camber
-        computeSuspension(state.suspension_deflection, state.dynamic_camber,
-                          config.camber_deg,
-                          state.lateral_g, state.longitudinal_g, node.curvature,
-                          config.mass, config.cog_height, config.wheelbase,
-                          config.suspension_stiffness, config.suspension_travel);
-
-        // Fuel — proportional to throttle
-        double throttle_factor = 0.3 + state.throttle * 1.2;
-        state.fuel = std::max(state.fuel - calculateFuelConsumptionDelta(
-                                  seg_len, config.base_fuel_rate, throttle_factor), 0.0);
-
-        // Position on racing line
-        state.x          = rl[i].x;
-        state.y          = rl[i].y;
-        state.node_index = i;
-        state.timestamp += dt;
-
-        // Record telemetry frame
-        TelemetryFrame f{};
-        f.node_index      = i;
-        f.timestamp       = state.timestamp;
-        f.x               = state.x;
-        f.y               = state.y;
-        f.elevation_m     = node.z;
-        f.on_kerb         = (node.kerb > 0);
-        f.velocity_ms     = state.velocity;
-        f.lateral_g       = state.lateral_g;
-        f.longitudinal_g  = state.longitudinal_g;
-        f.lateral_force_N = lat_force_N;
-        f.drag_force_N    = drag_force;
-        f.fuel_L          = state.fuel;
-        f.gear            = state.gear;
-        f.rpm             = state.rpm;
-        f.throttle        = state.throttle;
-        f.brake           = state.brake;
-        for (int t = 0; t < 4; ++t) {
-            f.tire_wear[t]     = state.tire_wear[t];
-            f.tire_temp[t]     = state.tire_temp[t];
-            f.tire_pressure[t] = state.tire_pressure[t];
-            f.suspension_mm[t] = state.suspension_deflection[t] * 1000.0;
-            f.camber_deg[t]    = state.dynamic_camber[t];
-        }
-        session.frames.push_back(f);
+        // Per-lap console summary
+        std::cout << "[Simulation] Lap " << (lap + 1)
+                  << "  wear FL=" << std::fixed << std::setprecision(3) << state.tire_wear[0]
+                  << " FR="       << state.tire_wear[1]
+                  << " RL="       << state.tire_wear[2]
+                  << " RR="       << state.tire_wear[3]
+                  << "  temp FL=" << std::setprecision(1) << state.tire_temp[0]
+                  << " FR="       << state.tire_temp[1]
+                  << " RL="       << state.tire_temp[2]
+                  << " RR="       << state.tire_temp[3] << " C"
+                  << "  fuel="    << std::setprecision(1) << state.fuel << " L\n";
     }
 
-    std::cout << "[Simulation] Completed " << session.frames.size()
-              << " nodes. Total distance: " << track.totalDistance() << " m\n";
+    session.total_laps = total_laps_run;
+    session.end_reason = end_reason;
+
+    std::cout << "[Simulation] Session ended: " << end_reason
+              << " after " << total_laps_run << " laps"
+              << " (" << session.frames.size() << " frames total)\n";
     return session;
 }
