@@ -1,7 +1,8 @@
-import { useState, useEffect } from 'react'
+import { useState, useMemo } from 'react'
 import { useTelemetryData } from './hooks/useTelemetryData'
 import { usePlayback } from './hooks/usePlayback'
-import { logCornerAnalysis } from './utils/cornerDetection'
+import { logCornerAnalysis, analyzeCorners } from './utils/cornerDetection'
+import { calculateSpeedEnvelope } from './utils/speedEnvelope'
 
 import Header from './components/Header'
 import PlaybackControls from './components/PlaybackControls'
@@ -39,9 +40,12 @@ export default function App() {
 
   const [mode, setMode] = useState('default')
 
-  // Log corner analysis once on data load (dev verification)
-  useEffect(() => {
-    if (data?.track) logCornerAnalysis(data.track)
+  // Corner analysis + speed envelope (computed once on data load)
+  const speedData = useMemo(() => {
+    if (!data?.track) return null
+    const corners = analyzeCorners(data.track)
+    logCornerAnalysis(data.track)
+    return calculateSpeedEnvelope(data.track, corners)
   }, [data?.track])
 
   if (error) return <div className="state-msg error">Failed to load telemetry: {error}</div>
@@ -80,6 +84,7 @@ export default function App() {
           <TrackMap
             trackNodes={data.track?.nodes}
             racingLineData={data.track?.racing_line}
+            speedData={speedData}
             frames={data.frames}
             currentTime={currentTime}
             carX={f?.x}

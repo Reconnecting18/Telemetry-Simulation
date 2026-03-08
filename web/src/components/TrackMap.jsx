@@ -1,5 +1,6 @@
 import { useMemo, useRef, useState, useCallback, useEffect } from 'react'
 import { findFrameIndex } from '../utils/interpolate'
+import { speedColor } from '../utils/speedEnvelope'
 
 const TRACK_WIDTH   = 14
 const KERB_OFFSET   = TRACK_WIDTH / 2 + 0.5
@@ -142,15 +143,15 @@ function buildTrail(frames, currentTime) {
   return points
 }
 
-export default function TrackMap({ trackNodes, racingLineData, frames, currentTime, carX, carY }) {
+export default function TrackMap({ trackNodes, racingLineData, speedData, frames, currentTime, carX, carY }) {
   const svgRef = useRef(null)
   const isDragging = useRef(false)
   const lastMouse  = useRef({ x: 0, y: 0 })
   const [vbState, setVbState] = useState(null)
 
-  const { baseVB, segments, racingLine, dirtyZones, gripOverlay, startX, startY, cornerPositions } = useMemo(() => {
+  const { baseVB, segments, racingLine, dirtyZones, gripOverlay, speedOverlay, startX, startY, cornerPositions } = useMemo(() => {
     if (!trackNodes || !trackNodes.length)
-      return { baseVB: null, segments: [], racingLine: [], dirtyZones: [], gripOverlay: [], cornerPositions: [] }
+      return { baseVB: null, segments: [], racingLine: [], dirtyZones: [], gripOverlay: [], speedOverlay: [], cornerPositions: [] }
 
     const xs  = trackNodes.map(n => n.x)
     const ys  = trackNodes.map(n => -n.y)
@@ -172,6 +173,17 @@ export default function TrackMap({ trackNodes, racingLineData, frames, currentTi
       return { ...s, gripColor: gc.color, gripOpacity: gc.opacity, grip: g }
     }).filter(Boolean)
 
+    // Speed overlay: color each segment by speed envelope
+    let spdOverlay = []
+    if (speedData && speedData.length === trackNodes.length) {
+      const minSpd = Math.min(...speedData)
+      const maxSpd = Math.max(...speedData)
+      spdOverlay = segs.map((s, i) => ({
+        ...s,
+        color: speedColor(speedData[i], minSpd, maxSpd),
+      }))
+    }
+
     // Corner label positions (auto-detected from curvature)
     const detectedCorners = detectCorners(trackNodes)
     const cPos = detectedCorners.map(cl => {
@@ -186,11 +198,12 @@ export default function TrackMap({ trackNodes, racingLineData, frames, currentTi
       racingLine: rl,
       dirtyZones: dirty,
       gripOverlay: grip,
+      speedOverlay: spdOverlay,
       startX: trackNodes[0].x,
       startY: -trackNodes[0].y,
       cornerPositions: cPos,
     }
-  }, [trackNodes, racingLineData])
+  }, [trackNodes, racingLineData, speedData])
 
   useEffect(() => {
     if (baseVB && !vbState) setVbState(baseVB)
@@ -348,6 +361,14 @@ export default function TrackMap({ trackNodes, racingLineData, frames, currentTi
               strokeLinecap="round" opacity={go.gripOpacity} />
           ))}
 
+          {/* ── Speed envelope overlay (blue→green→red) ── */}
+          {speedOverlay.map((s, i) => (
+            <line key={`spd-${i}`}
+              x1={s.x1} y1={s.y1} x2={s.x2} y2={s.y2}
+              stroke={s.color} strokeWidth={TRACK_WIDTH - 2}
+              strokeLinecap="round" opacity={0.55} />
+          ))}
+
           {/* ── Dirty zones (outside of corners) ── */}
           {dirtyZones.map((dz, i) => (
             <line key={`dirty-${i}`}
@@ -451,6 +472,16 @@ export default function TrackMap({ trackNodes, racingLineData, frames, currentTi
           </svg>
           &nbsp;Car
         </span>
+        {speedOverlay.length > 0 && (
+          <span className="legend-item">
+            <svg width="30" height="6" style={{ display:'inline-block', verticalAlign:'middle' }}>
+              <rect x="0"  width="10" height="6" fill="rgb(0,0,220)" />
+              <rect x="10" width="10" height="6" fill="rgb(0,200,0)" />
+              <rect x="20" width="10" height="6" fill="rgb(230,0,0)" />
+            </svg>
+            &nbsp;Speed
+          </span>
+        )}
         <span className="legend-item">
           <span className="legend-line" style={{ background: '#00e676' }} />High grip
         </span>
