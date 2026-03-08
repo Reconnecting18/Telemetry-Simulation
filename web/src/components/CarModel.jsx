@@ -499,12 +499,10 @@ function CarModel({ frame, vehicle, mode }) {
   const tireData = buildTireData(frame) || {}
 
   const tireColors = {}
-  const tireLabels = {}
   for (const { id } of CORNERS) {
     const td = tireData[id]
     if (!td) {
       tireColors[id] = { outer: '#888', center: '#888', inner: '#888' }
-      tireLabels[id] = { primary: '--', secondary: '' }
       continue
     }
     if (mode === 'temp') {
@@ -513,18 +511,15 @@ function CarModel({ frame, vehicle, mode }) {
         center: tireTempColor(td.center_temp),
         inner:  tireTempColor(td.inner_temp),
       }
-      tireLabels[id] = { primary: `${td.surface_temp.toFixed(0)}\u00B0`, secondary: `${td.inner_wear.toFixed(0)}%` }
     } else if (mode === 'wear') {
       tireColors[id] = {
         outer:  tireWearColor(td.outer_wear, td.compound),
         center: tireWearColor(td.center_wear, td.compound),
         inner:  tireWearColor(td.inner_wear, td.compound),
       }
-      tireLabels[id] = { primary: `${td.center_wear.toFixed(0)}%`, secondary: `${td.surface_temp.toFixed(0)}\u00B0` }
     } else {
-      // Default mode: neutral grey tires, key stats
-      tireColors[id] = { outer: '#666', center: '#777', inner: '#666' }
-      tireLabels[id] = { primary: `${td.surface_temp.toFixed(0)}\u00B0`, secondary: `${td.pressure.toFixed(1)}` }
+      // Default mode: black fill
+      tireColors[id] = { outer: '#111', center: '#111', inner: '#111' }
     }
   }
 
@@ -573,19 +568,28 @@ function CarModel({ frame, vehicle, mode }) {
         )
       })}
 
-      {/* Hub labels + values */}
+      {/* Tire fills — 3 vertical strips per tire (outer / center / inner) */}
       {CORNERS.map(({ id, p }) => {
-        const hub = pos[`${p}.hub`]
-        const tireTop = pos[`${p}.tire.ot`]
-        const { primary, secondary } = tireLabels[id]
+        const ot = pos[`${p}.tire.ot`], ob = pos[`${p}.tire.ob`]
+        const it = pos[`${p}.tire.it`], ib = pos[`${p}.tire.ib`]
+        if (!ot || !ob || !it || !ib) return null
+        const tc = tireColors[id]
+        // Split tire width into thirds using lerp between outer and inner edges
+        const lx = (a, b, t) => a + (b - a) * t
+        const ly = (a, b, t) => a + (b - a) * t
+        // Top edge: ot → it,  Bottom edge: ob → ib
+        // t=0 is outer, t=1 is inner
+        const pt = (t) => ({ x: lx(ot.x, it.x, t), y: ly(ot.y, it.y, t) })
+        const pb = (t) => ({ x: lx(ob.x, ib.x, t), y: ly(ob.y, ib.y, t) })
+        const t0 = pt(0), t1 = pt(0.333), t2 = pt(0.667), t3 = pt(1)
+        const b0 = pb(0), b1 = pb(0.333), b2 = pb(0.667), b3 = pb(1)
+        const poly = (tl, tr, br, bl) =>
+          `${tl.x},${tl.y} ${tr.x},${tr.y} ${br.x},${br.y} ${bl.x},${bl.y}`
         return (
-          <g key={`lbl-${id}`}>
-            <text x={hub.x} y={tireTop.y - 2.5} fill="#555" fontSize={4}
-              textAnchor="middle" fontFamily="monospace">{id}</text>
-            <text x={hub.x} y={hub.y + 1.2} fill="#ddd" fontSize={5}
-              textAnchor="middle" fontFamily="monospace" fontWeight="700">{primary}</text>
-            <text x={hub.x} y={hub.y + 6} fill="#666" fontSize={3.5}
-              textAnchor="middle" fontFamily="monospace">{secondary}</text>
+          <g key={`tire-fill-${id}`} opacity={0.6}>
+            <polygon points={poly(t0, t1, b1, b0)} fill={tc.outer}  stroke="none" />
+            <polygon points={poly(t1, t2, b2, b1)} fill={tc.center} stroke="none" />
+            <polygon points={poly(t2, t3, b3, b2)} fill={tc.inner}  stroke="none" />
           </g>
         )
       })}
