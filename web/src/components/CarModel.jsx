@@ -1,5 +1,5 @@
 import { memo, useRef } from 'react'
-import { tempToColorSmooth, wearToColor } from '../utils/colors'
+import { buildTireData, tireTempColor, tireWearColor } from '../utils/tireModel'
 
 // ═══════════════════════════════════════════════════════════════════
 // BeamNG-Inspired Node-Beam F1 Structural Diagram
@@ -454,9 +454,6 @@ function zoneTemps(temp, camberDeg) {
 // 9. REACT COMPONENT — RENDERING
 // ═══════════════════════════════════════════════════════════════════
 function CarModel({ frame, vehicle, mode }) {
-  const opt = vehicle?.tire_optimal_temp_C || 85
-  const ovr = vehicle?.tire_overheat_temp_C || 115
-
   // Persistent state across frames
   const animRide = useRef({ FL: 0.5, FR: 0.5, RL: 0.5, RR: 0.5 })
   const dmgRef   = useRef({})
@@ -498,25 +495,36 @@ function CarModel({ frame, vehicle, mode }) {
   const sColor = {}
   for (const id of ['FL', 'FR', 'RL', 'RR']) sColor[id] = strainColor(ride[id])
 
-  // ── Per-corner tire zone colors ──
+  // ── Build tire data from tireModel (single source of truth) ──
+  const tireData = buildTireData(frame) || {}
+
   const tireColors = {}
   const tireLabels = {}
   for (const { id } of CORNERS) {
-    const temp = frame.tire_temp_C?.[id] || 25
-    const wear = frame.tire_wear?.[id] || 0
-    const camber = frame.camber_deg?.[id] || 0
-    const z = zoneTemps(temp, camber)
+    const td = tireData[id]
+    if (!td) {
+      tireColors[id] = { outer: '#888', center: '#888', inner: '#888' }
+      tireLabels[id] = { primary: '--', secondary: '' }
+      continue
+    }
     if (mode === 'temp') {
       tireColors[id] = {
-        outer: tempToColorSmooth(z.outer, opt, ovr),
-        center: tempToColorSmooth(z.center, opt, ovr),
-        inner: tempToColorSmooth(z.inner, opt, ovr),
+        outer:  tireTempColor(td.outer_temp),
+        center: tireTempColor(td.center_temp),
+        inner:  tireTempColor(td.inner_temp),
       }
-      tireLabels[id] = { primary: `${temp.toFixed(0)}\u00B0`, secondary: `${(wear * 100).toFixed(0)}%` }
+      tireLabels[id] = { primary: `${td.surface_temp.toFixed(0)}\u00B0`, secondary: `${td.inner_wear.toFixed(0)}%` }
+    } else if (mode === 'wear') {
+      tireColors[id] = {
+        outer:  tireWearColor(td.outer_wear, td.compound),
+        center: tireWearColor(td.center_wear, td.compound),
+        inner:  tireWearColor(td.inner_wear, td.compound),
+      }
+      tireLabels[id] = { primary: `${td.center_wear.toFixed(0)}%`, secondary: `${td.surface_temp.toFixed(0)}\u00B0` }
     } else {
-      const wc = wearToColor(wear)
-      tireColors[id] = { outer: wc, center: wc, inner: wc }
-      tireLabels[id] = { primary: `${(wear * 100).toFixed(1)}%`, secondary: `${temp.toFixed(0)}\u00B0` }
+      // Default mode: neutral grey tires, key stats
+      tireColors[id] = { outer: '#666', center: '#777', inner: '#666' }
+      tireLabels[id] = { primary: `${td.surface_temp.toFixed(0)}\u00B0`, secondary: `${td.pressure.toFixed(1)}` }
     }
   }
 

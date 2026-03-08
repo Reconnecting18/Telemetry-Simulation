@@ -22,7 +22,7 @@ function StatusBar({ label, value, fraction }) {
 }
 
 function TelemetrySidebar({ frame, vehicle, maxRpm }) {
-  const [mode, setMode] = useState('temp')
+  const [mode, setMode] = useState('default')
 
   if (!frame) return null
 
@@ -38,12 +38,12 @@ function TelemetrySidebar({ frame, vehicle, maxRpm }) {
 
   return (
     <div className="telemetry-sidebar">
-      {/* Toggle */}
+      {/* Toggle: Default / Temp / Wear */}
       <div className="sidebar-toggle">
-        <button className={`toggle-btn ${mode === 'temp' ? 'active' : ''}`}
-          onClick={() => setMode('temp')}>Tire Temp</button>
-        <button className={`toggle-btn ${mode === 'wear' ? 'active' : ''}`}
-          onClick={() => setMode('wear')}>Tire Wear</button>
+        {['default', 'temp', 'wear'].map(m => (
+          <button key={m} className={`toggle-btn ${mode === m ? 'active' : ''}`}
+            onClick={() => setMode(m)}>{m === 'default' ? 'Default' : m === 'temp' ? 'Temp' : 'Wear'}</button>
+        ))}
       </div>
 
       {/* Car schematic (node-edge model with animated suspension) */}

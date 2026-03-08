@@ -282,6 +282,7 @@ header {
   width: 100%;
   max-width: 216px;
   margin: 0 auto;
+  transition: opacity 0.3s ease;
 }
 
 /* Status Bars */
