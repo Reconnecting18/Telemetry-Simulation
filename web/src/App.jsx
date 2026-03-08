@@ -3,6 +3,7 @@ import { useTelemetryData } from './hooks/useTelemetryData'
 import { usePlayback } from './hooks/usePlayback'
 import { logCornerAnalysis, analyzeCorners } from './utils/cornerDetection'
 import { calculateSpeedEnvelope, calculateBrakingPoints } from './utils/speedEnvelope'
+import { generateRacingLine } from './utils/racingLine'
 
 import Header from './components/Header'
 import PlaybackControls from './components/PlaybackControls'
@@ -40,13 +41,14 @@ export default function App() {
 
   const [mode, setMode] = useState('default')
 
-  // Corner analysis + speed envelope (computed once on data load)
-  const { speedData, corners } = useMemo(() => {
-    if (!data?.track) return { speedData: null, corners: [] }
+  // Corner analysis + speed envelope + racing line (computed once on data load)
+  const { speedData, corners, generatedLine } = useMemo(() => {
+    if (!data?.track) return { speedData: null, corners: [], generatedLine: null }
     const c = analyzeCorners(data.track)
     logCornerAnalysis(data.track)
     const spd = calculateSpeedEnvelope(data.track, c)
-    return { speedData: spd, corners: c }
+    const rl = generateRacingLine(data.track, c)
+    return { speedData: spd, corners: c, generatedLine: rl }
   }, [data?.track])
 
   // Dynamic braking points — recalculate when fuel/wear changes
@@ -97,6 +99,7 @@ export default function App() {
             racingLineData={data.track?.racing_line}
             speedData={speedData}
             brakingPoints={brakingPoints}
+            generatedLine={generatedLine}
             frames={data.frames}
             currentTime={currentTime}
             carX={f?.x}

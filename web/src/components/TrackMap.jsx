@@ -143,7 +143,7 @@ function buildTrail(frames, currentTime) {
   return points
 }
 
-export default function TrackMap({ trackNodes, racingLineData, speedData, brakingPoints, frames, currentTime, carX, carY }) {
+export default function TrackMap({ trackNodes, racingLineData, speedData, brakingPoints, generatedLine, frames, currentTime, carX, carY }) {
   const svgRef = useRef(null)
   const isDragging = useRef(false)
   const lastMouse  = useRef({ x: 0, y: 0 })
@@ -162,7 +162,13 @@ export default function TrackMap({ trackNodes, racingLineData, speedData, brakin
     const maxY = Math.max(...ys) + pad
 
     const segs = computeSegments(trackNodes)
-    const rl = getRacingLine(trackNodes, racingLineData)
+    // Prefer generated racing line positions, fall back to C++ JSON / simple offset
+    let rl
+    if (generatedLine?.positions?.length === trackNodes.length) {
+      rl = generatedLine.positions.map(p => ({ x: p.x, y: -p.y }))
+    } else {
+      rl = getRacingLine(trackNodes, racingLineData)
+    }
     const dirty = computeDirtyZones(trackNodes, segs)
 
     // Grip overlay: color each segment by its surface grip level
@@ -203,7 +209,7 @@ export default function TrackMap({ trackNodes, racingLineData, speedData, brakin
       startY: -trackNodes[0].y,
       cornerPositions: cPos,
     }
-  }, [trackNodes, racingLineData, speedData])
+  }, [trackNodes, racingLineData, speedData, generatedLine])
 
   // Brake marker boards — computed from dynamic brakingPoints prop
   const brakeMarkers = useMemo(() => {
@@ -231,6 +237,38 @@ export default function TrackMap({ trackNodes, racingLineData, speedData, brakin
         }
       })
   }, [brakingPoints, trackNodes])
+
+  // Apex diamonds and turn-in ticks from generated racing line
+  const { apexMarkers, turnInMarkers } = useMemo(() => {
+    if (!generatedLine || !trackNodes?.length) return { apexMarkers: [], turnInMarkers: [] }
+    const N = trackNodes.length
+
+    const mkApex = (generatedLine.apexNodes || []).map(idx => {
+      if (idx >= N || !generatedLine.positions[idx]) return null
+      const p = generatedLine.positions[idx]
+      return { x: p.x, y: -p.y }
+    }).filter(Boolean)
+
+    const mkTurnIn = (generatedLine.turnInNodes || []).map(idx => {
+      if (idx >= N) return null
+      const n = trackNodes[idx]
+      const prev = trackNodes[Math.max(0, idx - 1)]
+      const next = trackNodes[Math.min(N - 1, idx + 1)]
+      const dx = next.x - prev.x, dy = next.y - prev.y
+      const len = Math.sqrt(dx * dx + dy * dy) || 1
+      const nx = -dy / len, ny = dx / len
+      const hw = 4  // tick half-length
+      // Position on the racing line
+      const p = generatedLine.positions[idx]
+      if (!p) return null
+      return {
+        x1: p.x + nx * hw, y1: -p.y - ny * hw,
+        x2: p.x - nx * hw, y2: -p.y + ny * hw,
+      }
+    }).filter(Boolean)
+
+    return { apexMarkers: mkApex, turnInMarkers: mkTurnIn }
+  }, [generatedLine, trackNodes])
 
   useEffect(() => {
     if (baseVB && !vbState) setVbState(baseVB)
@@ -450,7 +488,16 @@ export default function TrackMap({ trackNodes, racingLineData, speedData, brakin
             </g>
           ))}
 
-          {/* ── Racing line (cyan, thin, solid) ── */}
+          {/* ── Racing line: dark teal base layer ── */}
+          {rlPoints && (
+            <polyline
+              points={rlPoints}
+              stroke="#006655" strokeWidth={3}
+              fill="none" opacity={0.9}
+              strokeLinecap="round" strokeLinejoin="round"
+            />
+          )}
+          {/* ── Racing line: bright cyan top layer ── */}
           {rlPoints && (
             <polyline
               points={rlPoints}
@@ -459,6 +506,22 @@ export default function TrackMap({ trackNodes, racingLineData, speedData, brakin
               strokeLinecap="round" strokeLinejoin="round"
             />
           )}
+
+          {/* ── Turn-in tick marks (white) ── */}
+          {turnInMarkers.map((tm, i) => (
+            <line key={`turnin-${i}`}
+              x1={tm.x1} y1={tm.y1} x2={tm.x2} y2={tm.y2}
+              stroke="white" strokeWidth={1.5} strokeLinecap="round"
+              opacity={0.8} />
+          ))}
+
+          {/* ── Apex diamond markers (yellow) ── */}
+          {apexMarkers.map((am, i) => (
+            <polygon key={`apex-${i}`}
+              points={`${am.x},${am.y-3.5} ${am.x+2.5},${am.y} ${am.x},${am.y+3.5} ${am.x-2.5},${am.y}`}
+              fill="#ffd700" stroke="#b8860b" strokeWidth={0.6}
+              opacity={0.9} />
+          ))}
 
           {/* ── Corner labels ── */}
           {cornerPositions.map((cp, i) => (
@@ -507,8 +570,20 @@ export default function TrackMap({ trackNodes, racingLineData, speedData, brakin
       {/* Legend */}
       <div className="track-legend">
         <span className="legend-item">
-          <span className="legend-line" style={{ background: '#00d4d4' }} />Racing line
+          <svg width="18" height="6" style={{ display:'inline-block', verticalAlign:'middle' }}>
+            <line x1="0" y1="3" x2="18" y2="3" stroke="#006655" strokeWidth="3" />
+            <line x1="0" y1="3" x2="18" y2="3" stroke="#00d4d4" strokeWidth="1.5" />
+          </svg>
+          &nbsp;Racing line
         </span>
+        {apexMarkers.length > 0 && (
+          <span className="legend-item">
+            <svg width="8" height="8" style={{ display:'inline-block', verticalAlign:'middle' }}>
+              <polygon points="4,0.5 7.5,4 4,7.5 0.5,4" fill="#ffd700" stroke="#b8860b" strokeWidth="0.6" />
+            </svg>
+            &nbsp;Apex
+          </span>
+        )}
         <span className="legend-item">
           <svg width="10" height="10" style={{ display:'inline-block', verticalAlign:'middle' }}>
             <polygon points="5,1 9,9 1,9" fill="#e10600" stroke="white" strokeWidth="1" />
