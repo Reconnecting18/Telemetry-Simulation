@@ -12,6 +12,7 @@ add_executable(telemetry_sim
     src/main.cpp
     src/physics.cpp
     src/simulation.cpp
+    src/strategy.cpp
     src/telemetry.cpp
 )
 

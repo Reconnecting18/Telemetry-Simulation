@@ -2,14 +2,19 @@
 #include <string>
 #include <cstdio>
 #include "types.hpp"
+#include "strategy.hpp"
 
 int main(int argc, char* argv[]) {
-    std::string track_path  = (argc > 1) ? argv[1] : "data/monza.csv";
-    std::string output_path = (argc > 2) ? argv[2] : "output/telemetry.json";
+    std::string track_path    = (argc > 1) ? argv[1] : "data/monza.csv";
+    std::string output_path   = (argc > 2) ? argv[2] : "output/telemetry.json";
+    std::string strategy_path = (argc > 3) ? argv[3] : "";
 
     std::cout << "=== Racing Telemetry Simulation ===\n";
-    std::cout << "Track  : " << track_path  << "\n";
-    std::cout << "Output : " << output_path << "\n\n";
+    std::cout << "Track    : " << track_path  << "\n";
+    std::cout << "Output   : " << output_path << "\n";
+    if (!strategy_path.empty())
+        std::cout << "Strategy : " << strategy_path << "\n";
+    std::cout << "\n";
 
     // Load track
     Track track;
@@ -29,8 +34,17 @@ int main(int argc, char* argv[]) {
     // Configure vehicle
     VehicleConfig config = defaultVehicleConfig();
 
-    // Run simulation
-    TelemetrySession session = runSimulation(track, config);
+    // Run simulation (strategy mode if strategy.json provided)
+    TelemetrySession session;
+    if (!strategy_path.empty()) {
+        StrategyConfig strategy;
+        if (!parseStrategyConfig(strategy_path, strategy)) {
+            return 1;
+        }
+        session = runStrategySimulation(track, config, strategy);
+    } else {
+        session = runSimulation(track, config);
+    }
 
     // Print summary to console
     std::cout << "\n--- Telemetry Summary ---\n";

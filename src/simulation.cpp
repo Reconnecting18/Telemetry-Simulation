@@ -1,5 +1,6 @@
 #include "types.hpp"
 #include "physics.hpp"
+#include "strategy.hpp"
 
 #include <algorithm>
 #include <cmath>
@@ -583,5 +584,387 @@ TelemetrySession runSimulation(const Track& track, const VehicleConfig& config) 
     std::cout << "[Simulation] Session ended: " << end_reason
               << " after " << total_laps_run << " laps"
               << " (" << session.frames.size() << " frames total)\n";
+    return session;
+}
+
+// ============================================================
+//  Strategy simulation (multi-stint with compound switching)
+// ============================================================
+
+TelemetrySession runStrategySimulation(
+    const Track& track,
+    const VehicleConfig& base_config,
+    const StrategyConfig& strategy)
+{
+    TelemetrySession session;
+    session.track_name       = track.name;
+    session.vehicle_config   = base_config;
+    session.track_nodes      = track.nodes;
+    session.total_distance_m = track.totalDistance();
+
+    // Weather from strategy modifiers
+    WeatherState weather;
+    const std::string& wstr = strategy.modifiers.weather;
+    if      (wstr == "damp") weather.condition = WeatherCondition::Damp;
+    else if (wstr == "wet")  weather.condition = WeatherCondition::Wet;
+    else                     weather.condition = WeatherCondition::Dry;
+    weather.track_temp_C  = strategy.modifiers.track_temp;
+    weather.ambient_temp_C = strategy.modifiers.ambient_temp;
+    session.weather = weather;
+
+    // Strategy-specific grip multiplier (user spec: dry=1.0, damp=0.78, wet=0.55)
+    double strategy_weather_grip = getWeatherGripMultiplier(strategy.modifiers.weather);
+
+    if (track.nodes.empty()) {
+        std::cerr << "[Strategy] ERROR: track has no nodes.\n";
+        return session;
+    }
+
+    const int N = static_cast<int>(track.nodes.size());
+
+    // ── Racing line (same computation as default sim) ─────────────────────
+    std::vector<RacingLineNode> rl = computeRacingLine(track.nodes, 6.0);
+    session.racing_line.resize(N);
+    for (int i = 0; i < N; ++i) {
+        session.racing_line[i] = { rl[i].x, rl[i].y };
+    }
+
+    std::vector<double> rl_curv(N);
+    for (int i = 0; i < N; ++i) {
+        rl_curv[i] = rl[i].effective_curvature;
+    }
+
+    // ── Grade ─────────────────────────────────────────────────────────────
+    std::vector<double> grade(N, 0.0);
+    for (int i = 1; i < N; ++i) {
+        double dx  = track.nodes[i].x - track.nodes[i - 1].x;
+        double dy  = track.nodes[i].y - track.nodes[i - 1].y;
+        double dz  = track.nodes[i].z - track.nodes[i - 1].z;
+        double seg = std::sqrt(dx * dx + dy * dy);
+        if (seg > 1e-6) grade[i] = dz / seg;
+    }
+
+    // ── Surface grip ──────────────────────────────────────────────────────
+    computeSurfaceGrip(session.track_nodes, rl_curv);
+
+    // Rubber accumulation persists across stints (track surface doesn't reset)
+    std::vector<double> rubber_accum;
+
+    static constexpr double AIR_DENSITY        = 1.225;
+    static constexpr double TIRE_WEAR_LIMIT    = 0.95;
+    static constexpr double TIRE_DAMAGE_TEMP   = 175.0;
+    static constexpr double FUEL_DENSITY_KG_PL = 0.75;  // kg per liter
+    static constexpr double BASELINE_WEAR_PER_LAP = 0.035; // empirical default GT3 @ Monza
+
+    int    cumulative_lap = 0;   // total laps across all stints (0-indexed counter)
+    double cumulative_time = 0.0;
+    bool   session_done = false;
+    std::string end_reason = "max_laps";
+
+    // Vehicle state persists across stints (except tires/fuel reset at pit)
+    VehicleState state = makeInitialState(base_config);
+    for (int i = 0; i < 4; ++i) {
+        state.tire_temp[i] = weather.ambient_temp_C;
+    }
+    state.x = rl[0].x;
+    state.y = rl[0].y;
+
+    // ── Stint loop ────────────────────────────────────────────────────────
+    for (size_t stint_idx = 0; stint_idx < strategy.stints.size() && !session_done; ++stint_idx) {
+        const StintConfig& stint = strategy.stints[stint_idx];
+        CompoundParams compound = getCompoundParams(stint.compound);
+
+        // Build stint-specific vehicle config
+        VehicleConfig cfg = base_config;
+
+        // Compound grip: normalize to medium=1.0, scale base max_lateral_g
+        double grip_scale = compound.grip / 1.35;
+        cfg.max_lateral_g = base_config.max_lateral_g * grip_scale;
+
+        // Compound thermal windows
+        cfg.tire_optimal_temp  = compound.optimal_temp_min;
+        cfg.tire_overheat_temp = compound.optimal_temp_max;
+
+        // Fuel: convert kg to liters, apply fuel weight effect on max speed
+        double fuel_L = stint.fuel_load / FUEL_DENSITY_KG_PL;
+        cfg.fuel_capacity = fuel_L;
+
+        double excess_fuel_kg = std::max(0.0, stint.fuel_load - 80.0);
+        double speed_penalty  = 1.0 - 0.0004 * excess_fuel_kg; // 0.4% per 10kg above 80kg
+        cfg.max_speed = base_config.max_speed * speed_penalty;
+
+        // Fuel consumption scaled by modifier
+        cfg.base_fuel_rate = base_config.base_fuel_rate * strategy.modifiers.fuel_multiplier;
+
+        // Wear scaling: compound rate / baseline rate * user modifier
+        double wear_scale = (compound.wear_rate / BASELINE_WEAR_PER_LAP)
+                          * strategy.modifiers.wear_multiplier;
+
+        // Engine power for this config
+        double drag_at_vmax = 0.5 * AIR_DENSITY * cfg.drag_coeff
+                            * cfg.frontal_area * cfg.max_speed * cfg.max_speed;
+        double engine_power = drag_at_vmax * cfg.max_speed;
+
+        // ── Pit stop: reset tires and fuel ────────────────────────────────
+        if (stint_idx > 0) {
+            // Record pit stop
+            PitStop ps;
+            ps.after_lap      = cumulative_lap; // 1-indexed (last completed lap)
+            ps.from_compound  = strategy.stints[stint_idx - 1].compound;
+            ps.to_compound    = stint.compound;
+            session.pit_stops.push_back(ps);
+
+            std::cout << "[Strategy] PIT STOP after lap " << cumulative_lap
+                      << ": " << ps.from_compound << " -> " << ps.to_compound << "\n";
+        }
+
+        // New tires: reset wear (with tire_age pre-wear) and temperature
+        for (int t = 0; t < 4; ++t) {
+            state.tire_wear[t] = std::min(stint.tire_age * compound.wear_rate, 0.90);
+            state.tire_temp[t] = weather.ambient_temp_C; // fresh tires start cold
+        }
+        // Refuel
+        state.fuel = fuel_L;
+
+        std::cout << "[Strategy] Stint " << (stint_idx + 1) << ": " << stint.compound
+                  << " | grip_scale=" << std::fixed << std::setprecision(3) << grip_scale
+                  << " | wear_scale=" << std::setprecision(3) << wear_scale
+                  << " | fuel=" << std::setprecision(1) << fuel_L << "L"
+                  << " | laps=" << stint.lap_count << "\n";
+
+        // ── Per-lap loop within stint ─────────────────────────────────────
+        for (int lap_in_stint = 0; lap_in_stint < stint.lap_count && !session_done; ++lap_in_stint) {
+
+            int lap_global = cumulative_lap + lap_in_stint; // 0-indexed for rubber buildup
+
+            // Rubber buildup
+            std::vector<double> effective_grip = applyRubberBuildup(
+                session.track_nodes, rubber_accum, lap_global);
+
+            // Weather grip (strategy-specific multiplier)
+            if (strategy_weather_grip < 1.0) {
+                for (int i = 0; i < N; ++i) {
+                    effective_grip[i] *= strategy_weather_grip;
+                }
+            }
+
+            // Per-node grip with surface penalties (kerb, dirty zones)
+            std::vector<double> node_grip_array(N);
+            for (int i = 0; i < N; ++i) {
+                double g = effective_grip[i];
+                if (track.nodes[i].kerb > 0) g *= 0.85;
+                double dirty = session.track_nodes[i].dirty_zone;
+                if (dirty > 0.0) g *= (1.0 - 0.35 * dirty);
+                node_grip_array[i] = g;
+            }
+
+            // Velocity profile with stint-specific config
+            std::vector<double> v_profile = computeVelocityProfile(
+                track.nodes, cfg, rl_curv, grade, node_grip_array);
+
+            // ── Per-node loop ─────────────────────────────────────────────
+            for (int i = 0; i < N && !session_done; ++i) {
+                const TrackNode& node = track.nodes[i];
+
+                double seg_len = 0.1;
+                if (i > 0) {
+                    double dx = node.x - track.nodes[i - 1].x;
+                    double dy = node.y - track.nodes[i - 1].y;
+                    double dz = node.z - track.nodes[i - 1].z;
+                    seg_len = std::max(std::sqrt(dx * dx + dy * dy + dz * dz), 0.1);
+                }
+
+                double grade_decel = 9.81 * grade[i];
+                double drag_force = calculateDragForce(state.velocity,
+                                                       cfg.drag_coeff, cfg.frontal_area);
+                double drag_decel = drag_force / cfg.mass;
+
+                double eff_engine_power = engine_power * weather.engine_cooling_factor();
+                double max_engine_accel = (state.velocity > 1.0)
+                    ? std::min(cfg.max_accel, eff_engine_power / (cfg.mass * state.velocity))
+                    : cfg.max_accel;
+
+                double eff_accel = std::max(max_engine_accel - drag_decel - grade_decel, 0.0);
+                double eff_brake = cfg.max_brake + drag_decel + grade_decel;
+                eff_brake        = std::max(eff_brake, cfg.max_brake * 0.1);
+
+                double target_v = v_profile[i];
+                double long_g   = 0.0;
+                state.velocity = adjustVelocity(state.velocity, target_v, seg_len,
+                                                eff_accel, eff_brake, long_g);
+
+                double curv_rl = rl_curv[i];
+                double node_grip = node_grip_array[i];
+
+                double raw_lat_g = calculateLateralG(state.velocity, curv_rl);
+                double grip_limited_lat_g = std::min(raw_lat_g, cfg.max_lateral_g * node_grip);
+                state.lateral_g      = grip_limited_lat_g;
+                state.longitudinal_g = long_g;
+                double lat_force_N   = calculateForceFromCurvature(cfg.mass, state.velocity, curv_rl);
+
+                // Gearbox
+                state.gear = selectGear(state.velocity, cfg.num_gears, cfg.gear_ratios,
+                                        cfg.final_drive, cfg.tire_radius,
+                                        cfg.idle_rpm, cfg.max_rpm);
+                state.rpm  = calculateRPM(state.velocity, state.gear, cfg.gear_ratios,
+                                          cfg.final_drive, cfg.tire_radius);
+
+                // Throttle / brake
+                double net_accel     = long_g * 9.81;
+                double engine_effort = net_accel + drag_decel + grade_decel;
+                if (engine_effort >= 0.0) {
+                    state.throttle = std::clamp(engine_effort / std::max(max_engine_accel, 0.01), 0.0, 1.0);
+                    state.brake    = 0.0;
+                } else {
+                    state.throttle = 0.0;
+                    double mech_brake = std::max(-net_accel - drag_decel, 0.0);
+                    state.brake    = std::clamp(mech_brake / cfg.max_brake, 0.0, 1.0);
+                }
+
+                // Tire wear — scaled by compound and modifier
+                double factors[4];
+                computeTireFactors(state.lateral_g, node.curvature,
+                                   cfg.cog_height, cfg.track_width, factors);
+                for (int t = 0; t < 4; ++t) {
+                    double rate = calculateTireWearRate(state.lateral_g, factors[t],
+                                                       state.velocity, cfg.max_speed);
+                    state.tire_wear[t] = std::min(
+                        state.tire_wear[t] + rate * seg_len * wear_scale, 1.0);
+                }
+
+                double dt = seg_len / std::max(state.velocity, 0.1);
+
+                // Tire temperature
+                updateTireTemps(state.tire_temp, factors,
+                                state.lateral_g, state.velocity, cfg.max_speed,
+                                state.longitudinal_g, weather.ambient_temp_C, dt,
+                                weather.heat_rate_multiplier(),
+                                weather.cooling_multiplier(),
+                                weather.track_temp_factor());
+
+                // Low-grip surface heat
+                if (node_grip < 0.95) {
+                    double slip_factor = (1.0 - node_grip) * 4.0;
+                    double slip_heat = slip_factor * slip_factor * 0.8;
+                    for (int t = 0; t < 4; ++t) {
+                        state.tire_temp[t] += slip_heat * (0.5 + factors[t]) * dt;
+                    }
+                }
+
+                // Kerb thermal spike
+                if (node.kerb > 0) {
+                    for (int t = 0; t < 4; ++t) {
+                        bool left_tire  = (t == 0 || t == 2);
+                        bool right_tire = (t == 1 || t == 3);
+                        bool kerb_side  = ((node.kerb & 1) && left_tire) ||
+                                          ((node.kerb & 2) && right_tire);
+                        if (kerb_side) state.tire_temp[t] += 2.5;
+                    }
+                }
+
+                // Tire pressure
+                updateTirePressures(state.tire_pressure, state.tire_temp,
+                                    cfg.tire_cold_pressure, weather.ambient_temp_C);
+
+                // Suspension & dynamic camber
+                computeSuspension(state.suspension_deflection, state.dynamic_camber,
+                                  cfg.camber_deg,
+                                  state.lateral_g, state.longitudinal_g, node.curvature,
+                                  cfg.mass, cfg.cog_height, cfg.wheelbase,
+                                  cfg.suspension_stiffness, cfg.suspension_travel);
+
+                // Kerb bump
+                if (node.kerb > 0) {
+                    static constexpr double KERB_BUMP = 0.012;
+                    for (int t = 0; t < 4; ++t) {
+                        bool left_tire  = (t == 0 || t == 2);
+                        bool right_tire = (t == 1 || t == 3);
+                        bool kerb_side  = ((node.kerb & 1) && left_tire) ||
+                                          ((node.kerb & 2) && right_tire);
+                        if (kerb_side) {
+                            state.suspension_deflection[t] += KERB_BUMP;
+                            state.suspension_deflection[t] = std::clamp(
+                                state.suspension_deflection[t],
+                                -cfg.suspension_travel, cfg.suspension_travel);
+                            state.dynamic_camber[t] = cfg.camber_deg[t]
+                                + 50.0 * state.suspension_deflection[t];
+                        }
+                    }
+                }
+
+                // Fuel consumption
+                double throttle_factor = 0.3 + state.throttle * 1.2;
+                state.fuel = std::max(state.fuel - calculateFuelConsumptionDelta(
+                                          seg_len, cfg.base_fuel_rate, throttle_factor), 0.0);
+
+                // Position
+                state.x          = rl[i].x;
+                state.y          = rl[i].y;
+                state.node_index = i;
+                cumulative_time += dt;
+
+                // Record frame
+                TelemetryFrame f{};
+                f.node_index      = i;
+                f.lap             = cumulative_lap + lap_in_stint + 1; // 1-indexed
+                f.timestamp       = cumulative_time;
+                f.x               = state.x;
+                f.y               = state.y;
+                f.elevation_m     = node.z;
+                f.on_kerb         = (node.kerb > 0);
+                f.velocity_ms     = state.velocity;
+                f.lateral_g       = state.lateral_g;
+                f.longitudinal_g  = state.longitudinal_g;
+                f.lateral_force_N = lat_force_N;
+                f.drag_force_N    = drag_force;
+                f.fuel_L          = state.fuel;
+                f.gear            = state.gear;
+                f.rpm             = state.rpm;
+                f.throttle        = state.throttle;
+                f.brake           = state.brake;
+                for (int t = 0; t < 4; ++t) {
+                    f.tire_wear[t]     = state.tire_wear[t];
+                    f.tire_temp[t]     = state.tire_temp[t];
+                    f.tire_pressure[t] = state.tire_pressure[t];
+                    f.suspension_mm[t] = state.suspension_deflection[t] * 1000.0;
+                    f.camber_deg[t]    = state.dynamic_camber[t];
+                }
+                f.surface_grip = node_grip;
+                session.frames.push_back(f);
+
+                // Stop conditions
+                if (state.fuel <= 0.0) {
+                    end_reason = "fuel"; session_done = true; break;
+                }
+                for (int t = 0; t < 4; ++t) {
+                    if (state.tire_wear[t] >= TIRE_WEAR_LIMIT) {
+                        end_reason = "tire_wear"; session_done = true; break;
+                    }
+                    if (state.tire_temp[t] >= TIRE_DAMAGE_TEMP) {
+                        end_reason = "tire_damage"; session_done = true; break;
+                    }
+                }
+            } // end per-node
+
+            // Per-lap console output
+            int display_lap = cumulative_lap + lap_in_stint + 1;
+            std::cout << "[Strategy] Lap " << display_lap << " (" << stint.compound << ")"
+                      << "  wear FL=" << std::fixed << std::setprecision(3) << state.tire_wear[0]
+                      << " FR="       << state.tire_wear[1]
+                      << " RL="       << state.tire_wear[2]
+                      << " RR="       << state.tire_wear[3]
+                      << "  fuel="    << std::setprecision(1) << state.fuel << " L\n";
+        } // end per-lap
+
+        cumulative_lap += stint.lap_count;
+    } // end per-stint
+
+    session.total_laps = cumulative_lap;
+    session.end_reason = session_done ? end_reason : "strategy_complete";
+
+    std::cout << "[Strategy] Session ended: " << session.end_reason
+              << " after " << cumulative_lap << " laps"
+              << " (" << session.frames.size() << " frames, "
+              << session.pit_stops.size() << " pit stops)\n";
     return session;
 }

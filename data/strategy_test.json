@@ -1,0 +1,13 @@
+{
+  "stints": [
+    { "compound": "medium", "tire_age": 0, "fuel_load": 110, "lap_count": 10 },
+    { "compound": "hard",   "tire_age": 0, "fuel_load": 80,  "lap_count": 15 }
+  ],
+  "modifiers": {
+    "wear_multiplier": 1.0,
+    "fuel_multiplier": 1.0,
+    "weather": "dry",
+    "track_temp": 35,
+    "ambient_temp": 25
+  }
+}

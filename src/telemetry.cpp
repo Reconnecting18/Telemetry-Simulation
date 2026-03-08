@@ -112,6 +112,22 @@ bool TelemetrySession::writeJSON(const std::string& path) const {
         << ", \"RR\": " << jVal(vc.toe_deg[3], 2) << "}\n";
     out << "  },\n";
 
+    // --- pit stops (strategy mode only) ---
+    if (!pit_stops.empty()) {
+        out << "  \"pit_stops\": [\n";
+        for (std::size_t i = 0; i < pit_stops.size(); ++i) {
+            const PitStop& ps = pit_stops[i];
+            out << "    {"
+                << "\"after_lap\": " << ps.after_lap
+                << ", \"from_compound\": " << jStr(ps.from_compound)
+                << ", \"to_compound\": " << jStr(ps.to_compound)
+                << "}";
+            if (i + 1 < pit_stops.size()) out << ",";
+            out << "\n";
+        }
+        out << "  ],\n";
+    }
+
     // --- frames array ---
     out << "  \"frames\": [\n";
     for (std::size_t i = 0; i < frames.size(); ++i) {

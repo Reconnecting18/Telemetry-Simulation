@@ -193,6 +193,12 @@ struct RacingLinePoint {
     double x, y;  // m — racing line position
 };
 
+struct PitStop {
+    int         after_lap;       // last lap before pit stop (1-indexed)
+    std::string from_compound;   // compound being replaced
+    std::string to_compound;     // compound being fitted
+};
+
 struct TelemetrySession {
     std::string               track_name;
     VehicleConfig             vehicle_config;
@@ -200,6 +206,7 @@ struct TelemetrySession {
     std::vector<TelemetryFrame> frames;
     std::vector<TrackNode>    track_nodes;  // raw track geometry for frontend
     std::vector<RacingLinePoint> racing_line; // computed racing line positions
+    std::vector<PitStop>      pit_stops;    // pit stop events (strategy mode only)
     double                    total_distance_m;
     int                       total_laps;   // laps completed before session end
     std::string               end_reason;   // "fuel" | "tire_wear" | "tire_damage" | "max_laps"
