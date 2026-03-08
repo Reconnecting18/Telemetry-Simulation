@@ -1,6 +1,6 @@
 export const COLORS = {
-  accent:     '#00d4d4',
-  velocity:   '#00d4d4',
+  accent:     '#00a8a8',
+  velocity:   '#00a8a8',
   lateral_g:  '#f5a623',
   long_g:     '#4a90e2',
   drag:       '#00e676',

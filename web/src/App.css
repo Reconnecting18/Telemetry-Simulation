@@ -10,7 +10,7 @@ body {
 /* ---- Header ---- */
 header {
   background: #111111;
-  border-bottom: 1px solid #00d4d4;
+  border-bottom: 1px solid #007a7a;
   padding: 10px 20px;
   display: flex;
   align-items: center;
@@ -26,7 +26,7 @@ header {
   white-space: nowrap;
 }
 
-.accent { color: #00d4d4; margin-right: 6px; }
+.accent { color: #007a7a; margin-right: 6px; }
 
 .header-stats {
   display: flex;
@@ -127,7 +127,7 @@ header {
 }
 
 .play-btn {
-  background: #00d4d4;
+  background: #00a8a8;
   color: #0a0a0a;
   border: none;
   border-radius: 4px;
@@ -139,7 +139,7 @@ header {
   align-items: center;
   justify-content: center;
 }
-.play-btn:hover { background: #00e8e8; }
+.play-btn:hover { background: #00bcbc; }
 
 .time-display {
   font-family: 'Courier New', monospace;
@@ -162,11 +162,11 @@ header {
   cursor: pointer;
 }
 .speed-btn.active {
-  background: #00d4d4;
+  background: #00a8a8;
   color: #0a0a0a;
-  border-color: #00d4d4;
+  border-color: #00a8a8;
 }
-.speed-btn:hover:not(.active) { border-color: #00d4d4; }
+.speed-btn:hover:not(.active) { border-color: #007a7a; }
 
 /* Race Timeline Bar */
 .race-timeline {
@@ -199,7 +199,7 @@ header {
 }
 .lap-tick.major {
   height: 10px;
-  background: #555555;
+  background: #007a7a;
 }
 
 .timeline-progress {
@@ -207,7 +207,7 @@ header {
   top: 0;
   left: 0;
   height: 100%;
-  background: rgba(0, 212, 212, 0.08);
+  background: rgba(0, 68, 68, 0.25);
   border-radius: 4px 0 0 4px;
   pointer-events: none;
 }
@@ -217,7 +217,7 @@ header {
   top: -2px;
   transform: translateX(-5px);
   pointer-events: none;
-  filter: drop-shadow(0 0 2px rgba(0,212,212,0.6));
+  filter: drop-shadow(0 0 2px rgba(0,168,168,0.4));
   z-index: 2;
 }
 
@@ -295,7 +295,7 @@ header {
   align-items: center;
   justify-content: center;
 }
-.map-btn:hover { border-color: #00d4d4; color: #ffffff; }
+.map-btn:hover { border-color: #007a7a; color: #ffffff; }
 
 .track-map-viewport {
   flex: 1;
@@ -387,11 +387,11 @@ header {
   transition: all 0.15s;
 }
 .toggle-btn.active {
-  background: #00d4d4;
-  color: #0a0a0a;
-  border-color: #00d4d4;
+  background: #004444;
+  color: #ffffff;
+  border-color: #00a8a8;
 }
-.toggle-btn:hover:not(.active) { border-color: #00d4d4; color: #888888; }
+.toggle-btn:hover:not(.active) { border-color: #007a7a; color: #888888; }
 
 .car-svg {
   display: block;
@@ -554,8 +554,8 @@ header {
   letter-spacing: 0.05em;
   cursor: pointer;
 }
-.strat-view-btn.active { background: #00d4d4; color: #0a0a0a; border-color: #00d4d4; }
-.strat-view-btn:hover:not(.active):not(:disabled) { border-color: #00d4d4; color: #888888; }
+.strat-view-btn.active { background: #00a8a8; color: #0a0a0a; border-color: #00a8a8; }
+.strat-view-btn:hover:not(.active):not(:disabled) { border-color: #007a7a; color: #888888; }
 .strat-view-btn:disabled { opacity: 0.3; cursor: default; }
 
 /* -- Strategy Builder -- */
@@ -591,7 +591,7 @@ header {
 }
 .strat-dur-btn:first-child { border-radius: 4px 0 0 4px; }
 .strat-dur-btn:last-child  { border-radius: 0 4px 4px 0; }
-.strat-dur-btn.active { background: #00d4d4; color: #0a0a0a; border-color: #00d4d4; }
+.strat-dur-btn.active { background: #00a8a8; color: #0a0a0a; border-color: #00a8a8; }
 
 /* -- Stint Section -- */
 .strat-stints-section { display: flex; flex-direction: column; gap: 6px; }
@@ -612,15 +612,15 @@ header {
 
 .strat-add-stint {
   background: transparent;
-  color: #00d4d4;
-  border: 1px dashed #00d4d4;
+  color: #007a7a;
+  border: 1px dashed #007a7a;
   border-radius: 4px;
   padding: 2px 8px;
   font-size: 0.55rem;
   font-weight: 600;
   cursor: pointer;
 }
-.strat-add-stint:hover { background: rgba(0,212,212,0.1); }
+.strat-add-stint:hover { background: #004444; }
 .strat-add-stint:disabled { opacity: 0.3; cursor: default; }
 
 .strat-stint-list { display: flex; flex-direction: column; gap: 4px; }
@@ -713,7 +713,7 @@ header {
   text-align: right;
   font-variant-numeric: tabular-nums;
 }
-.stint-input:focus { outline: none; border-color: #00d4d4; }
+.stint-input:focus { outline: none; border-color: #007a7a; }
 
 .stint-input-lg { width: 52px; }
 
@@ -751,8 +751,8 @@ header {
   position: relative;
 }
 .pit-check input[type="checkbox"]:checked {
-  background: #00d4d4;
-  border-color: #00d4d4;
+  background: #00a8a8;
+  border-color: #00a8a8;
 }
 .pit-check input[type="checkbox"]:checked::after {
   content: '';
@@ -802,8 +802,8 @@ header {
   font-size: 0.55rem;
   cursor: pointer;
 }
-.strat-multi-btn.active { background: #00d4d4; color: #0a0a0a; border-color: #00d4d4; }
-.strat-multi-btn:hover:not(.active) { border-color: #00d4d4; }
+.strat-multi-btn.active { background: #00a8a8; color: #0a0a0a; border-color: #00a8a8; }
+.strat-multi-btn:hover:not(.active) { border-color: #007a7a; }
 
 .strat-slider-row {
   display: flex;
@@ -833,7 +833,7 @@ header {
   width: 10px;
   height: 10px;
   border-radius: 50%;
-  background: #00d4d4;
+  background: #007a7a;
   cursor: pointer;
 }
 
@@ -870,7 +870,7 @@ header {
   position: relative;
   padding: 0;
 }
-.strat-toggle-switch.on { background: #00d4d4; border-color: #00d4d4; }
+.strat-toggle-switch.on { background: #00a8a8; border-color: #00a8a8; }
 
 .strat-toggle-knob {
   position: absolute;
@@ -886,9 +886,9 @@ header {
 
 /* -- Run Button -- */
 .strat-run-btn {
-  background: #00d4d4;
-  color: #0a0a0a;
-  border: none;
+  background: #0a0a0a;
+  color: #00a8a8;
+  border: 1px solid #00a8a8;
   border-radius: 4px;
   padding: 8px 0;
   font-size: 0.65rem;
@@ -896,10 +896,10 @@ header {
   letter-spacing: 0.1em;
   text-transform: uppercase;
   cursor: pointer;
-  transition: background 0.15s;
+  transition: all 0.15s;
   margin-top: auto;
 }
-.strat-run-btn:hover { background: #00e8e8; }
+.strat-run-btn:hover { background: #00a8a8; color: #0a0a0a; }
 
 /* -- Strategy Summary -- */
 .strategy-summary { display: flex; flex-direction: column; gap: 10px; }
@@ -920,7 +920,7 @@ header {
   gap: 2px;
 }
 
-.summary-stat.highlight { border-color: #00d4d4; }
+.summary-stat.highlight { border-color: #007a7a; }
 
 .summary-stat-label {
   font-size: 0.45rem;

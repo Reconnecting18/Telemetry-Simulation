@@ -123,7 +123,7 @@ export default function PlaybackControls({
         {/* Current position triangle */}
         <div className="timeline-cursor" style={{ left: `${frac * 100}%` }}>
           <svg width="10" height="8" viewBox="0 0 10 8">
-            <polygon points="5,0 10,8 0,8" fill="#00d4d4" />
+            <polygon points="5,0 10,8 0,8" fill="#00a8a8" />
           </svg>
         </div>
 

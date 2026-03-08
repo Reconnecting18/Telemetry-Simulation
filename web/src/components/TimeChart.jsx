@@ -33,7 +33,7 @@ function TimeChartInner({ title, data, lines, currentTime, onSeek }) {
           />
           <Legend wrapperStyle={{ fontSize: 11 }} />
           {currentTime != null && (
-            <ReferenceLine x={currentTime} stroke="#00d4d4" strokeDasharray="4 2" strokeWidth={2} />
+            <ReferenceLine x={currentTime} stroke="#00a8a8" strokeDasharray="4 2" strokeWidth={2} />
           )}
           {lines.map(({ key, name, color }) => (
             <Line
