@@ -71,6 +71,7 @@ bool TelemetrySession::writeJSON(const std::string& path) const {
             << ", \"curvature\": " << jVal(n.curvature, 6)
             << ", \"kerb\": "    << n.kerb
             << ", \"surface_grip\": " << jVal(n.surface_grip, 3)
+            << ", \"dirty_zone\": " << jVal(n.dirty_zone, 3)
             << "}";
         if (i + 1 < track_nodes.size()) out << ",";
         out << "\n";

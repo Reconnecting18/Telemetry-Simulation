@@ -47,11 +47,13 @@ double adjustVelocity(double current_v, double target_v,
 // rl_curvatures: per-node effective curvatures along the racing line (replaces node curvatures
 //                in Pass 1 if provided; must be same size as nodes, else nodes curvatures used).
 // grade:         per-node sin(slope) values, positive = uphill (affects accel/brake passes).
+// grip:          per-node grip scaling (0–1); scales max_lateral_g in Pass 1 per node.
 std::vector<double> computeVelocityProfile(
     const std::vector<TrackNode>& nodes,
     const VehicleConfig& config,
     const std::vector<double>& rl_curvatures = {},
-    const std::vector<double>& grade = {});
+    const std::vector<double>& grade = {},
+    const std::vector<double>& grip = {});
 
 // ------------------------------------------------------------------
 // GEARBOX

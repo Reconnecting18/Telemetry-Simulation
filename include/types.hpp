@@ -80,6 +80,7 @@ struct TrackNode {
     double distance;   // m — cumulative arc-length from start
     int    kerb;       // 0=none  1=left kerb  2=right kerb  3=both
     double surface_grip; // 0.0–1.0 — base surface grip level (before rubber buildup)
+    double dirty_zone;   // 0.0–1.0 — debris/marbles intensity (corner exits)
 };
 
 struct Track {

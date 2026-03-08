@@ -346,18 +346,23 @@ TelemetrySession runSimulation(const Track& track, const VehicleConfig& config) 
             }
         }
 
-        // ── Recompute velocity profile with grip-adjusted lateral G ──
-        // Lower grip → lower max_lateral_g → slower cornering speeds
-        {
-            VehicleConfig grip_config = config;
-            // Use average grip as a global scaling factor for the velocity profile.
-            // Per-node grip is applied more precisely in the inner loop.
-            double avg_grip = 0.0;
-            for (int i = 0; i < N; ++i) avg_grip += effective_grip[i];
-            avg_grip /= N;
-            grip_config.max_lateral_g = config.max_lateral_g * avg_grip;
-            v_profile = computeVelocityProfile(track.nodes, grip_config, rl_curv, grade);
+        // ── Build per-node grip with surface type penalties ──
+        // Kerb nodes: -15% grip (reduced traction on raised kerb surface)
+        // Dirty zones: up to -35% grip (marbles/debris at corner exits)
+        std::vector<double> node_grip_array(N);
+        for (int i = 0; i < N; ++i) {
+            double g = effective_grip[i];
+            if (track.nodes[i].kerb > 0) g *= 0.85;
+            double dirty = session.track_nodes[i].dirty_zone;
+            if (dirty > 0.0) g *= (1.0 - 0.35 * dirty);
+            node_grip_array[i] = g;
         }
+
+        // ── Recompute velocity profile with per-node grip ──
+        // Each node's cornering speed limit uses its local grip level,
+        // so kerb and dirty zone nodes produce lower target speeds.
+        v_profile = computeVelocityProfile(
+            track.nodes, config, rl_curv, grade, node_grip_array);
 
         for (int i = 0; i < N && !session_done; ++i) {
             const TrackNode& node = track.nodes[i];
@@ -396,7 +401,7 @@ TelemetrySession runSimulation(const Track& track, const VehicleConfig& config) 
 
             // Use RL effective curvature — the car is physically on the racing line
             double curv_rl = rl_curv[i];
-            double node_grip = effective_grip[i];
+            double node_grip = node_grip_array[i];  // includes kerb/dirty zone penalties
 
             // Grip affects cornering: on low-grip surface, the car cannot maintain
             // the same lateral G — it slides wider, producing less lateral G than
@@ -479,6 +484,27 @@ TelemetrySession runSimulation(const Track& track, const VehicleConfig& config) 
                               state.lateral_g, state.longitudinal_g, node.curvature,
                               config.mass, config.cog_height, config.wheelbase,
                               config.suspension_stiffness, config.suspension_travel);
+
+            // Kerb bump: spike suspension deflection on kerb-side wheels
+            // Simulates the physical bump of riding over raised kerb surfaces.
+            if (node.kerb > 0) {
+                static constexpr double KERB_BUMP = 0.012;  // 12mm vertical input
+                for (int t = 0; t < 4; ++t) {
+                    bool left_tire  = (t == 0 || t == 2);
+                    bool right_tire = (t == 1 || t == 3);
+                    bool kerb_side  = ((node.kerb & 1) && left_tire) ||
+                                      ((node.kerb & 2) && right_tire);
+                    if (kerb_side) {
+                        state.suspension_deflection[t] += KERB_BUMP;
+                        state.suspension_deflection[t] = std::clamp(
+                            state.suspension_deflection[t],
+                            -config.suspension_travel, config.suspension_travel);
+                        // Recompute dynamic camber with bumped deflection
+                        state.dynamic_camber[t] = config.camber_deg[t]
+                            + 50.0 * state.suspension_deflection[t];
+                    }
+                }
+            }
 
             // Fuel — proportional to throttle
             double throttle_factor = 0.3 + state.throttle * 1.2;

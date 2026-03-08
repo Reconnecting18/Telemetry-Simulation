@@ -204,13 +204,15 @@ std::vector<double> computeVelocityProfile(
     const std::vector<TrackNode>& nodes,
     const VehicleConfig& config,
     const std::vector<double>& rl_curvatures,
-    const std::vector<double>& grade)
+    const std::vector<double>& grade,
+    const std::vector<double>& grip)
 {
     int N = static_cast<int>(nodes.size());
     std::vector<double> v(N);
 
     bool use_rl    = (static_cast<int>(rl_curvatures.size()) == N);
     bool use_grade = (static_cast<int>(grade.size()) == N);
+    bool use_grip  = (static_cast<int>(grip.size()) == N);
 
     // Engine power at top speed (equilibrium with drag)
     double drag_at_vmax = 0.5 * AIR_DENSITY * config.drag_coeff
@@ -219,9 +221,12 @@ std::vector<double> computeVelocityProfile(
 
     // Pass 1: cornering speed limit.
     // RL curvatures have larger effective radii → higher limits through corners.
+    // Per-node grip scales max_lateral_g: kerb/dirty zones reduce cornering speed.
     for (int i = 0; i < N; ++i) {
         double k = use_rl ? rl_curvatures[i] : nodes[i].curvature;
-        v[i] = calculateOptimalVelocity(k, config.max_lateral_g, config.max_speed);
+        double effective_lat_g = config.max_lateral_g;
+        if (use_grip) effective_lat_g *= grip[i];
+        v[i] = calculateOptimalVelocity(k, effective_lat_g, config.max_speed);
     }
 
     // Pass 2 (backward): braking constraints.
@@ -340,9 +345,10 @@ void computeSurfaceGrip(std::vector<TrackNode>& nodes,
     static constexpr int    EXIT_WINDOW      = 4;     // nodes after corner exit
     static constexpr int    BRAKE_WINDOW     = 3;     // nodes before corner entry
 
-    // Start with base grip
+    // Start with base grip and clean dirty_zone
     for (int i = 0; i < N; ++i) {
         nodes[i].surface_grip = GRIP_BASE;
+        nodes[i].dirty_zone   = 0.0;
     }
 
     // Use RL curvatures if available, else node curvatures
@@ -363,6 +369,9 @@ void computeSurfaceGrip(std::vector<TrackNode>& nodes,
                 double penalty = GRIP_EXIT_PENALTY * intensity * falloff;
                 nodes[i + j].surface_grip = std::min(nodes[i + j].surface_grip,
                                                       GRIP_BASE - penalty);
+                // Flag dirty zone intensity for separate grip penalty in sim loop
+                nodes[i + j].dirty_zone = std::max(nodes[i + j].dirty_zone,
+                                                     intensity * falloff);
             }
 
             // Braking zone: heavy rubber deposits (nodes before this corner)
