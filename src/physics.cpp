@@ -245,3 +245,102 @@ double calculateFuelConsumptionDelta(double segment_dist,
 double calculateDragForce(double velocity, double drag_coeff, double frontal_area) {
     return 0.5 * AIR_DENSITY * drag_coeff * frontal_area * velocity * velocity;
 }
+
+// ------------------------------------------------------------------
+// SURFACE GRIP
+// ------------------------------------------------------------------
+
+void computeSurfaceGrip(std::vector<TrackNode>& nodes,
+                        const std::vector<double>& rl_curvatures) {
+    int N = static_cast<int>(nodes.size());
+    if (N == 0) return;
+
+    // Base grip: racing line surface starts at 0.92 (clean tarmac, some dust)
+    // Braking zones (before high-curvature): boosted to ~0.97 (heavy rubber deposits)
+    // Corner-exit zones (after high-curvature): reduced to ~0.72 (marbles, debris)
+    // High-curvature nodes themselves: slightly reduced (tire sliding deposits marbles)
+
+    static constexpr double GRIP_BASE        = 0.92;
+    static constexpr double GRIP_BRAKE_BOOST = 0.05;  // bonus in braking zones
+    static constexpr double GRIP_EXIT_PENALTY = 0.20; // penalty at corner exits
+    static constexpr double GRIP_CORNER_PENALTY = 0.08; // penalty at high-curvature nodes
+    static constexpr double K_THRESHOLD      = 0.008; // curvature threshold for "corner"
+    static constexpr int    EXIT_WINDOW      = 4;     // nodes after corner exit
+    static constexpr int    BRAKE_WINDOW     = 3;     // nodes before corner entry
+
+    // Start with base grip
+    for (int i = 0; i < N; ++i) {
+        nodes[i].surface_grip = GRIP_BASE;
+    }
+
+    // Use RL curvatures if available, else node curvatures
+    bool use_rl = (static_cast<int>(rl_curvatures.size()) == N);
+
+    // Identify corner nodes and apply grip adjustments
+    for (int i = 0; i < N; ++i) {
+        double absK = std::abs(use_rl ? rl_curvatures[i] : nodes[i].curvature);
+
+        if (absK >= K_THRESHOLD) {
+            // Corner node itself: reduced grip from sliding
+            double intensity = std::min(1.0, absK / 0.05);
+            nodes[i].surface_grip -= GRIP_CORNER_PENALTY * intensity;
+
+            // Corner exit: marbles and debris accumulate (nodes after this corner)
+            for (int j = 1; j <= EXIT_WINDOW && (i + j) < N; ++j) {
+                double falloff = 1.0 - static_cast<double>(j - 1) / EXIT_WINDOW;
+                double penalty = GRIP_EXIT_PENALTY * intensity * falloff;
+                nodes[i + j].surface_grip = std::min(nodes[i + j].surface_grip,
+                                                      GRIP_BASE - penalty);
+            }
+
+            // Braking zone: heavy rubber deposits (nodes before this corner)
+            for (int j = 1; j <= BRAKE_WINDOW && (i - j) >= 0; ++j) {
+                double falloff = 1.0 - static_cast<double>(j - 1) / BRAKE_WINDOW;
+                double bonus = GRIP_BRAKE_BOOST * intensity * falloff;
+                nodes[i - j].surface_grip = std::min(1.0,
+                    std::max(nodes[i - j].surface_grip, GRIP_BASE + bonus));
+            }
+        }
+    }
+
+    // Clamp all grip values
+    for (int i = 0; i < N; ++i) {
+        nodes[i].surface_grip = std::clamp(nodes[i].surface_grip, 0.5, 1.0);
+    }
+}
+
+std::vector<double> applyRubberBuildup(
+    const std::vector<TrackNode>& nodes,
+    std::vector<double>& rubber_accum,
+    int lap) {
+    int N = static_cast<int>(nodes.size());
+    std::vector<double> effective_grip(N);
+
+    // Rubber buildup constants:
+    // Each lap deposits rubber proportional to how much the car loads the surface.
+    // Braking zones and corners get more rubber; straights get less.
+    // After ~5 laps, grip improves by ~0.03-0.05 on the racing line.
+    static constexpr double K_RUBBER_BASE    = 0.003;  // base rubber per lap per node
+    static constexpr double K_RUBBER_CURV    = 0.008;  // extra rubber at high-curvature
+    static constexpr double RUBBER_MAX       = 0.08;   // maximum grip bonus from rubber
+    static constexpr double RUBBER_DECAY     = 0.98;   // slight decay each lap (old rubber wears)
+
+    if (rubber_accum.empty()) {
+        rubber_accum.resize(N, 0.0);
+    }
+
+    for (int i = 0; i < N; ++i) {
+        // Decay existing rubber slightly
+        rubber_accum[i] *= RUBBER_DECAY;
+
+        // Add new rubber based on curvature (more sliding = more rubber deposited)
+        double absK = std::abs(nodes[i].curvature);
+        double deposit = K_RUBBER_BASE + K_RUBBER_CURV * std::min(1.0, absK / 0.03);
+        rubber_accum[i] = std::min(rubber_accum[i] + deposit, RUBBER_MAX);
+
+        // Effective grip = base + rubber bonus
+        effective_grip[i] = std::clamp(nodes[i].surface_grip + rubber_accum[i], 0.0, 1.0);
+    }
+
+    return effective_grip;
+}

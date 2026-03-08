@@ -273,7 +273,21 @@ TelemetrySession runSimulation(const Track& track, const VehicleConfig& config) 
         if (seg > 1e-6) grade[i] = dz / seg;
     }
 
-    // ── Look-ahead velocity profile ──────────────────────────────────────────
+    // ── Surface grip map ────────────────────────────────────────────────────
+    // Compute base grip per node: braking zones get bonus, corner exits get penalty.
+    // We modify track_nodes in the session copy so JSON output includes grip values.
+    computeSurfaceGrip(session.track_nodes, rl_curv);
+    // Copy grip values back into a local vector for the velocity profile
+    std::vector<double> base_grip(N);
+    for (int i = 0; i < N; ++i) {
+        base_grip[i] = session.track_nodes[i].surface_grip;
+    }
+
+    // Rubber accumulation array — persists across laps
+    std::vector<double> rubber_accum;
+
+    // ── Look-ahead velocity profile (recomputed each lap with updated grip) ──
+    // Initial profile uses base grip (no rubber yet)
     std::vector<double> v_profile = computeVelocityProfile(
         track.nodes, config, rl_curv, grade);
 
@@ -297,6 +311,23 @@ TelemetrySession runSimulation(const Track& track, const VehicleConfig& config) 
 
     // ── Multi-lap loop ───────────────────────────────────────────────────────
     for (int lap = 0; lap < MAX_LAPS && !session_done; ++lap) {
+
+        // ── Rubber buildup: accumulate rubber from previous lap ──
+        std::vector<double> effective_grip = applyRubberBuildup(
+            session.track_nodes, rubber_accum, lap);
+
+        // ── Recompute velocity profile with grip-adjusted lateral G ──
+        // Lower grip → lower max_lateral_g → slower cornering speeds
+        {
+            VehicleConfig grip_config = config;
+            // Use average grip as a global scaling factor for the velocity profile.
+            // Per-node grip is applied more precisely in the inner loop.
+            double avg_grip = 0.0;
+            for (int i = 0; i < N; ++i) avg_grip += effective_grip[i];
+            avg_grip /= N;
+            grip_config.max_lateral_g = config.max_lateral_g * avg_grip;
+            v_profile = computeVelocityProfile(track.nodes, grip_config, rl_curv, grade);
+        }
 
         for (int i = 0; i < N && !session_done; ++i) {
             const TrackNode& node = track.nodes[i];
@@ -334,8 +365,14 @@ TelemetrySession runSimulation(const Track& track, const VehicleConfig& config) 
 
             // Use RL effective curvature — the car is physically on the racing line
             double curv_rl = rl_curv[i];
+            double node_grip = effective_grip[i];
 
-            state.lateral_g      = calculateLateralG(state.velocity, curv_rl);
+            // Grip affects cornering: on low-grip surface, the car cannot maintain
+            // the same lateral G — it slides wider, producing less lateral G than
+            // the curvature alone would suggest, but MORE tire stress from sliding.
+            double raw_lat_g = calculateLateralG(state.velocity, curv_rl);
+            double grip_limited_lat_g = std::min(raw_lat_g, config.max_lateral_g * node_grip);
+            state.lateral_g      = grip_limited_lat_g;
             state.longitudinal_g = long_g;
             double lat_force_N   = calculateForceFromCurvature(config.mass, state.velocity, curv_rl);
 
@@ -374,6 +411,16 @@ TelemetrySession runSimulation(const Track& track, const VehicleConfig& config) 
             updateTireTemps(state.tire_temp, factors,
                             state.lateral_g, state.velocity, config.max_speed,
                             state.longitudinal_g, config.tire_ambient_temp, dt);
+
+            // Low-grip surface: extra tire heat from sliding (tire scrub)
+            // The less grip, the more the tire slides → more heat
+            if (node_grip < 0.95) {
+                double slip_factor = (1.0 - node_grip) * 4.0;  // 0–2 range
+                double slip_heat = slip_factor * slip_factor * 0.8;  // up to ~3.2°C per node
+                for (int t = 0; t < 4; ++t) {
+                    state.tire_temp[t] += slip_heat * (0.5 + factors[t]) * dt;
+                }
+            }
 
             // Kerb effect: thermal spike on kerb-side tires (kerb friction + vibration)
             if (node.kerb > 0) {
@@ -436,6 +483,7 @@ TelemetrySession runSimulation(const Track& track, const VehicleConfig& config) 
                 f.suspension_mm[t] = state.suspension_deflection[t] * 1000.0;
                 f.camber_deg[t]    = state.dynamic_camber[t];
             }
+            f.surface_grip = node_grip;
             session.frames.push_back(f);
 
             // ── Stop conditions ──────────────────────────────────────────────

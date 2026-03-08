@@ -86,3 +86,20 @@ double calculateFuelConsumptionDelta(double segment_dist,
 // ------------------------------------------------------------------
 
 double calculateDragForce(double velocity, double drag_coeff, double frontal_area);
+
+// ------------------------------------------------------------------
+// SURFACE GRIP
+// ------------------------------------------------------------------
+
+// Compute base surface grip per node based on track characteristics.
+// Corner-exit nodes get reduced grip from marbles/debris; high-curvature
+// zones outside the ideal line have lower grip.
+void computeSurfaceGrip(std::vector<TrackNode>& nodes,
+                        const std::vector<double>& rl_curvatures);
+
+// Rubber buildup: returns per-node effective grip including accumulated rubber.
+// rubber_accum[i] is updated in-place each lap based on velocity/forces at node i.
+std::vector<double> applyRubberBuildup(
+    const std::vector<TrackNode>& nodes,
+    std::vector<double>& rubber_accum,
+    int lap);

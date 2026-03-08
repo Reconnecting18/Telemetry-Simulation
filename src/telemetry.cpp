@@ -60,6 +60,7 @@ bool TelemetrySession::writeJSON(const std::string& path) const {
             << ", \"z\": "       << jVal(n.z, 2)
             << ", \"curvature\": " << jVal(n.curvature, 6)
             << ", \"kerb\": "    << n.kerb
+            << ", \"surface_grip\": " << jVal(n.surface_grip, 3)
             << "}";
         if (i + 1 < track_nodes.size()) out << ",";
         out << "\n";
@@ -141,7 +142,9 @@ bool TelemetrySession::writeJSON(const std::string& path) const {
         out << "\"FL\": " << jVal(f.camber_deg[0], 2) << ", ";
         out << "\"FR\": " << jVal(f.camber_deg[1], 2) << ", ";
         out << "\"RL\": " << jVal(f.camber_deg[2], 2) << ", ";
-        out << "\"RR\": " << jVal(f.camber_deg[3], 2) << "}\n";
+        out << "\"RR\": " << jVal(f.camber_deg[3], 2) << "},\n";
+        // Surface grip
+        out << "      \"surface_grip\": " << jVal(f.surface_grip, 3) << "\n";
         out << "    }";
         if (i + 1 < frames.size()) out << ",";
         out << "\n";

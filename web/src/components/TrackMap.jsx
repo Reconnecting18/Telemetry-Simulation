@@ -74,6 +74,15 @@ function computeDirtyZones(nodes, segments) {
   return zones
 }
 
+// Grip color: high grip = bright green, medium = yellow, low = brown/grey dust
+function gripColor(grip) {
+  if (grip >= 0.95) return { color: '#00e676', opacity: 0.35 } // bright green — rubber-rich
+  if (grip >= 0.90) return { color: '#66bb6a', opacity: 0.20 } // green — clean tarmac
+  if (grip >= 0.85) return { color: '#fdd835', opacity: 0.25 } // yellow — slightly dusty
+  if (grip >= 0.75) return { color: '#8d6e4a', opacity: 0.30 } // brown — marbles/dust
+  return { color: '#6d5a3a', opacity: 0.40 }                    // dark brown — heavy debris
+}
+
 // Build trail points from frames
 function buildTrail(frames, currentTime) {
   if (!frames || !frames.length || currentTime <= 0) return []
@@ -102,9 +111,9 @@ export default function TrackMap({ trackNodes, frames, currentTime, carX, carY }
   const lastMouse  = useRef({ x: 0, y: 0 })
   const [vbState, setVbState] = useState(null)
 
-  const { baseVB, segments, racingLine, dirtyZones, startX, startY, cornerPositions } = useMemo(() => {
+  const { baseVB, segments, racingLine, dirtyZones, gripOverlay, startX, startY, cornerPositions } = useMemo(() => {
     if (!trackNodes || !trackNodes.length)
-      return { baseVB: null, segments: [], racingLine: [], dirtyZones: [], cornerPositions: [] }
+      return { baseVB: null, segments: [], racingLine: [], dirtyZones: [], gripOverlay: [], cornerPositions: [] }
 
     const xs  = trackNodes.map(n => n.x)
     const ys  = trackNodes.map(n => -n.y)
@@ -118,6 +127,14 @@ export default function TrackMap({ trackNodes, frames, currentTime, carX, carY }
     const rl = computeRacingLine(trackNodes)
     const dirty = computeDirtyZones(trackNodes, segs)
 
+    // Grip overlay: color each segment by its surface grip level
+    const grip = segs.map((s, i) => {
+      const g = trackNodes[i].surface_grip
+      if (g === undefined || g === null) return null
+      const gc = gripColor(g)
+      return { ...s, gripColor: gc.color, gripOpacity: gc.opacity, grip: g }
+    }).filter(Boolean)
+
     // Corner label positions
     const cPos = CORNER_LABELS.map(cl => {
       const n = trackNodes[cl.idx]
@@ -130,6 +147,7 @@ export default function TrackMap({ trackNodes, frames, currentTime, carX, carY }
       segments: segs,
       racingLine: rl,
       dirtyZones: dirty,
+      gripOverlay: grip,
       startX: trackNodes[0].x,
       startY: -trackNodes[0].y,
       cornerPositions: cPos,
@@ -284,6 +302,14 @@ export default function TrackMap({ trackNodes, frames, currentTime, carX, carY }
               stroke="#222" strokeWidth={TRACK_WIDTH - 4} strokeLinecap="round" />
           ))}
 
+          {/* ── Grip overlay (surface grip heatmap on road) ── */}
+          {gripOverlay.map((go, i) => (
+            <line key={`grip-${i}`}
+              x1={go.x1} y1={go.y1} x2={go.x2} y2={go.y2}
+              stroke={go.gripColor} strokeWidth={TRACK_WIDTH - 2}
+              strokeLinecap="round" opacity={go.gripOpacity} />
+          ))}
+
           {/* ── Dirty zones (outside of corners) ── */}
           {dirtyZones.map((dz, i) => (
             <line key={`dirty-${i}`}
@@ -386,6 +412,12 @@ export default function TrackMap({ trackNodes, frames, currentTime, carX, carY }
             <polygon points="5,1 9,9 1,9" fill="#e10600" stroke="white" strokeWidth="1" />
           </svg>
           &nbsp;Car
+        </span>
+        <span className="legend-item">
+          <span className="legend-line" style={{ background: '#00e676' }} />High grip
+        </span>
+        <span className="legend-item">
+          <span className="legend-line" style={{ background: '#8d6e4a' }} />Low grip
         </span>
         <span className="legend-item">
           <svg width="18" height="4" style={{ display:'inline-block', verticalAlign:'middle' }}>

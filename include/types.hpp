@@ -19,6 +19,7 @@ struct TrackNode {
     double curvature;  // 1/m — signed: positive = left turn, negative = right turn
     double distance;   // m — cumulative arc-length from start
     int    kerb;       // 0=none  1=left kerb  2=right kerb  3=both
+    double surface_grip; // 0.0–1.0 — base surface grip level (before rubber buildup)
 };
 
 struct Track {
@@ -124,6 +125,7 @@ struct TelemetryFrame {
     double tire_pressure[4];        // psi
     double suspension_mm[4];        // mm (deflection * 1000)
     double camber_deg[4];           // dynamic camber
+    double surface_grip;            // 0–1 effective grip (base + rubber buildup)
 };
 
 struct TelemetrySession {
