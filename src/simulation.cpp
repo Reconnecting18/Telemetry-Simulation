@@ -141,6 +141,14 @@ VehicleConfig defaultVehicleConfig() {
     return cfg;
 }
 
+WeatherState defaultWeather() {
+    WeatherState w;
+    w.condition     = WeatherCondition::Dry;
+    w.track_temp_C  = 35.0;
+    w.ambient_temp_C = 25.0;
+    return w;
+}
+
 // ============================================================
 //  Simulation helpers
 // ============================================================
@@ -166,7 +174,9 @@ static void computeTireFactors(double lateral_g, double curvature,
 
 static void updateTireTemps(double tire_temp[4], const double factors[4],
                              double lateral_g, double velocity, double max_speed,
-                             double longitudinal_g, double ambient, double dt) {
+                             double longitudinal_g, double ambient, double dt,
+                             double heat_rate_mult = 1.0, double cool_mult = 1.0,
+                             double track_temp_fact = 1.0) {
     // Retuned for realistic multi-lap thermal behaviour:
     //   K_BRAKE is dominant — caliper friction generates enormous heat
     //   K_COOL  is low     — rubber has high thermal mass, cools slowly
@@ -185,8 +195,8 @@ static void updateTireTemps(double tire_temp[4], const double factors[4],
                        + K_BRAKE * brake_g     * brake_g;
 
     for (int i = 0; i < 4; ++i) {
-        double heat    = heat_base * (0.5 + factors[i]);
-        double cooling = K_COOL * (tire_temp[i] - ambient);
+        double heat    = heat_base * (0.5 + factors[i]) * heat_rate_mult * track_temp_fact;
+        double cooling = K_COOL * (tire_temp[i] - ambient) * cool_mult;
         tire_temp[i]  += (heat - cooling) * dt;
         tire_temp[i]   = std::max(tire_temp[i], ambient);
     }
@@ -244,6 +254,8 @@ TelemetrySession runSimulation(const Track& track, const VehicleConfig& config) 
     session.vehicle_config   = config;
     session.track_nodes      = track.nodes;
     session.total_distance_m = track.totalDistance();
+    session.weather          = defaultWeather();
+    const WeatherState& weather = session.weather;
 
     if (track.nodes.empty()) {
         std::cerr << "[Simulation] ERROR: track has no nodes.\n";
@@ -302,6 +314,10 @@ TelemetrySession runSimulation(const Track& track, const VehicleConfig& config) 
     static constexpr double TIRE_DAMAGE_TEMP  = 175.0;// instant failure threshold (C)
 
     VehicleState state = makeInitialState(config);
+    // Use weather ambient temp for tire starting temperature
+    for (int i = 0; i < 4; ++i) {
+        state.tire_temp[i] = weather.ambient_temp_C;
+    }
     state.x = rl[0].x;
     state.y = rl[0].y;
 
@@ -315,6 +331,14 @@ TelemetrySession runSimulation(const Track& track, const VehicleConfig& config) 
         // ── Rubber buildup: accumulate rubber from previous lap ──
         std::vector<double> effective_grip = applyRubberBuildup(
             session.track_nodes, rubber_accum, lap);
+
+        // Apply weather grip multiplier (wet/damp reduces all grip)
+        double weather_grip = weather.grip_multiplier();
+        if (weather_grip < 1.0) {
+            for (int i = 0; i < N; ++i) {
+                effective_grip[i] *= weather_grip;
+            }
+        }
 
         // ── Recompute velocity profile with grip-adjusted lateral G ──
         // Lower grip → lower max_lateral_g → slower cornering speeds
@@ -348,9 +372,10 @@ TelemetrySession runSimulation(const Track& track, const VehicleConfig& config) 
                                                    config.drag_coeff, config.frontal_area);
             double drag_decel = drag_force / config.mass;
 
-            // Power-limited engine acceleration
+            // Power-limited engine acceleration (weather affects cooling efficiency)
+            double eff_engine_power = engine_power * weather.engine_cooling_factor();
             double max_engine_accel = (state.velocity > 1.0)
-                ? std::min(config.max_accel, engine_power / (config.mass * state.velocity))
+                ? std::min(config.max_accel, eff_engine_power / (config.mass * state.velocity))
                 : config.max_accel;
 
             // Grade-corrected effective accel and brake
@@ -407,10 +432,13 @@ TelemetrySession runSimulation(const Track& track, const VehicleConfig& config) 
 
             double dt = seg_len / std::max(state.velocity, 0.1);
 
-            // Tire temperature
+            // Tire temperature (weather affects heat generation and cooling)
             updateTireTemps(state.tire_temp, factors,
                             state.lateral_g, state.velocity, config.max_speed,
-                            state.longitudinal_g, config.tire_ambient_temp, dt);
+                            state.longitudinal_g, weather.ambient_temp_C, dt,
+                            weather.heat_rate_multiplier(),
+                            weather.cooling_multiplier(),
+                            weather.track_temp_factor());
 
             // Low-grip surface: extra tire heat from sliding (tire scrub)
             // The less grip, the more the tire slides → more heat
@@ -435,9 +463,9 @@ TelemetrySession runSimulation(const Track& track, const VehicleConfig& config) 
                 }
             }
 
-            // Tire pressure
+            // Tire pressure (use weather ambient for gas law reference)
             updateTirePressures(state.tire_pressure, state.tire_temp,
-                                config.tire_cold_pressure, config.tire_ambient_temp);
+                                config.tire_cold_pressure, weather.ambient_temp_C);
 
             // Suspension & dynamic camber
             computeSuspension(state.suspension_deflection, state.dynamic_camber,

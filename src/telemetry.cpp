@@ -47,6 +47,16 @@ bool TelemetrySession::writeJSON(const std::string& path) const {
     out << "    \"end_reason\": "   << jStr(end_reason)  << "\n";
     out << "  },\n";
 
+    // --- weather block ---
+    out << "  \"weather\": {\n";
+    out << "    \"condition\": "    << jStr(weather.conditionName()) << ",\n";
+    out << "    \"track_temp_C\": " << jVal(weather.track_temp_C, 1) << ",\n";
+    out << "    \"ambient_temp_C\": " << jVal(weather.ambient_temp_C, 1) << ",\n";
+    out << "    \"grip_multiplier\": " << jVal(weather.grip_multiplier(), 2) << ",\n";
+    out << "    \"heat_rate_multiplier\": " << jVal(weather.heat_rate_multiplier(), 2) << ",\n";
+    out << "    \"cooling_multiplier\": " << jVal(weather.cooling_multiplier(), 2) << "\n";
+    out << "  },\n";
+
     // --- track geometry block ---
     out << "  \"track\": {\n";
     out << "    \"name\": "             << jStr(track_name)           << ",\n";

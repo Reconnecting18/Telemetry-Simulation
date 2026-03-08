@@ -55,7 +55,7 @@ export default function App() {
 
   return (
     <div className="dashboard">
-      <Header session={data.session} vehicle={v} track={data.track} currentLap={f?.lap} />
+      <Header session={data.session} vehicle={v} track={data.track} weather={data.weather} currentLap={f?.lap} />
 
       <PlaybackControls
         currentTime={currentTime}

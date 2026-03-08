@@ -9,6 +9,66 @@
 // ============================================================
 
 // ------------------------------------------------------------------
+// WEATHER
+// ------------------------------------------------------------------
+
+enum class WeatherCondition { Dry = 0, Damp = 1, Wet = 2 };
+
+struct WeatherState {
+    WeatherCondition condition = WeatherCondition::Dry;
+    double track_temp_C  = 35.0;  // track surface temperature
+    double ambient_temp_C = 25.0; // air temperature
+
+    // Derived multipliers (computed from above)
+    double grip_multiplier() const {
+        switch (condition) {
+            case WeatherCondition::Damp: return 0.75;
+            case WeatherCondition::Wet:  return 0.50;
+            default:                     return 1.00;
+        }
+    }
+    // Tire heat generation rate multiplier:
+    // wet = water film between tire and track absorbs heat → tires struggle to warm
+    double heat_rate_multiplier() const {
+        switch (condition) {
+            case WeatherCondition::Damp: return 0.70;
+            case WeatherCondition::Wet:  return 0.45;
+            default:                     return 1.00;
+        }
+    }
+    // Cooling rate multiplier: wet = spray cooling amplifies heat loss
+    double cooling_multiplier() const {
+        switch (condition) {
+            case WeatherCondition::Damp: return 1.30;
+            case WeatherCondition::Wet:  return 1.70;
+            default:                     return 1.00;
+        }
+    }
+    // Track temp affects warm-up: ratio relative to baseline 35°C
+    // 20°C → 0.57x heat gen (slow warm-up), 50°C → 1.43x (fast warm-up, faster degradation)
+    double track_temp_factor() const {
+        return track_temp_C / 35.0;
+    }
+    // Ambient temp affects engine cooling efficiency:
+    // hot air = less cooling = slightly reduced engine power at sustained load
+    double engine_cooling_factor() const {
+        if (ambient_temp_C <= 25.0) return 1.0;
+        // Lose ~1% power per 5°C above 25°C
+        return std::max(0.90, 1.0 - (ambient_temp_C - 25.0) * 0.002);
+    }
+
+    const char* conditionName() const {
+        switch (condition) {
+            case WeatherCondition::Damp: return "damp";
+            case WeatherCondition::Wet:  return "wet";
+            default:                     return "dry";
+        }
+    }
+};
+
+WeatherState defaultWeather();
+
+// ------------------------------------------------------------------
 // TRACK
 // ------------------------------------------------------------------
 
@@ -131,6 +191,7 @@ struct TelemetryFrame {
 struct TelemetrySession {
     std::string               track_name;
     VehicleConfig             vehicle_config;
+    WeatherState              weather;       // weather conditions for the session
     std::vector<TelemetryFrame> frames;
     std::vector<TrackNode>    track_nodes;  // raw track geometry for frontend
     double                    total_distance_m;
