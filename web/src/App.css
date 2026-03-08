@@ -184,16 +184,16 @@ header {
   line-height: 12px;
 }
 
-/* ---- Two-Panel Layout ---- */
+/* ==== MAIN LAYOUT ==== */
 .dashboard {
   display: flex;
   flex-direction: column;
   height: 100vh;
 }
 
-.main-panels {
+.main-area {
   display: grid;
-  grid-template-columns: minmax(180px, 340px) 1fr;
+  grid-template-columns: 280px 1fr;
   flex: 1;
   min-height: 0;
 }
@@ -205,6 +205,7 @@ header {
   overflow: hidden;
   display: flex;
   flex-direction: column;
+  border-right: 1px solid #1a1a1a;
 }
 
 .track-map-header {
@@ -242,8 +243,7 @@ header {
 
 .track-map-viewport {
   flex: 1;
-  min-height: 120px;
-  max-height: 320px;
+  min-height: 0;
   overflow: hidden;
   border-radius: 4px;
   background: #060606;
@@ -284,21 +284,36 @@ header {
 .legend-yellow { background: #f5c518; }
 .legend-red    { background: #e10600; }
 
-/* ---- Telemetry Sidebar (Right) ---- */
-.telemetry-sidebar {
-  background: #111;
-  border-left: 1px solid #1a1a1a;
-  padding: 16px 20px;
+/* ---- Content Area (Right of track map) ---- */
+.content-area {
   display: flex;
   flex-direction: column;
-  gap: 14px;
-  overflow-y: auto;
+  min-height: 0;
+  background: #0d0d0d;
 }
 
-/* Toggle */
-.sidebar-toggle {
+/* Upper row: car model + tire detail (60%) */
+.upper-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  flex: 6;
+  min-height: 0;
+  border-bottom: 1px solid #1a1a1a;
+}
+
+/* Car panel (center) */
+.car-panel {
+  display: flex;
+  flex-direction: column;
+  padding: 10px 14px;
+  border-right: 1px solid #1a1a1a;
+  min-height: 0;
+}
+
+.panel-toggle {
   display: flex;
   gap: 4px;
+  margin-bottom: 8px;
 }
 
 .toggle-btn {
@@ -322,16 +337,163 @@ header {
 }
 .toggle-btn:hover:not(.active) { border-color: #444; color: #aaa; }
 
-/* Car SVG */
 .car-svg {
   display: block;
   width: 100%;
-  max-width: 216px;
+  max-width: 240px;
+  flex: 1;
   margin: 0 auto;
   transition: opacity 0.3s ease;
 }
 
-/* Status Bars */
+/* Tire detail panel (right) */
+.tire-panel {
+  padding: 10px;
+  min-height: 0;
+  overflow-y: auto;
+}
+
+.tire-detail-panel {
+  height: 100%;
+}
+
+.tire-detail-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  grid-template-rows: 1fr 1fr;
+  gap: 8px;
+  height: 100%;
+}
+
+.tire-card {
+  background: #141414;
+  border: 1px solid #222;
+  border-radius: 6px;
+  padding: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-height: 0;
+}
+
+.tire-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.tire-card-id {
+  font-family: 'Courier New', monospace;
+  font-size: 0.7rem;
+  font-weight: 700;
+  color: #888;
+}
+
+.tire-card-psi {
+  font-family: 'Courier New', monospace;
+  font-size: 0.6rem;
+  font-weight: 600;
+}
+
+.tire-card-body {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  min-height: 0;
+}
+
+.tire-card-svg {
+  width: 40px;
+  max-height: 60px;
+  flex-shrink: 0;
+}
+
+.tire-card-arc {
+  width: 44px;
+  height: 24px;
+  flex-shrink: 0;
+}
+
+.tire-card-stats {
+  display: flex;
+  justify-content: space-around;
+  gap: 2px;
+}
+
+.tire-stat {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.tire-stat-label {
+  font-size: 0.45rem;
+  color: #555;
+  text-transform: uppercase;
+}
+
+.tire-stat-val {
+  font-family: 'Courier New', monospace;
+  font-size: 0.6rem;
+  color: #aaa;
+  font-weight: 600;
+}
+
+/* Bottom row: health + strategy (40%) */
+.bottom-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  flex: 4;
+  min-height: 0;
+}
+
+.panel-title {
+  font-size: 0.6rem;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: #555;
+  margin-bottom: 10px;
+}
+
+.health-panel {
+  padding: 12px 16px;
+  border-right: 1px solid #1a1a1a;
+}
+
+.strategy-panel {
+  padding: 12px 16px;
+}
+
+.strategy-content {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.strategy-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.strategy-label {
+  font-size: 0.6rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: #555;
+}
+
+.strategy-value {
+  font-family: 'Courier New', monospace;
+  font-size: 0.7rem;
+  color: #aaa;
+  font-weight: 600;
+}
+
+/* Status Bars (shared) */
 .status-bars {
   display: flex;
   flex-direction: column;
@@ -388,16 +550,28 @@ header {
 .state-msg.error { color: #e10600; }
 
 /* ---- Responsive ---- */
-@media (max-width: 700px) {
-  .main-panels {
+@media (max-width: 900px) {
+  .main-area {
     grid-template-columns: 1fr;
   }
-  .track-map-viewport {
-    max-height: 200px;
+  .track-panel {
+    max-height: 240px;
+    border-right: none;
+    border-bottom: 1px solid #1a1a1a;
   }
-  .telemetry-sidebar {
-    border-left: none;
-    border-top: 1px solid #1a1a1a;
+  .upper-row {
+    grid-template-columns: 1fr;
+  }
+  .car-panel {
+    border-right: none;
+    border-bottom: 1px solid #1a1a1a;
+  }
+  .bottom-row {
+    grid-template-columns: 1fr;
+  }
+  .health-panel {
+    border-right: none;
+    border-bottom: 1px solid #1a1a1a;
   }
   .header-stats { margin-left: 0; }
 }
