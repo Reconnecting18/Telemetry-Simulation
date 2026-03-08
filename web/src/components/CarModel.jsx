@@ -1,275 +1,328 @@
 import { memo, useMemo } from 'react'
 import { tempToColorSmooth, wearToColor } from '../utils/colors'
 
-// ─── Node-Edge Open-Wheel Race Car (top-down) ───────────────────
-// ViewBox: 0 0 160 200   Car centred at (80, 100)
-// All geometry defined as named nodes; edges connect them.
-// Suspension hubs move inward+forward when compressed.
+// ─── BeamNG-style Node-Beam Open-Wheel Race Car ──────────────────
+// Origin (0,0) = car centre.  Car faces upward (-Y = nose).
+// Every visual element is a node (point) or beam (line between nodes).
+// Forces (suspension compression) displace nodes; beams follow.
 
-const CX = 80, CY = 100
-
-// ── Static body nodes ──────────────────────────────────────────
-const MONO = {
-  nose:     [CX,     CY - 47],
-  noseL:    [CX - 4, CY - 43],
-  noseR:    [CX + 4, CY - 43],
-  fBulkL:   [CX - 6, CY - 30],
-  fBulkR:   [CX + 6, CY - 30],
-  cockpitL: [CX - 7, CY - 8],
-  cockpitR: [CX + 7, CY - 8],
-  midL:     [CX - 7, CY + 5],
-  midR:     [CX + 7, CY + 5],
-  rBulkL:   [CX - 6, CY + 22],
-  rBulkR:   [CX + 6, CY + 22],
-  tailL:    [CX - 5, CY + 32],
-  tailR:    [CX + 5, CY + 32],
-}
-
-const FRONT_WING = {
-  mainL: [CX - 20, CY - 48],
-  mainR: [CX + 20, CY - 48],
-  flapL: [CX - 18, CY - 51],
-  flapR: [CX + 18, CY - 51],
-  epLT:  [CX - 20, CY - 53],
-  epLB:  [CX - 20, CY - 46],
-  epRT:  [CX + 20, CY - 53],
-  epRB:  [CX + 20, CY - 46],
-}
-
-const REAR_WING = {
-  mainL: [CX - 16, CY + 38],
-  mainR: [CX + 16, CY + 38],
-  flapL: [CX - 14, CY + 35],
-  flapR: [CX + 14, CY + 35],
-  epLT:  [CX - 16, CY + 34],
-  epLB:  [CX - 16, CY + 41],
-  epRT:  [CX + 16, CY + 34],
-  epRB:  [CX + 16, CY + 41],
-}
-
-const SIDEPOD = {
-  lFront: [CX - 7,  CY - 8],
-  lPeak:  [CX - 14, CY + 2],
-  lRear:  [CX - 7,  CY + 18],
-  rFront: [CX + 7,  CY - 8],
-  rPeak:  [CX + 14, CY + 2],
-  rRear:  [CX + 7,  CY + 18],
-}
-
-// ── Wheel assemblies (base positions, before suspension offset) ─
-// Each wheel: { chassis, wishboneA, wishboneB, hub }
-//   chassis  = pickup on monocoque edge (fixed)
-//   wishboneA/B = upper/lower wishbone midpoints (move with hub)
-//   hub      = wheel centre (displaced by suspension)
-const WHEEL_BASE = {
-  FL: {
-    chassis:   [CX - 6,  CY - 28],
-    wishboneA: [CX - 12, CY - 31],
-    wishboneB: [CX - 12, CY - 25],
-    hub:       [CX - 19, CY - 28],
-  },
-  FR: {
-    chassis:   [CX + 6,  CY - 28],
-    wishboneA: [CX + 12, CY - 31],
-    wishboneB: [CX + 12, CY - 25],
-    hub:       [CX + 19, CY - 28],
-  },
-  RL: {
-    chassis:   [CX - 6,  CY + 25],
-    wishboneA: [CX - 12, CY + 22],
-    wishboneB: [CX - 12, CY + 28],
-    hub:       [CX - 19, CY + 25],
-  },
-  RR: {
-    chassis:   [CX + 6,  CY + 25],
-    wishboneA: [CX + 12, CY + 22],
-    wishboneB: [CX + 12, CY + 28],
-    hub:       [CX + 19, CY + 25],
-  },
-}
-
-// Tire dimensions around hub
-const TIRE_W = 10, TIRE_H = 18, RIM_R = 3.5
-
-// Suspension: max_travel_mm maps to this many SVG units of hub displacement
+const WHEEL_R = 6       // tire circle radius (SVG units)
+const WHEEL_SPOKES = 8  // nodes per wheel perimeter
 const MAX_VIS_DISP = 4  // SVG units at full compression
-const MAX_SUSP_MM  = 30 // vehicle suspension travel (mm)
+const MAX_SUSP_MM  = 30 // vehicle max suspension travel
 
-// Compute displaced wheel nodes from suspension_mm value
-function displaceWheel(base, suspMm, side) {
-  // suspMm > 0 = compressed: hub moves inward (toward CX) and slightly forward (-Y)
-  // suspMm < 0 = extended:   hub moves outward and slightly back
-  const frac = Math.max(-1, Math.min(1, suspMm / MAX_SUSP_MM))
-  const inward = side === 'L' ? 1 : -1  // +X = inward for left, -X for right
-  const dx = frac * MAX_VIS_DISP * inward
-  const dy = frac * -1.5  // slight forward shift on compression
-
-  const hub = [base.hub[0] + dx, base.hub[1] + dy]
-  // Wishbones interpolate: they move ~60% of hub displacement
-  const wf = 0.6
-  const wishA = [base.wishboneA[0] + dx * wf, base.wishboneA[1] + dy * wf]
-  const wishB = [base.wishboneB[0] + dx * wf, base.wishboneB[1] + dy * wf]
-  return { chassis: base.chassis, wishboneA: wishA, wishboneB: wishB, hub }
+// ── 1. Base node positions ──────────────────────────────────────
+// Chassis (monocoque outline)
+const CHASSIS = {
+  nose_tip:  [0, -48],
+  fl_ch:     [-6, -32],
+  fr_ch:     [6, -32],
+  cockpit_l: [-8, -5],
+  cockpit_r: [8, -5],
+  rl_ch:     [-6, 25],
+  rr_ch:     [6, 25],
+  rear_tip:  [0, 33],
 }
 
-function pt(node) { return `${node[0]},${node[1]}` }
+// Front suspension — left
+const FSUSP_L = {
+  f_uwi_l: [-6, -31],   // upper wishbone inner (chassis pickup)
+  f_uwo_l: [-14, -31],  // upper wishbone outer
+  f_lwi_l: [-6, -25],   // lower wishbone inner (chassis pickup)
+  f_lwo_l: [-14, -25],  // lower wishbone outer
+  f_hub_l: [-19, -28],  // wheel hub centre
+}
+// Front suspension — right
+const FSUSP_R = {
+  f_uwi_r: [6, -31],
+  f_uwo_r: [14, -31],
+  f_lwi_r: [6, -25],
+  f_lwo_r: [14, -25],
+  f_hub_r: [19, -28],
+}
+// Rear suspension — left
+const RSUSP_L = {
+  r_uwi_l: [-6, 23],
+  r_uwo_l: [-14, 23],
+  r_lwi_l: [-6, 27],
+  r_lwo_l: [-14, 27],
+  r_hub_l: [-19, 25],
+}
+// Rear suspension — right
+const RSUSP_R = {
+  r_uwi_r: [6, 23],
+  r_uwo_r: [14, 23],
+  r_lwi_r: [6, 27],
+  r_lwo_r: [14, 27],
+  r_hub_r: [19, 25],
+}
 
-// ── Rendering ──────────────────────────────────────────────────
+// Aerodynamic nodes
+const AERO = {
+  fw_center: [0, -52],
+  fw_l_tip:  [-21, -52],
+  fw_r_tip:  [21, -52],
+  rw_center: [0, 38],
+  rw_l_tip:  [-16, 38],
+  rw_r_tip:  [16, 38],
+}
+
+// Sidepod nodes
+const SIDEPOD = {
+  sp_fl: [-11, -3],
+  sp_rl: [-11, 18],
+  sp_fr: [11, -3],
+  sp_rr: [11, 18],
+}
+
+// Generate wheel perimeter nodes (8 evenly-spaced points around hub)
+function genWheelNodes(hubKey, hx, hy) {
+  const nodes = { [hubKey]: [hx, hy] }
+  for (let i = 0; i < WHEEL_SPOKES; i++) {
+    const a = (i * Math.PI * 2) / WHEEL_SPOKES
+    nodes[`${hubKey}_w${i}`] = [hx + Math.cos(a) * WHEEL_R, hy + Math.sin(a) * WHEEL_R]
+  }
+  return nodes
+}
+
+// Assemble all base nodes into one flat map
+const BASE_NODES = {
+  ...CHASSIS,
+  ...FSUSP_L, ...FSUSP_R,
+  ...RSUSP_L, ...RSUSP_R,
+  ...AERO, ...SIDEPOD,
+  ...genWheelNodes('f_hub_l', -19, -28),
+  ...genWheelNodes('f_hub_r', 19, -28),
+  ...genWheelNodes('r_hub_l', -19, 25),
+  ...genWheelNodes('r_hub_r', 19, 25),
+}
+
+// ── 2. Beam definitions ─────────────────────────────────────────
+// Each beam: [nodeA, nodeB, group]
+// Groups: 'chassis', 'brace', 'susp', 'wheel_rim', 'wheel_spoke', 'aero', 'sidepod'
+
+const BEAMS = []
+
+// Chassis outline
+const CH_SEQ = ['nose_tip', 'fl_ch', 'cockpit_l', 'rl_ch', 'rear_tip', 'rr_ch', 'cockpit_r', 'fr_ch', 'nose_tip']
+for (let i = 0; i < CH_SEQ.length - 1; i++) BEAMS.push([CH_SEQ[i], CH_SEQ[i + 1], 'chassis'])
+
+// Cross-bracing (structural rigidity)
+BEAMS.push(['fl_ch', 'fr_ch', 'brace'])       // front bulkhead
+BEAMS.push(['rl_ch', 'rr_ch', 'brace'])       // rear bulkhead
+BEAMS.push(['cockpit_l', 'cockpit_r', 'brace']) // cockpit cross
+BEAMS.push(['fl_ch', 'rr_ch', 'brace'])       // diagonal
+BEAMS.push(['fr_ch', 'rl_ch', 'brace'])       // diagonal
+BEAMS.push(['fl_ch', 'cockpit_r', 'brace'])   // front-to-cockpit X
+BEAMS.push(['fr_ch', 'cockpit_l', 'brace'])
+BEAMS.push(['cockpit_l', 'rr_ch', 'brace'])   // cockpit-to-rear X
+BEAMS.push(['cockpit_r', 'rl_ch', 'brace'])
+
+// Suspension beams (double-wishbone per corner)
+function addSuspBeams(uwi, uwo, lwi, lwo, hub) {
+  BEAMS.push([uwi, uwo, 'susp'])  // upper wishbone
+  BEAMS.push([uwo, hub, 'susp'])  // upper outer → hub
+  BEAMS.push([lwi, lwo, 'susp'])  // lower wishbone
+  BEAMS.push([lwo, hub, 'susp'])  // lower outer → hub
+}
+addSuspBeams('f_uwi_l', 'f_uwo_l', 'f_lwi_l', 'f_lwo_l', 'f_hub_l')
+addSuspBeams('f_uwi_r', 'f_uwo_r', 'f_lwi_r', 'f_lwo_r', 'f_hub_r')
+addSuspBeams('r_uwi_l', 'r_uwo_l', 'r_lwi_l', 'r_lwo_l', 'r_hub_l')
+addSuspBeams('r_uwi_r', 'r_uwo_r', 'r_lwi_r', 'r_lwo_r', 'r_hub_r')
+
+// Wheel beams (rim + spokes per wheel)
+function addWheelBeams(hubKey) {
+  for (let i = 0; i < WHEEL_SPOKES; i++) {
+    const cur = `${hubKey}_w${i}`
+    const nxt = `${hubKey}_w${(i + 1) % WHEEL_SPOKES}`
+    BEAMS.push([cur, nxt, 'wheel_rim'])     // rim segment
+    BEAMS.push([hubKey, cur, 'wheel_spoke']) // spoke
+  }
+}
+addWheelBeams('f_hub_l')
+addWheelBeams('f_hub_r')
+addWheelBeams('r_hub_l')
+addWheelBeams('r_hub_r')
+
+// Aero beams
+BEAMS.push(['fw_l_tip', 'fw_center', 'aero'])
+BEAMS.push(['fw_center', 'fw_r_tip', 'aero'])
+BEAMS.push(['fw_center', 'nose_tip', 'aero'])  // nose to front wing
+BEAMS.push(['rw_l_tip', 'rw_center', 'aero'])
+BEAMS.push(['rw_center', 'rw_r_tip', 'aero'])
+BEAMS.push(['rw_center', 'rear_tip', 'aero'])  // tail to rear wing
+
+// Sidepod beams
+BEAMS.push(['sp_fl', 'sp_rl', 'sidepod'])      // left outline
+BEAMS.push(['sp_fl', 'cockpit_l', 'sidepod'])   // attach front to chassis
+BEAMS.push(['sp_rl', 'rl_ch', 'sidepod'])       // attach rear to chassis
+BEAMS.push(['sp_fr', 'sp_rr', 'sidepod'])       // right outline
+BEAMS.push(['sp_fr', 'cockpit_r', 'sidepod'])
+BEAMS.push(['sp_rr', 'rr_ch', 'sidepod'])
+// Sidepod cross-beams (rigidity)
+BEAMS.push(['sp_fl', 'rl_ch', 'sidepod'])
+BEAMS.push(['sp_fr', 'rr_ch', 'sidepod'])
+
+// ── 3. Suspension displacement ──────────────────────────────────
+// Maps each corner to which nodes move and by how much (fraction of hub disp)
+const SUSP_MAP = {
+  FL: { hub: 'f_hub_l', side: 'L', full: ['f_hub_l'], partial: ['f_uwo_l', 'f_lwo_l'] },
+  FR: { hub: 'f_hub_r', side: 'R', full: ['f_hub_r'], partial: ['f_uwo_r', 'f_lwo_r'] },
+  RL: { hub: 'r_hub_l', side: 'L', full: ['r_hub_l'], partial: ['r_uwo_l', 'r_lwo_l'] },
+  RR: { hub: 'r_hub_r', side: 'R', full: ['r_hub_r'], partial: ['r_uwo_r', 'r_lwo_r'] },
+}
+
+function computeDisplacedNodes(suspMm) {
+  const nodes = {}
+  for (const k in BASE_NODES) nodes[k] = [...BASE_NODES[k]]
+
+  for (const corner of ['FL', 'FR', 'RL', 'RR']) {
+    const mm = suspMm[corner] || 0
+    const { hub, side, full, partial } = SUSP_MAP[corner]
+    const frac = Math.max(-1, Math.min(1, mm / MAX_SUSP_MM))
+    const inward = side === 'L' ? 1 : -1
+    const dx = frac * MAX_VIS_DISP * inward
+    const dy = frac * -1.5
+
+    // Hub + all wheel perimeter nodes get full displacement
+    for (const nk of full) {
+      nodes[nk][0] += dx
+      nodes[nk][1] += dy
+    }
+    // Wheel perimeter nodes follow hub fully
+    for (let i = 0; i < WHEEL_SPOKES; i++) {
+      const wk = `${hub}_w${i}`
+      nodes[wk][0] += dx
+      nodes[wk][1] += dy
+    }
+    // Wishbone outer nodes get 70% displacement (arc motion)
+    for (const nk of partial) {
+      nodes[nk][0] += dx * 0.7
+      nodes[nk][1] += dy * 0.7
+    }
+  }
+  return nodes
+}
+
+// ── 4. Beam style lookup ────────────────────────────────────────
+const BEAM_STYLE = {
+  chassis:     { stroke: '#444',    width: 1.0,  opacity: 0.9  },
+  brace:       { stroke: '#282828', width: 0.4,  opacity: 0.35 },
+  susp:        { stroke: '#e10600', width: 0.8,  opacity: 0.65 },
+  wheel_rim:   { stroke: null,      width: 1.2,  opacity: 0.9  }, // colored per-tire
+  wheel_spoke: { stroke: null,      width: 0.4,  opacity: 0.35 },
+  aero:        { stroke: '#888',    width: 1.4,  opacity: 0.8  },
+  sidepod:     { stroke: '#555',    width: 0.8,  opacity: 0.5  },
+}
+
+// ── 5. Identify which hub each wheel beam belongs to ────────────
+const HUB_FOR_CORNER = { f_hub_l: 'FL', f_hub_r: 'FR', r_hub_l: 'RL', r_hub_r: 'RR' }
+const HUBS = Object.keys(HUB_FOR_CORNER)
+
+function hubForBeam(a, b) {
+  for (const h of HUBS) {
+    if (a === h || a.startsWith(h + '_w') || b === h || b.startsWith(h + '_w'))
+      return HUB_FOR_CORNER[h]
+  }
+  return null
+}
+
+// Pre-compute which corner each wheel beam belongs to (avoids per-frame string ops)
+const BEAM_CORNER = BEAMS.map(([a, b, g]) =>
+  (g === 'wheel_rim' || g === 'wheel_spoke') ? hubForBeam(a, b) : null
+)
+
+// ── Rendering ───────────────────────────────────────────────────
 function CarModel({ frame, vehicle, mode }) {
   const opt = vehicle?.tire_optimal_temp_C || 85
   const ovr = vehicle?.tire_overheat_temp_C || 115
 
-  // Compute displaced wheel positions
-  const wheels = useMemo(() => {
+  const nodes = useMemo(() => {
     const s = frame?.suspension_mm || { FL: 0, FR: 0, RL: 0, RR: 0 }
-    return {
-      FL: displaceWheel(WHEEL_BASE.FL, s.FL, 'L'),
-      FR: displaceWheel(WHEEL_BASE.FR, s.FR, 'R'),
-      RL: displaceWheel(WHEEL_BASE.RL, s.RL, 'L'),
-      RR: displaceWheel(WHEEL_BASE.RR, s.RR, 'R'),
-    }
+    return computeDisplacedNodes(s)
   }, [frame?.suspension_mm?.FL, frame?.suspension_mm?.FR,
       frame?.suspension_mm?.RL, frame?.suspension_mm?.RR])
 
   if (!frame) return null
 
-  // Monocoque path
-  const monoPath = [
-    `M${pt(MONO.nose)}`,
-    `L${pt(MONO.noseL)}`, `L${pt(MONO.fBulkL)}`,
-    `L${pt(MONO.cockpitL)}`, `L${pt(MONO.midL)}`,
-    `L${pt(MONO.rBulkL)}`, `L${pt(MONO.tailL)}`,
-    `L${pt(MONO.tailR)}`,
-    `L${pt(MONO.rBulkR)}`, `L${pt(MONO.midR)}`,
-    `L${pt(MONO.cockpitR)}`, `L${pt(MONO.fBulkR)}`,
-    `L${pt(MONO.noseR)}`, 'Z',
-  ].join(' ')
+  // Per-corner tire colors
+  const tireColor = {}
+  const tireLabel = {}
+  for (const id of ['FL', 'FR', 'RL', 'RR']) {
+    const temp = frame.tire_temp_C?.[id] || 25
+    const wear = frame.tire_wear?.[id] || 0
+    if (mode === 'temp') {
+      tireColor[id] = tempToColorSmooth(temp, opt, ovr)
+      tireLabel[id] = { primary: `${temp.toFixed(0)}\u00B0`, secondary: `${(wear * 100).toFixed(0)}%` }
+    } else {
+      tireColor[id] = wearToColor(wear)
+      tireLabel[id] = { primary: `${(wear * 100).toFixed(1)}%`, secondary: `${temp.toFixed(0)}\u00B0` }
+    }
+  }
 
-  // Sidepod paths
-  const sideL = `M${pt(SIDEPOD.lFront)} Q${pt(SIDEPOD.lPeak)} ${pt(SIDEPOD.lRear)}`
-  const sideR = `M${pt(SIDEPOD.rFront)} Q${pt(SIDEPOD.rPeak)} ${pt(SIDEPOD.rRear)}`
+  // Build wheel fill polygons (the 8-node tire outline, filled with tire color)
+  const wheelPolygons = HUBS.map(hubKey => {
+    const corner = HUB_FOR_CORNER[hubKey]
+    const pts = []
+    for (let i = 0; i < WHEEL_SPOKES; i++) {
+      const n = nodes[`${hubKey}_w${i}`]
+      pts.push(`${n[0]},${n[1]}`)
+    }
+    return { corner, hubKey, points: pts.join(' '), color: tireColor[corner] }
+  })
 
   return (
-    <svg viewBox="0 0 160 200" className="car-svg">
-      {/* ── Front wing ── */}
-      <line x1={FRONT_WING.mainL[0]} y1={FRONT_WING.mainL[1]}
-            x2={FRONT_WING.mainR[0]} y2={FRONT_WING.mainR[1]}
-            stroke="#888" strokeWidth={1.8} />
-      <line x1={FRONT_WING.flapL[0]} y1={FRONT_WING.flapL[1]}
-            x2={FRONT_WING.flapR[0]} y2={FRONT_WING.flapR[1]}
-            stroke="#666" strokeWidth={1} />
-      {/* Endplates */}
-      <line x1={FRONT_WING.epLT[0]} y1={FRONT_WING.epLT[1]}
-            x2={FRONT_WING.epLB[0]} y2={FRONT_WING.epLB[1]}
-            stroke="#888" strokeWidth={1.4} />
-      <line x1={FRONT_WING.epRT[0]} y1={FRONT_WING.epRT[1]}
-            x2={FRONT_WING.epRB[0]} y2={FRONT_WING.epRB[1]}
-            stroke="#888" strokeWidth={1.4} />
+    <svg viewBox="-35 -62 70 115" className="car-svg">
+      {/* ── Wheel fill polygons (behind everything) ── */}
+      {wheelPolygons.map(({ corner, points, color }) => (
+        <polygon key={`wf-${corner}`} points={points}
+          fill={color} opacity={0.85} />
+      ))}
 
-      {/* ── Nose cone connector ── */}
-      <line x1={CX} y1={MONO.nose[1]} x2={CX} y2={FRONT_WING.mainL[1]}
-            stroke="#555" strokeWidth={1} />
-
-      {/* ── Monocoque ── */}
-      <path d={monoPath} fill="#151515" stroke="#444" strokeWidth={1} />
-      {/* Centre line */}
-      <line x1={CX} y1={MONO.nose[1] + 4} x2={CX} y2={MONO.tailL[1] - 2}
-            stroke="#252525" strokeWidth={0.5} strokeDasharray="2 1.5" />
-
-      {/* ── Sidepods ── */}
-      <path d={sideL} fill="none" stroke="#555" strokeWidth={2.5} strokeLinecap="round" />
-      <path d={sideR} fill="none" stroke="#555" strokeWidth={2.5} strokeLinecap="round" />
-
-      {/* ── Rear wing ── */}
-      <line x1={REAR_WING.mainL[0]} y1={REAR_WING.mainL[1]}
-            x2={REAR_WING.mainR[0]} y2={REAR_WING.mainR[1]}
-            stroke="#888" strokeWidth={2} />
-      <line x1={REAR_WING.flapL[0]} y1={REAR_WING.flapL[1]}
-            x2={REAR_WING.flapR[0]} y2={REAR_WING.flapR[1]}
-            stroke="#666" strokeWidth={1} />
-      <line x1={REAR_WING.epLT[0]} y1={REAR_WING.epLT[1]}
-            x2={REAR_WING.epLB[0]} y2={REAR_WING.epLB[1]}
-            stroke="#888" strokeWidth={1.4} />
-      <line x1={REAR_WING.epRT[0]} y1={REAR_WING.epRT[1]}
-            x2={REAR_WING.epRB[0]} y2={REAR_WING.epRB[1]}
-            stroke="#888" strokeWidth={1.4} />
-
-      {/* ── Tail connector ── */}
-      <line x1={CX} y1={MONO.tailL[1]} x2={CX} y2={REAR_WING.mainL[1]}
-            stroke="#555" strokeWidth={1} />
-
-      {/* ── Wheel assemblies + suspension ── */}
-      {['FL', 'FR', 'RL', 'RR'].map(id => {
-        const w = wheels[id]
-        const temp = frame.tire_temp_C?.[id] || 25
-        const wear = frame.tire_wear?.[id] || 0
-
-        let tireFill, primary, secondary
-        if (mode === 'temp') {
-          tireFill = tempToColorSmooth(temp, opt, ovr)
-          primary = `${temp.toFixed(0)}\u00B0`
-          secondary = `${(wear * 100).toFixed(0)}%`
-        } else {
-          tireFill = wearToColor(wear)
-          primary = `${(wear * 100).toFixed(1)}%`
-          secondary = `${temp.toFixed(0)}\u00B0`
-        }
-
-        const [hx, hy] = w.hub
-        const tireX = hx - TIRE_W / 2
-        const tireY = hy - TIRE_H / 2
-
+      {/* ── All beams ── */}
+      {BEAMS.map(([a, b, group], i) => {
+        const na = nodes[a], nb = nodes[b]
+        if (!na || !nb) return null
+        const style = BEAM_STYLE[group]
+        const corner = BEAM_CORNER[i]
+        const stroke = style.stroke || (corner ? tireColor[corner] : '#666')
         return (
-          <g key={id}>
-            {/* Suspension wishbones: chassis → wishbone → hub */}
-            <line x1={w.chassis[0]} y1={w.chassis[1]}
-                  x2={w.wishboneA[0]} y2={w.wishboneA[1]}
-                  stroke="#e10600" strokeWidth={0.7} opacity={0.7} />
-            <line x1={w.wishboneA[0]} y1={w.wishboneA[1]}
-                  x2={hx} y2={hy}
-                  stroke="#e10600" strokeWidth={0.7} opacity={0.7} />
-            <line x1={w.chassis[0]} y1={w.chassis[1]}
-                  x2={w.wishboneB[0]} y2={w.wishboneB[1]}
-                  stroke="#e10600" strokeWidth={0.7} opacity={0.5} />
-            <line x1={w.wishboneB[0]} y1={w.wishboneB[1]}
-                  x2={hx} y2={hy}
-                  stroke="#e10600" strokeWidth={0.7} opacity={0.5} />
+          <line key={i}
+            x1={na[0]} y1={na[1]} x2={nb[0]} y2={nb[1]}
+            stroke={stroke} strokeWidth={style.width}
+            opacity={style.opacity} strokeLinecap="round" />
+        )
+      })}
 
-            {/* Wishbone pivot dots */}
-            <circle cx={w.chassis[0]} cy={w.chassis[1]} r={1.2}
-                    fill="#e10600" opacity={0.6} />
-            <circle cx={w.wishboneA[0]} cy={w.wishboneA[1]} r={0.9}
-                    fill="#c44" opacity={0.5} />
-            <circle cx={w.wishboneB[0]} cy={w.wishboneB[1]} r={0.9}
-                    fill="#c44" opacity={0.5} />
+      {/* ── Suspension pivot dots ── */}
+      {['f_uwi_l','f_lwi_l','f_uwi_r','f_lwi_r','r_uwi_l','r_lwi_l','r_uwi_r','r_lwi_r'].map(k => (
+        <circle key={k} cx={nodes[k][0]} cy={nodes[k][1]} r={0.9}
+          fill="#e10600" opacity={0.5} />
+      ))}
+      {['f_uwo_l','f_lwo_l','f_uwo_r','f_lwo_r','r_uwo_l','r_lwo_l','r_uwo_r','r_lwo_r'].map(k => (
+        <circle key={k} cx={nodes[k][0]} cy={nodes[k][1]} r={0.7}
+          fill="#c44" opacity={0.4} />
+      ))}
 
-            {/* Tire */}
-            <rect x={tireX} y={tireY} width={TIRE_W} height={TIRE_H} rx={3}
-                  fill={tireFill} opacity={0.9} />
-            <rect x={tireX} y={tireY} width={TIRE_W} height={TIRE_H} rx={3}
-                  fill="none" stroke="#000" strokeWidth={0.6} opacity={0.4} />
+      {/* ── Hub centre dots ── */}
+      {HUBS.map(h => (
+        <circle key={h} cx={nodes[h][0]} cy={nodes[h][1]} r={1.2}
+          fill="#222" stroke="#444" strokeWidth={0.3} />
+      ))}
 
-            {/* Rim circle */}
-            <circle cx={hx} cy={hy} r={RIM_R}
-                    fill="none" stroke="rgba(0,0,0,0.4)" strokeWidth={0.5} />
-
-            {/* Hub dot */}
-            <circle cx={hx} cy={hy} r={1} fill="#333" />
-
-            {/* Corner label */}
-            <text x={hx} y={tireY - 3} fill="#666" fontSize={6}
-                  textAnchor="middle" fontFamily="monospace">{id}</text>
-
-            {/* Primary value */}
-            <text x={hx} y={hy + 1.5} fill="#000" fontSize={8}
-                  textAnchor="middle" fontFamily="monospace" fontWeight="700">
-              {primary}
-            </text>
-            {/* Secondary value */}
-            <text x={hx} y={hy + 9} fill="rgba(0,0,0,0.5)" fontSize={6}
-                  textAnchor="middle" fontFamily="monospace">
-              {secondary}
-            </text>
+      {/* ── Corner labels + values ── */}
+      {HUBS.map(h => {
+        const corner = HUB_FOR_CORNER[h]
+        const [hx, hy] = nodes[h]
+        const { primary, secondary } = tireLabel[corner]
+        return (
+          <g key={`label-${corner}`}>
+            <text x={hx} y={hy - WHEEL_R - 2.5} fill="#666" fontSize={4.5}
+              textAnchor="middle" fontFamily="monospace">{corner}</text>
+            <text x={hx} y={hy + 1} fill="#000" fontSize={5.5}
+              textAnchor="middle" fontFamily="monospace" fontWeight="700">{primary}</text>
+            <text x={hx} y={hy + 6} fill="rgba(0,0,0,0.45)" fontSize={4}
+              textAnchor="middle" fontFamily="monospace">{secondary}</text>
           </g>
         )
       })}
