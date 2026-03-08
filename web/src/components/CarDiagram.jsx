@@ -31,7 +31,7 @@ function CarDiagram({ frame, vehicle }) {
           const color = tempToColorSmooth(t.temp || 25, opt, ovr)
           const suspFrac = Math.abs(t.susp || 0) / maxTravel
           const suspH = Math.min(suspFrac * 20, 20)
-          const suspColor = (t.susp || 0) > 0 ? '#e10600' : '#4a90e2'
+          const suspColor = (t.susp || 0) > 0 ? '#ff3d3d' : '#4a90e2'
 
           return (
             <g key={t.id}>

@@ -451,7 +451,7 @@ export default function TrackMap({ trackNodes, racingLineData, speedData, brakin
                 <line x1={s.x1+ex} y1={s.y1+ey} x2={s.x2+ex} y2={s.y2+ey}
                   stroke="white" strokeWidth={2.5} strokeLinecap="round" />
                 <line x1={s.x1+ex} y1={s.y1+ey} x2={s.x2+ex} y2={s.y2+ey}
-                  stroke="#e10600" strokeWidth={2.5} strokeLinecap="round"
+                  stroke="#ff3d3d" strokeWidth={2.5} strokeLinecap="round"
                   strokeDasharray="5 5" />
               </g>
             )
@@ -466,7 +466,7 @@ export default function TrackMap({ trackNodes, racingLineData, speedData, brakin
                 <line x1={s.x1+ex} y1={s.y1+ey} x2={s.x2+ex} y2={s.y2+ey}
                   stroke="white" strokeWidth={2.5} strokeLinecap="round" />
                 <line x1={s.x1+ex} y1={s.y1+ey} x2={s.x2+ex} y2={s.y2+ey}
-                  stroke="#e10600" strokeWidth={2.5} strokeLinecap="round"
+                  stroke="#ff3d3d" strokeWidth={2.5} strokeLinecap="round"
                   strokeDasharray="5 5" />
               </g>
             )
@@ -552,7 +552,7 @@ export default function TrackMap({ trackNodes, racingLineData, speedData, brakin
             return (
               <line key={`trail-${i}`}
                 x1={prev.x} y1={prev.y} x2={pt.x} y2={pt.y}
-                stroke="#e10600" strokeWidth={Math.max(0.5, pt.t * 4)}
+                stroke="#00d4d4" strokeWidth={Math.max(0.5, pt.t * 4)}
                 strokeLinecap="round"
                 opacity={pt.t * 0.7} />
             )
@@ -561,7 +561,7 @@ export default function TrackMap({ trackNodes, racingLineData, speedData, brakin
           {/* ── Car arrow (directional triangle) ── */}
           <g transform={`translate(${carPos.x},${carPos.y}) rotate(${headingDeg.toFixed(1)})`}>
             <polygon points="0,-8 5,6 -5,6"
-              fill="#e10600" stroke="white" strokeWidth={1.2}
+              fill="#00d4d4" stroke="white" strokeWidth={1.2}
               strokeLinejoin="round" />
           </g>
         </svg>
@@ -586,7 +586,7 @@ export default function TrackMap({ trackNodes, racingLineData, speedData, brakin
         )}
         <span className="legend-item">
           <svg width="10" height="10" style={{ display:'inline-block', verticalAlign:'middle' }}>
-            <polygon points="5,1 9,9 1,9" fill="#e10600" stroke="white" strokeWidth="1" />
+            <polygon points="5,1 9,9 1,9" fill="#00d4d4" stroke="white" strokeWidth="1" />
           </svg>
           &nbsp;Car
         </span>
@@ -617,7 +617,7 @@ export default function TrackMap({ trackNodes, racingLineData, speedData, brakin
         <span className="legend-item">
           <svg width="18" height="4" style={{ display:'inline-block', verticalAlign:'middle' }}>
             <line x1="0" y1="2" x2="18" y2="2" stroke="white" strokeWidth="2.5" />
-            <line x1="0" y1="2" x2="18" y2="2" stroke="#e10600" strokeWidth="2.5" strokeDasharray="5 5" />
+            <line x1="0" y1="2" x2="18" y2="2" stroke="#ff3d3d" strokeWidth="2.5" strokeDasharray="5 5" />
           </svg>
           &nbsp;Kerbs
         </span>

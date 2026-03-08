@@ -47,11 +47,11 @@ function RevCounter({ rpm, maxRpm, shiftRpm }) {
         {/* Background arc */}
         <path d={arcPath(CX, CY, R, START_ANGLE, END_ANGLE)} fill="none" stroke="#2a2a2a" strokeWidth={8} strokeLinecap="round" />
         {/* Red zone */}
-        <path d={arcPath(CX, CY, R, START_ANGLE + redZoneStart * RANGE, END_ANGLE)} fill="none" stroke="rgba(225,6,0,0.3)" strokeWidth={8} strokeLinecap="round" />
+        <path d={arcPath(CX, CY, R, START_ANGLE + redZoneStart * RANGE, END_ANGLE)} fill="none" stroke="rgba(255,61,61,0.3)" strokeWidth={8} strokeLinecap="round" />
         {ticks}
         {/* Needle */}
         <line x1={CX} y1={CY} x2={needleEnd.x} y2={needleEnd.y}
-              stroke={rpm >= shiftRpm ? '#e10600' : '#e0e0e0'} strokeWidth={2} strokeLinecap="round" />
+              stroke={rpm >= shiftRpm ? '#ff3d3d' : '#e0e0e0'} strokeWidth={2} strokeLinecap="round" />
         <circle cx={CX} cy={CY} r={4} fill="#333" stroke="#666" strokeWidth={1} />
         {/* Center value */}
         <text x={CX} y={CY + 28} fill="#e0e0e0" fontSize={14} fontWeight="700" textAnchor="middle" fontFamily="'Courier New', monospace">

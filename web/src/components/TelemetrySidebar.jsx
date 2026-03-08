@@ -2,10 +2,10 @@ import { useState, memo } from 'react'
 import CarModel from './CarModel'
 
 function statusColor(frac) {
-  if (frac < 0.4) return '#7ed321'
+  if (frac < 0.4) return '#00e676'
   if (frac < 0.7) return '#f5a623'
   if (frac < 0.9) return '#ff6b00'
-  return '#e10600'
+  return '#ff3d3d'
 }
 
 function StatusBar({ label, value, fraction }) {

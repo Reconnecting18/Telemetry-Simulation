@@ -2,9 +2,9 @@ import { memo } from 'react'
 
 function pressureColor(psi, cold) {
   const diff = Math.abs(psi - cold)
-  if (diff < 1.0) return '#7ed321'
+  if (diff < 1.0) return '#00e676'
   if (diff < 2.5) return '#f5a623'
-  return '#e10600'
+  return '#ff3d3d'
 }
 
 function TirePressure({ frame, coldPressure }) {

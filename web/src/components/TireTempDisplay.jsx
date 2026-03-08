@@ -100,7 +100,7 @@ function DetailedView({ frame, vehicle, optimal, overheat }) {
         const textX = isLeft ? x - 4 : x + TW + 4
         const anchor = isLeft ? 'end' : 'start'
         const psiDiff = Math.abs(psi - coldPsi)
-        const psiColor = psiDiff < 1 ? '#7ed321' : psiDiff < 2.5 ? '#f5a623' : '#e10600'
+        const psiColor = psiDiff < 1 ? '#00e676' : psiDiff < 2.5 ? '#f5a623' : '#ff3d3d'
 
         return (
           <g key={id}>

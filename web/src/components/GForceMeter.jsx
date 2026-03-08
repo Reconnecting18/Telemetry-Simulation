@@ -10,7 +10,7 @@ function GForceMeter({ lateralG, longitudinalG }) {
   const dotX = CX + lateralG * SCALE
   const dotY = CY - longitudinalG * SCALE
   const totalG = Math.sqrt(lateralG * lateralG + longitudinalG * longitudinalG)
-  const color = totalG < 2 ? '#7ed321' : totalG < 4 ? '#f5a623' : '#e10600'
+  const color = totalG < 2 ? '#00e676' : totalG < 4 ? '#f5a623' : '#ff3d3d'
 
   const circles = []
   for (let g = 1; g <= MAX_G; g++) {

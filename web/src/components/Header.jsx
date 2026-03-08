@@ -6,7 +6,7 @@ const END_LABELS = {
 }
 
 const WEATHER_ICONS = {
-  dry:  { symbol: '\u2600', color: '#f5c518' },   // sun
+  dry:  { symbol: '\u2600', color: '#f5a623' },   // sun
   damp: { symbol: '\u26C5', color: '#8899aa' },   // sun behind cloud
   wet:  { symbol: '\uD83C\uDF27\uFE0F', color: '#5588cc' }, // rain
 }

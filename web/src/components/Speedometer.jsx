@@ -23,7 +23,7 @@ function Speedometer({ velocity_ms, maxSpeed }) {
   const angle = START_ANGLE + fraction * RANGE
 
   // Color based on speed fraction
-  const color = fraction < 0.5 ? '#7ed321' : fraction < 0.8 ? '#f5a623' : '#e10600'
+  const color = fraction < 0.5 ? '#00e676' : fraction < 0.8 ? '#f5a623' : '#ff3d3d'
 
   // Tick marks
   const ticks = []

@@ -144,12 +144,12 @@ export function tireTempColor(tempC) {
 //   40-20%  = canvas/white showing through rubber
 //   <20%    = warning red tint (worn to canvas)
 //
-// compound base colors: soft=#c62828, medium=#fbc02d, hard=#e0e0e0
+// compound base colors: soft=#ff3d3d, medium=#f5a623, hard=#cccccc
 
 const COMPOUND_BASE = {
-  soft:   { r: 0xc6, g: 0x28, b: 0x28 },
-  medium: { r: 0xfb, g: 0xc0, b: 0x2d },
-  hard:   { r: 0xe0, g: 0xe0, b: 0xe0 },
+  soft:   { r: 0xff, g: 0x3d, b: 0x3d },
+  medium: { r: 0xf5, g: 0xa6, b: 0x23 },
+  hard:   { r: 0xcc, g: 0xcc, b: 0xcc },
 }
 
 export function tireWearColor(wearPct, compound = 'medium') {
@@ -210,4 +210,4 @@ export function pressureFraction(psi) {
 // ═══════════════════════════════════════════════════════════════════
 
 export const COMPOUND_LABEL = { soft: 'S', medium: 'M', hard: 'H' }
-export const COMPOUND_COLOR = { soft: '#c62828', medium: '#fbc02d', hard: '#e0e0e0' }
+export const COMPOUND_COLOR = { soft: '#ff3d3d', medium: '#f5a623', hard: '#cccccc' }

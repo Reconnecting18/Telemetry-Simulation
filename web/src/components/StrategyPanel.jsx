@@ -2,9 +2,9 @@ import { useState, memo, useCallback } from 'react'
 
 // ── Constants ──
 const COMPOUNDS = [
-  { id: 'S', label: 'Soft',   color: '#e10600', bg: 'rgba(225,6,0,0.15)' },
-  { id: 'M', label: 'Medium', color: '#f5c518', bg: 'rgba(245,197,24,0.15)' },
-  { id: 'H', label: 'Hard',   color: '#ccc',    bg: 'rgba(200,200,200,0.1)' },
+  { id: 'S', label: 'Soft',   color: '#ff3d3d', bg: 'rgba(255,61,61,0.15)' },
+  { id: 'M', label: 'Medium', color: '#f5a623', bg: 'rgba(245,166,35,0.15)' },
+  { id: 'H', label: 'Hard',   color: '#cccccc', bg: 'rgba(204,204,204,0.1)' },
 ]
 
 const WEATHER_OPTIONS = ['Dry', 'Damp', 'Wet']
@@ -198,7 +198,7 @@ function StintRow({ stint, index, totalLaps, stints, onChange, onRemove }) {
 function TireWearMini({ wear, compound }) {
   const c = COMPOUNDS.find(x => x.id === compound) || COMPOUNDS[1]
   const pct = ((wear || 0) * 100).toFixed(0)
-  const color = wear < 0.4 ? '#7ed321' : wear < 0.7 ? '#f5a623' : wear < 0.9 ? '#ff6b00' : '#e10600'
+  const color = wear < 0.4 ? '#00e676' : wear < 0.7 ? '#f5a623' : wear < 0.9 ? '#ff6b00' : '#ff3d3d'
   return (
     <div className="tire-wear-mini">
       <div className="tire-wear-mini-bar">

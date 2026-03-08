@@ -4,9 +4,9 @@ const SPEEDS = [0.25, 0.5, 1, 2, 5]
 
 // Compound colors for stint backgrounds and pit markers
 const COMPOUND = {
-  soft:   { bg: 'rgba(198,40,40,0.12)',  mark: '#c62828' },
-  medium: { bg: 'rgba(251,192,45,0.12)', mark: '#fbc02d' },
-  hard:   { bg: 'rgba(224,224,224,0.12)', mark: '#e0e0e0' },
+  soft:   { bg: 'rgba(255,61,61,0.12)',   mark: '#ff3d3d' },
+  medium: { bg: 'rgba(245,166,35,0.12)',  mark: '#f5a623' },
+  hard:   { bg: 'rgba(204,204,204,0.12)', mark: '#cccccc' },
 }
 
 function formatTime(s) {
@@ -123,7 +123,7 @@ export default function PlaybackControls({
         {/* Current position triangle */}
         <div className="timeline-cursor" style={{ left: `${frac * 100}%` }}>
           <svg width="10" height="8" viewBox="0 0 10 8">
-            <polygon points="5,0 10,8 0,8" fill="#fff" />
+            <polygon points="5,0 10,8 0,8" fill="#00d4d4" />
           </svg>
         </div>
 

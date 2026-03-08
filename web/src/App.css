@@ -2,15 +2,15 @@
 
 body {
   background: #0a0a0a;
-  color: #e0e0e0;
+  color: #ffffff;
   font-family: 'Segoe UI', system-ui, sans-serif;
   min-height: 100vh;
 }
 
 /* ---- Header ---- */
 header {
-  background: #111;
-  border-bottom: 2px solid #e10600;
+  background: #111111;
+  border-bottom: 1px solid #00d4d4;
   padding: 10px 20px;
   display: flex;
   align-items: center;
@@ -26,7 +26,7 @@ header {
   white-space: nowrap;
 }
 
-.accent { color: #e10600; margin-right: 6px; }
+.accent { color: #00d4d4; margin-right: 6px; }
 
 .header-stats {
   display: flex;
@@ -41,7 +41,7 @@ header {
   align-items: center;
   gap: 8px;
   background: #161616;
-  border: 1px solid #222;
+  border: 1px solid #1e1e1e;
   border-radius: 4px;
   padding: 4px 10px;
   flex-shrink: 0;
@@ -68,15 +68,16 @@ header {
   font-size: 0.45rem;
   text-transform: uppercase;
   letter-spacing: 0.06em;
-  color: #555;
+  color: #555555;
   width: 28px;
 }
 
 .weather-temp-value {
   font-family: 'Courier New', monospace;
   font-size: 0.65rem;
-  color: #d0d0d0;
+  color: #ffffff;
   font-weight: 600;
+  font-variant-numeric: tabular-nums;
 }
 
 .weather-cond {
@@ -97,20 +98,21 @@ header {
   font-size: 0.55rem;
   text-transform: uppercase;
   letter-spacing: 0.08em;
-  color: #555;
+  color: #555555;
 }
 
 .stat-value {
   font-family: 'Courier New', monospace;
   font-size: 0.8rem;
-  color: #d0d0d0;
+  color: #ffffff;
   font-weight: 600;
+  font-variant-numeric: tabular-nums;
 }
 
 /* ---- Playback Controls + Race Timeline ---- */
 .playback-controls {
   background: #0e0e0e;
-  border-bottom: 1px solid #1a1a1a;
+  border-bottom: 1px solid #1e1e1e;
   padding: 8px 20px 4px;
   display: flex;
   align-items: flex-start;
@@ -125,8 +127,8 @@ header {
 }
 
 .play-btn {
-  background: #e10600;
-  color: white;
+  background: #00d4d4;
+  color: #0a0a0a;
   border: none;
   border-radius: 4px;
   width: 34px;
@@ -137,14 +139,15 @@ header {
   align-items: center;
   justify-content: center;
 }
-.play-btn:hover { background: #ff1a0e; }
+.play-btn:hover { background: #00e8e8; }
 
 .time-display {
   font-family: 'Courier New', monospace;
   font-size: 0.65rem;
-  color: #555;
+  color: #555555;
   white-space: nowrap;
   min-width: 80px;
+  font-variant-numeric: tabular-nums;
 }
 
 .speed-btns { display: flex; gap: 3px; }
@@ -152,18 +155,18 @@ header {
 .speed-btn {
   background: #161616;
   color: #666;
-  border: 1px solid #222;
-  border-radius: 3px;
+  border: 1px solid #1e1e1e;
+  border-radius: 4px;
   padding: 2px 7px;
   font-size: 0.65rem;
   cursor: pointer;
 }
 .speed-btn.active {
-  background: #e10600;
-  color: white;
-  border-color: #e10600;
+  background: #00d4d4;
+  color: #0a0a0a;
+  border-color: #00d4d4;
 }
-.speed-btn:hover { border-color: #e10600; }
+.speed-btn:hover:not(.active) { border-color: #00d4d4; }
 
 /* Race Timeline Bar */
 .race-timeline {
@@ -171,7 +174,7 @@ header {
   position: relative;
   height: 24px;
   background: #161616;
-  border-radius: 3px;
+  border-radius: 4px;
   cursor: pointer;
   touch-action: none;
   user-select: none;
@@ -182,7 +185,7 @@ header {
   position: absolute;
   top: 0;
   height: 100%;
-  border-radius: 3px;
+  border-radius: 4px;
   pointer-events: none;
 }
 
@@ -196,7 +199,7 @@ header {
 }
 .lap-tick.major {
   height: 10px;
-  background: #555;
+  background: #555555;
 }
 
 .timeline-progress {
@@ -204,8 +207,8 @@ header {
   top: 0;
   left: 0;
   height: 100%;
-  background: rgba(225, 6, 0, 0.08);
-  border-radius: 3px 0 0 3px;
+  background: rgba(0, 212, 212, 0.08);
+  border-radius: 4px 0 0 4px;
   pointer-events: none;
 }
 
@@ -214,7 +217,7 @@ header {
   top: -2px;
   transform: translateX(-5px);
   pointer-events: none;
-  filter: drop-shadow(0 0 2px rgba(255,255,255,0.4));
+  filter: drop-shadow(0 0 2px rgba(0,212,212,0.6));
   z-index: 2;
 }
 
@@ -234,6 +237,7 @@ header {
   font-size: 0.5rem;
   color: #444;
   line-height: 12px;
+  font-variant-numeric: tabular-nums;
 }
 
 /* ==== MAIN LAYOUT ==== */
@@ -253,11 +257,11 @@ header {
 /* ---- Track Panel (Left) ---- */
 .track-panel {
   background: #0a0a0a;
-  padding: 8px;
+  padding: 16px;
   overflow: hidden;
   display: flex;
   flex-direction: column;
-  border-right: 1px solid #1a1a1a;
+  border-right: 1px solid #1e1e1e;
 }
 
 .track-map-header {
@@ -272,7 +276,7 @@ header {
   font-size: 0.65rem;
   text-transform: uppercase;
   letter-spacing: 0.1em;
-  color: #555;
+  color: #555555;
   margin: 0;
 }
 
@@ -281,8 +285,8 @@ header {
 .map-btn {
   background: #161616;
   color: #666;
-  border: 1px solid #222;
-  border-radius: 3px;
+  border: 1px solid #1e1e1e;
+  border-radius: 4px;
   width: 22px;
   height: 18px;
   font-size: 0.7rem;
@@ -291,7 +295,7 @@ header {
   align-items: center;
   justify-content: center;
 }
-.map-btn:hover { border-color: #e10600; color: #e0e0e0; }
+.map-btn:hover { border-color: #00d4d4; color: #ffffff; }
 
 .track-map-viewport {
   flex: 1;
@@ -316,7 +320,7 @@ header {
   align-items: center;
   gap: 4px;
   font-size: 0.55rem;
-  color: #555;
+  color: #555555;
 }
 
 .legend-line {
@@ -333,8 +337,8 @@ header {
   border-radius: 50%;
 }
 
-.legend-yellow { background: #f5c518; }
-.legend-red    { background: #e10600; }
+.legend-yellow { background: #f5a623; }
+.legend-red    { background: #ff3d3d; }
 
 /* ---- Content Area (Right of track map) ---- */
 .content-area {
@@ -350,15 +354,15 @@ header {
   grid-template-columns: 1fr 1fr;
   flex: 6;
   min-height: 0;
-  border-bottom: 1px solid #1a1a1a;
+  border-bottom: 1px solid #1e1e1e;
 }
 
 /* Car panel (center) */
 .car-panel {
   display: flex;
   flex-direction: column;
-  padding: 10px 14px;
-  border-right: 1px solid #1a1a1a;
+  padding: 16px;
+  border-right: 1px solid #1e1e1e;
   min-height: 0;
 }
 
@@ -372,7 +376,7 @@ header {
   flex: 1;
   background: #161616;
   color: #666;
-  border: 1px solid #222;
+  border: 1px solid #1e1e1e;
   border-radius: 4px;
   padding: 5px 0;
   font-size: 0.65rem;
@@ -383,11 +387,11 @@ header {
   transition: all 0.15s;
 }
 .toggle-btn.active {
-  background: #e10600;
-  color: #fff;
-  border-color: #e10600;
+  background: #00d4d4;
+  color: #0a0a0a;
+  border-color: #00d4d4;
 }
-.toggle-btn:hover:not(.active) { border-color: #444; color: #aaa; }
+.toggle-btn:hover:not(.active) { border-color: #00d4d4; color: #888888; }
 
 .car-svg {
   display: block;
@@ -400,7 +404,7 @@ header {
 
 /* Tire detail panel (right) */
 .tire-panel {
-  padding: 10px;
+  padding: 16px;
   min-height: 0;
   overflow-y: auto;
 }
@@ -419,9 +423,9 @@ header {
 
 .tire-card {
   background: #141414;
-  border: 1px solid #222;
-  border-radius: 6px;
-  padding: 8px;
+  border: 1px solid #1e1e1e;
+  border-radius: 4px;
+  padding: 16px;
   display: flex;
   flex-direction: column;
   gap: 4px;
@@ -438,13 +442,14 @@ header {
   font-family: 'Courier New', monospace;
   font-size: 0.7rem;
   font-weight: 700;
-  color: #888;
+  color: #888888;
 }
 
 .tire-card-psi {
   font-family: 'Courier New', monospace;
   font-size: 0.6rem;
   font-weight: 600;
+  font-variant-numeric: tabular-nums;
 }
 
 .tire-card-body {
@@ -483,15 +488,16 @@ header {
 
 .tire-stat-label {
   font-size: 0.45rem;
-  color: #555;
+  color: #555555;
   text-transform: uppercase;
 }
 
 .tire-stat-val {
   font-family: 'Courier New', monospace;
   font-size: 0.6rem;
-  color: #aaa;
+  color: #888888;
   font-weight: 600;
+  font-variant-numeric: tabular-nums;
 }
 
 /* Bottom row: health + strategy (40%) */
@@ -506,21 +512,21 @@ header {
   font-size: 0.6rem;
   text-transform: uppercase;
   letter-spacing: 0.1em;
-  color: #555;
+  color: #555555;
   margin-bottom: 10px;
 }
 
 .health-panel {
-  padding: 12px 16px;
-  border-right: 1px solid #1a1a1a;
+  padding: 16px;
+  border-right: 1px solid #1e1e1e;
 }
 
 .strategy-panel {
-  padding: 8px 12px;
+  padding: 16px;
   overflow-y: auto;
 }
 
-/* ── Strategy Panel Container ── */
+/* -- Strategy Panel Container -- */
 .strategy-panel-container {
   display: flex;
   flex-direction: column;
@@ -538,9 +544,9 @@ header {
 
 .strat-view-btn {
   background: #161616;
-  color: #555;
-  border: 1px solid #222;
-  border-radius: 3px;
+  color: #555555;
+  border: 1px solid #1e1e1e;
+  border-radius: 4px;
   padding: 2px 8px;
   font-size: 0.55rem;
   font-weight: 600;
@@ -548,11 +554,11 @@ header {
   letter-spacing: 0.05em;
   cursor: pointer;
 }
-.strat-view-btn.active { background: #e10600; color: #fff; border-color: #e10600; }
-.strat-view-btn:hover:not(.active):not(:disabled) { border-color: #444; color: #aaa; }
+.strat-view-btn.active { background: #00d4d4; color: #0a0a0a; border-color: #00d4d4; }
+.strat-view-btn:hover:not(.active):not(:disabled) { border-color: #00d4d4; color: #888888; }
 .strat-view-btn:disabled { opacity: 0.3; cursor: default; }
 
-/* ── Strategy Builder ── */
+/* -- Strategy Builder -- */
 .strategy-builder {
   display: flex;
   flex-direction: column;
@@ -568,7 +574,7 @@ header {
   font-size: 0.5rem;
   text-transform: uppercase;
   letter-spacing: 0.08em;
-  color: #555;
+  color: #555555;
 }
 
 .strat-duration-group { display: flex; align-items: center; gap: 6px; }
@@ -577,17 +583,17 @@ header {
 
 .strat-dur-btn {
   background: #161616;
-  color: #555;
-  border: 1px solid #222;
+  color: #555555;
+  border: 1px solid #1e1e1e;
   padding: 2px 6px;
   font-size: 0.55rem;
   cursor: pointer;
 }
-.strat-dur-btn:first-child { border-radius: 3px 0 0 3px; }
-.strat-dur-btn:last-child  { border-radius: 0 3px 3px 0; }
-.strat-dur-btn.active { background: #222; color: #ddd; border-color: #444; }
+.strat-dur-btn:first-child { border-radius: 4px 0 0 4px; }
+.strat-dur-btn:last-child  { border-radius: 0 4px 4px 0; }
+.strat-dur-btn.active { background: #00d4d4; color: #0a0a0a; border-color: #00d4d4; }
 
-/* ── Stint Section ── */
+/* -- Stint Section -- */
 .strat-stints-section { display: flex; flex-direction: column; gap: 6px; }
 
 .strat-section-header {
@@ -600,32 +606,32 @@ header {
   font-size: 0.5rem;
   text-transform: uppercase;
   letter-spacing: 0.08em;
-  color: #555;
+  color: #555555;
   font-weight: 600;
 }
 
 .strat-add-stint {
   background: transparent;
-  color: #e10600;
-  border: 1px dashed #e10600;
-  border-radius: 3px;
+  color: #00d4d4;
+  border: 1px dashed #00d4d4;
+  border-radius: 4px;
   padding: 2px 8px;
   font-size: 0.55rem;
   font-weight: 600;
   cursor: pointer;
 }
-.strat-add-stint:hover { background: rgba(225,6,0,0.1); }
+.strat-add-stint:hover { background: rgba(0,212,212,0.1); }
 .strat-add-stint:disabled { opacity: 0.3; cursor: default; }
 
 .strat-stint-list { display: flex; flex-direction: column; gap: 4px; }
 
-/* ── Stint Row ── */
+/* -- Stint Row -- */
 .stint-row {
-  background: #111;
-  border: 1px solid #1a1a1a;
-  border-left: 3px solid #f5c518;
+  background: #111111;
+  border: 1px solid #1e1e1e;
+  border-left: 1px solid #f5a623;
   border-radius: 4px;
-  padding: 6px 8px;
+  padding: 16px;
 }
 
 .stint-header {
@@ -639,26 +645,28 @@ header {
   font-family: 'Courier New', monospace;
   font-size: 0.6rem;
   font-weight: 700;
-  color: #aaa;
+  color: #888888;
+  font-variant-numeric: tabular-nums;
 }
 
 .stint-laps {
   font-family: 'Courier New', monospace;
   font-size: 0.55rem;
-  color: #555;
+  color: #555555;
+  font-variant-numeric: tabular-nums;
 }
 
 .stint-remove {
   margin-left: auto;
   background: none;
   border: none;
-  color: #555;
+  color: #555555;
   font-size: 0.8rem;
   cursor: pointer;
   padding: 0 4px;
   line-height: 1;
 }
-.stint-remove:hover { color: #e10600; }
+.stint-remove:hover { color: #ff3d3d; }
 
 .stint-body { display: flex; flex-direction: column; gap: 5px; }
 
@@ -668,7 +676,7 @@ header {
   font-size: 0.45rem;
   text-transform: uppercase;
   letter-spacing: 0.06em;
-  color: #444;
+  color: #555555;
 }
 
 .stint-field-pair { display: flex; gap: 10px; }
@@ -679,8 +687,8 @@ header {
 
 .compound-btn {
   background: transparent;
-  border: 1px solid #333;
-  border-radius: 3px;
+  border: 1px solid #1e1e1e;
+  border-radius: 4px;
   padding: 1px 8px;
   font-family: 'Courier New', monospace;
   font-size: 0.6rem;
@@ -688,29 +696,30 @@ header {
   cursor: pointer;
   transition: all 0.1s;
 }
-.compound-btn:hover { border-color: #555; }
+.compound-btn:hover { border-color: #555555; }
 
 /* Input group */
 .stint-input-group { display: flex; align-items: center; gap: 4px; }
 
 .stint-input {
   background: #161616;
-  border: 1px solid #222;
-  border-radius: 3px;
-  color: #ddd;
+  border: 1px solid #1e1e1e;
+  border-radius: 4px;
+  color: #ffffff;
   font-family: 'Courier New', monospace;
   font-size: 0.6rem;
   padding: 2px 5px;
   width: 48px;
   text-align: right;
+  font-variant-numeric: tabular-nums;
 }
-.stint-input:focus { outline: none; border-color: #e10600; }
+.stint-input:focus { outline: none; border-color: #00d4d4; }
 
 .stint-input-lg { width: 52px; }
 
 .stint-input-unit {
   font-size: 0.5rem;
-  color: #444;
+  color: #555555;
 }
 
 /* Pit actions */
@@ -735,22 +744,22 @@ header {
   appearance: none;
   width: 10px;
   height: 10px;
-  border: 1px solid #333;
+  border: 1px solid #1e1e1e;
   border-radius: 2px;
   background: #161616;
   cursor: pointer;
   position: relative;
 }
 .pit-check input[type="checkbox"]:checked {
-  background: #e10600;
-  border-color: #e10600;
+  background: #00d4d4;
+  border-color: #00d4d4;
 }
 .pit-check input[type="checkbox"]:checked::after {
   content: '';
   position: absolute;
   left: 2px; top: 0px;
   width: 3px; height: 6px;
-  border: solid #fff;
+  border: solid #0a0a0a;
   border-width: 0 1.5px 1.5px 0;
   transform: rotate(45deg);
 }
@@ -762,7 +771,7 @@ header {
   margin-top: 2px;
 }
 
-/* ── Simulation Modifiers ── */
+/* -- Simulation Modifiers -- */
 .strat-modifiers { display: flex; flex-direction: column; gap: 6px; }
 
 .strat-mod-grid { display: flex; flex-direction: column; gap: 4px; }
@@ -777,7 +786,7 @@ header {
   font-size: 0.5rem;
   text-transform: uppercase;
   letter-spacing: 0.05em;
-  color: #444;
+  color: #555555;
   width: 64px;
   flex-shrink: 0;
 }
@@ -786,15 +795,15 @@ header {
 
 .strat-multi-btn {
   background: #161616;
-  color: #555;
-  border: 1px solid #222;
-  border-radius: 3px;
+  color: #555555;
+  border: 1px solid #1e1e1e;
+  border-radius: 4px;
   padding: 1px 7px;
   font-size: 0.55rem;
   cursor: pointer;
 }
-.strat-multi-btn.active { background: #222; color: #ddd; border-color: #444; }
-.strat-multi-btn:hover:not(.active) { border-color: #333; }
+.strat-multi-btn.active { background: #00d4d4; color: #0a0a0a; border-color: #00d4d4; }
+.strat-multi-btn:hover:not(.active) { border-color: #00d4d4; }
 
 .strat-slider-row {
   display: flex;
@@ -806,7 +815,7 @@ header {
   font-size: 0.5rem;
   text-transform: uppercase;
   letter-spacing: 0.05em;
-  color: #444;
+  color: #555555;
   width: 64px;
   flex-shrink: 0;
 }
@@ -815,7 +824,7 @@ header {
   flex: 1;
   height: 4px;
   appearance: none;
-  background: #222;
+  background: #1e1e1e;
   border-radius: 2px;
   outline: none;
 }
@@ -824,16 +833,17 @@ header {
   width: 10px;
   height: 10px;
   border-radius: 50%;
-  background: #e10600;
+  background: #00d4d4;
   cursor: pointer;
 }
 
 .strat-slider-value {
   font-family: 'Courier New', monospace;
   font-size: 0.55rem;
-  color: #666;
+  color: #888888;
   min-width: 32px;
   text-align: right;
+  font-variant-numeric: tabular-nums;
 }
 
 /* Toggle switch */
@@ -846,7 +856,7 @@ header {
 .strat-toggle-label {
   font-size: 0.5rem;
   text-transform: uppercase;
-  color: #444;
+  color: #555555;
   width: 64px;
 }
 
@@ -854,13 +864,13 @@ header {
   width: 24px;
   height: 12px;
   border-radius: 6px;
-  background: #222;
-  border: 1px solid #333;
+  background: #1e1e1e;
+  border: 1px solid #1e1e1e;
   cursor: pointer;
   position: relative;
   padding: 0;
 }
-.strat-toggle-switch.on { background: #e10600; border-color: #e10600; }
+.strat-toggle-switch.on { background: #00d4d4; border-color: #00d4d4; }
 
 .strat-toggle-knob {
   position: absolute;
@@ -874,10 +884,10 @@ header {
 }
 .strat-toggle-switch.on .strat-toggle-knob { left: 13px; }
 
-/* ── Run Button ── */
+/* -- Run Button -- */
 .strat-run-btn {
-  background: #e10600;
-  color: #fff;
+  background: #00d4d4;
+  color: #0a0a0a;
   border: none;
   border-radius: 4px;
   padding: 8px 0;
@@ -889,9 +899,9 @@ header {
   transition: background 0.15s;
   margin-top: auto;
 }
-.strat-run-btn:hover { background: #ff1a0e; }
+.strat-run-btn:hover { background: #00e8e8; }
 
-/* ── Strategy Summary ── */
+/* -- Strategy Summary -- */
 .strategy-summary { display: flex; flex-direction: column; gap: 10px; }
 
 .summary-stats {
@@ -901,29 +911,30 @@ header {
 }
 
 .summary-stat {
-  background: #111;
-  border: 1px solid #1a1a1a;
+  background: #111111;
+  border: 1px solid #1e1e1e;
   border-radius: 4px;
-  padding: 6px 8px;
+  padding: 16px;
   display: flex;
   flex-direction: column;
   gap: 2px;
 }
 
-.summary-stat.highlight { border-color: #e10600; }
+.summary-stat.highlight { border-color: #00d4d4; }
 
 .summary-stat-label {
   font-size: 0.45rem;
   text-transform: uppercase;
   letter-spacing: 0.06em;
-  color: #555;
+  color: #555555;
 }
 
 .summary-stat-value {
   font-family: 'Courier New', monospace;
   font-size: 0.65rem;
-  color: #ddd;
+  color: #ffffff;
   font-weight: 600;
+  font-variant-numeric: tabular-nums;
 }
 
 .summary-tires { display: flex; flex-direction: column; gap: 6px; }
@@ -935,8 +946,8 @@ header {
 }
 
 .summary-tire-card {
-  background: #111;
-  border: 1px solid #1a1a1a;
+  background: #111111;
+  border: 1px solid #1e1e1e;
   border-radius: 4px;
   padding: 4px 8px;
   display: flex;
@@ -948,7 +959,7 @@ header {
   font-family: 'Courier New', monospace;
   font-size: 0.6rem;
   font-weight: 700;
-  color: #666;
+  color: #888888;
   width: 20px;
 }
 
@@ -957,7 +968,7 @@ header {
 .tire-wear-mini-bar {
   flex: 1;
   height: 4px;
-  background: #1a1a1a;
+  background: #1e1e1e;
   border-radius: 2px;
   overflow: hidden;
 }
@@ -974,6 +985,7 @@ header {
   font-weight: 600;
   min-width: 24px;
   text-align: right;
+  font-variant-numeric: tabular-nums;
 }
 
 /* Status Bars (shared) */
@@ -993,7 +1005,7 @@ header {
   font-size: 0.6rem;
   text-transform: uppercase;
   letter-spacing: 0.06em;
-  color: #555;
+  color: #555555;
   width: 48px;
   flex-shrink: 0;
 }
@@ -1001,14 +1013,14 @@ header {
 .status-track {
   flex: 1;
   height: 6px;
-  background: #1a1a1a;
-  border-radius: 3px;
+  background: #1e1e1e;
+  border-radius: 4px;
   overflow: hidden;
 }
 
 .status-fill {
   height: 100%;
-  border-radius: 3px;
+  border-radius: 4px;
   transition: width 0.1s linear;
 }
 
@@ -1019,6 +1031,7 @@ header {
   width: 36px;
   text-align: right;
   flex-shrink: 0;
+  font-variant-numeric: tabular-nums;
 }
 
 /* ---- State messages ---- */
@@ -1028,9 +1041,9 @@ header {
   justify-content: center;
   height: 100vh;
   font-size: 1rem;
-  color: #666;
+  color: #888888;
 }
-.state-msg.error { color: #e10600; }
+.state-msg.error { color: #ff3d3d; }
 
 /* ---- Responsive ---- */
 @media (max-width: 900px) {
@@ -1040,21 +1053,21 @@ header {
   .track-panel {
     max-height: 240px;
     border-right: none;
-    border-bottom: 1px solid #1a1a1a;
+    border-bottom: 1px solid #1e1e1e;
   }
   .upper-row {
     grid-template-columns: 1fr;
   }
   .car-panel {
     border-right: none;
-    border-bottom: 1px solid #1a1a1a;
+    border-bottom: 1px solid #1e1e1e;
   }
   .bottom-row {
     grid-template-columns: 1fr;
   }
   .health-panel {
     border-right: none;
-    border-bottom: 1px solid #1a1a1a;
+    border-bottom: 1px solid #1e1e1e;
   }
   .header-stats { margin-left: 0; }
 }
