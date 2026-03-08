@@ -1,6 +1,7 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useTelemetryData } from './hooks/useTelemetryData'
 import { usePlayback } from './hooks/usePlayback'
+import { logCornerAnalysis } from './utils/cornerDetection'
 
 import Header from './components/Header'
 import PlaybackControls from './components/PlaybackControls'
@@ -37,6 +38,11 @@ export default function App() {
   } = usePlayback(data?.frames)
 
   const [mode, setMode] = useState('default')
+
+  // Log corner analysis once on data load (dev verification)
+  useEffect(() => {
+    if (data?.track) logCornerAnalysis(data.track)
+  }, [data?.track])
 
   if (error) return <div className="state-msg error">Failed to load telemetry: {error}</div>
   if (!data) return <div className="state-msg">Loading telemetry data...</div>
