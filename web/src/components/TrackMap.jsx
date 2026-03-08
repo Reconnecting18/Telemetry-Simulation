@@ -6,15 +6,46 @@ const KERB_OFFSET   = TRACK_WIDTH / 2 + 0.5
 const TRAIL_SECS    = 2.0      // comet tail duration
 const TRAIL_POINTS  = 30       // sample count for trail
 
-// ── Monza corner labels (SVG coords: y negated) ──
-const CORNER_LABELS = [
-  { idx: 21, name: 'T1',       ox: 25,  oy: -5  },
-  { idx: 35, name: 'T2',       ox: 20,  oy: 10  },
-  { idx: 51, name: 'Lesmo 1',  ox: -10, oy: 18  },
-  { idx: 59, name: 'Lesmo 2',  ox: 18,  oy: 10  },
-  { idx: 66, name: 'Ascari',   ox: 22,  oy: 0   },
-  { idx: 80, name: 'Parabolica', ox: 18, oy: -10 },
-]
+// Auto-detect corners from curvature data: find local curvature maxima
+// and label them generically as T1, T2, ... Works for any track.
+const MIN_CURVATURE = 0.006     // |k| threshold to qualify as a corner
+const MIN_CORNER_GAP = 4        // minimum node gap between distinct corners
+const LABEL_OFFSET = 22         // px offset from track for label placement
+
+function detectCorners(nodes) {
+  if (!nodes || nodes.length < 3) return []
+  const corners = []
+  for (let i = 1; i < nodes.length - 1; i++) {
+    const absK = Math.abs(nodes[i].curvature)
+    if (absK < MIN_CURVATURE) continue
+    // Local maximum: |k| >= both neighbors
+    if (absK >= Math.abs(nodes[i - 1].curvature) &&
+        absK >= Math.abs(nodes[i + 1].curvature)) {
+      // Enforce minimum gap from previous corner
+      if (corners.length && i - corners[corners.length - 1].idx < MIN_CORNER_GAP) {
+        // Keep the one with higher curvature
+        if (absK > Math.abs(nodes[corners[corners.length - 1].idx].curvature)) {
+          corners[corners.length - 1].idx = i
+        }
+        continue
+      }
+      corners.push({ idx: i })
+    }
+  }
+  // Assign labels and compute offset direction (push label to outside of corner)
+  return corners.map((c, ci) => {
+    const n = nodes[c.idx]
+    const prev = nodes[Math.max(0, c.idx - 1)]
+    const next = nodes[Math.min(nodes.length - 1, c.idx + 1)]
+    const dx = next.x - prev.x, dy = next.y - prev.y
+    const len = Math.sqrt(dx * dx + dy * dy) || 1
+    // Perpendicular direction (outside of corner based on curvature sign)
+    const sign = n.curvature > 0 ? -1 : 1
+    const ox = sign * (dy / len) * LABEL_OFFSET
+    const oy = sign * (-dx / len) * LABEL_OFFSET
+    return { idx: c.idx, name: `T${ci + 1}`, ox, oy }
+  })
+}
 
 // Use the C++ racing line from JSON (late-apex, smoothed).
 // Falls back to simple curvature-based offset if not available.
@@ -141,8 +172,9 @@ export default function TrackMap({ trackNodes, racingLineData, frames, currentTi
       return { ...s, gripColor: gc.color, gripOpacity: gc.opacity, grip: g }
     }).filter(Boolean)
 
-    // Corner label positions
-    const cPos = CORNER_LABELS.map(cl => {
+    // Corner label positions (auto-detected from curvature)
+    const detectedCorners = detectCorners(trackNodes)
+    const cPos = detectedCorners.map(cl => {
       const n = trackNodes[cl.idx]
       if (!n) return null
       return { name: cl.name, x: n.x + cl.ox, y: -n.y + cl.oy }

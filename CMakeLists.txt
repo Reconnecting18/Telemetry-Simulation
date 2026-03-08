@@ -17,13 +17,11 @@ add_executable(telemetry_sim
 
 target_include_directories(telemetry_sim PRIVATE include)
 
-# Copy track data next to the binary so the default path works when running
+# Copy all track data next to the binary so default paths work when running
 # from the build directory.
 add_custom_command(TARGET telemetry_sim POST_BUILD
-    COMMAND ${CMAKE_COMMAND} -E make_directory
+    COMMAND ${CMAKE_COMMAND} -E copy_directory
+        ${CMAKE_SOURCE_DIR}/data
         $<TARGET_FILE_DIR:telemetry_sim>/data
-    COMMAND ${CMAKE_COMMAND} -E copy_if_different
-        ${CMAKE_SOURCE_DIR}/data/monza.csv
-        $<TARGET_FILE_DIR:telemetry_sim>/data/monza.csv
     COMMENT "Copying track data to build directory"
 )
