@@ -30,7 +30,7 @@ struct RacingLineNode {
 // max_offset: maximum lateral deviation in meters (default 5 m).
 std::vector<RacingLineNode> computeRacingLine(
     const std::vector<TrackNode>& nodes,
-    double max_offset = 5.0);
+    double max_offset = 6.0);
 
 // ------------------------------------------------------------------
 // VELOCITY PLANNING

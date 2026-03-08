@@ -188,12 +188,17 @@ struct TelemetryFrame {
     double surface_grip;            // 0–1 effective grip (base + rubber buildup)
 };
 
+struct RacingLinePoint {
+    double x, y;  // m — racing line position
+};
+
 struct TelemetrySession {
     std::string               track_name;
     VehicleConfig             vehicle_config;
     WeatherState              weather;       // weather conditions for the session
     std::vector<TelemetryFrame> frames;
     std::vector<TrackNode>    track_nodes;  // raw track geometry for frontend
+    std::vector<RacingLinePoint> racing_line; // computed racing line positions
     double                    total_distance_m;
     int                       total_laps;   // laps completed before session end
     std::string               end_reason;   // "fuel" | "tire_wear" | "tire_damage" | "max_laps"

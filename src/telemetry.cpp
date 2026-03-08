@@ -75,6 +75,16 @@ bool TelemetrySession::writeJSON(const std::string& path) const {
         if (i + 1 < track_nodes.size()) out << ",";
         out << "\n";
     }
+    out << "    ],\n";
+
+    // racing line positions (computed by physics engine)
+    out << "    \"racing_line\": [\n";
+    for (std::size_t i = 0; i < racing_line.size(); ++i) {
+        out << "      {\"x\": " << jVal(racing_line[i].x, 2)
+            << ", \"y\": " << jVal(racing_line[i].y, 2) << "}";
+        if (i + 1 < racing_line.size()) out << ",";
+        out << "\n";
+    }
     out << "    ]\n";
     out << "  },\n";
 

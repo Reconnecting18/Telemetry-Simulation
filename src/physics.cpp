@@ -32,9 +32,82 @@ std::vector<RacingLineNode> computeRacingLine(
     int N = static_cast<int>(nodes.size());
     std::vector<RacingLineNode> rl(N);
 
-    // Pass 1: compute lateral offset positions.
-    // Right turn (k < 0) → positive offset along right-perp = (dy/len, -dx/len).
-    // Left  turn (k > 0) → negative offset (same formula, raw goes negative).
+    // ── Late-apex racing line algorithm ──────────────────────────────────
+    // A real driver: brakes in a straight line, turns in late, apexes the
+    // inside kerb past the geometric midpoint of the corner, then uses
+    // full track width on exit.
+    //
+    // We achieve this with:
+    //   1. Raw offsets from curvature (move toward inside of corner)
+    //   2. Forward-shift by APEX_DELAY nodes (late apex)
+    //   3. Gaussian smoothing (gradual entry, smooth transitions)
+    //   4. Exit amplification (use more track width tracking out)
+
+    static constexpr double OFFSET_GAIN  = 200.0; // curvature → offset gain (aggressive)
+    static constexpr int    APEX_DELAY   = 2;      // nodes to shift apex later
+    static constexpr int    SMOOTH_PASSES = 2;     // smoothing iterations
+    static constexpr int    SMOOTH_RADIUS = 2;     // kernel half-width per pass
+    static constexpr double EXIT_BOOST   = 1.5;    // track-out amplification
+
+    // Step 1: Raw offsets from curvature.
+    // Right turn (k < 0) → positive offset (toward inside = right).
+    // Left turn  (k > 0) → negative offset (toward inside = left).
+    std::vector<double> raw(N);
+    for (int i = 0; i < N; ++i) {
+        double r = -nodes[i].curvature * OFFSET_GAIN;
+        raw[i] = std::clamp(r, -max_offset, max_offset);
+    }
+
+    // Step 2: Forward-shift (late apex).
+    // Each offset value is read from APEX_DELAY nodes earlier in the track,
+    // so the peak inside displacement occurs APEX_DELAY nodes *after*
+    // the geometric apex — exactly the late-apex effect.
+    std::vector<double> shifted(N);
+    for (int i = 0; i < N; ++i) {
+        int src = i - APEX_DELAY;
+        shifted[i] = (src >= 0) ? raw[src] : raw[0];
+    }
+
+    // Step 3: Exit amplification.
+    // After the apex (where offset magnitude is decreasing back toward 0),
+    // boost the offset so the car tracks wider on exit, using more road.
+    // Detect "exiting" = offset magnitude decreasing compared to previous node.
+    std::vector<double> boosted(N);
+    boosted[0] = shifted[0];
+    for (int i = 1; i < N; ++i) {
+        double prev_abs = std::abs(shifted[i - 1]);
+        double curr_abs = std::abs(shifted[i]);
+        if (curr_abs < prev_abs && prev_abs > 0.5) {
+            // Exiting a corner: slow the offset decay by boosting
+            double sign = (shifted[i] > 0.0) ? 1.0 : -1.0;
+            double exited = curr_abs + (prev_abs - curr_abs) * (1.0 - 1.0 / EXIT_BOOST);
+            boosted[i] = sign * std::min(exited, max_offset);
+        } else {
+            boosted[i] = shifted[i];
+        }
+    }
+
+    // Step 4: Multi-pass box smoothing.
+    // This rounds off harsh transitions, producing smooth braking→turn-in
+    // and apex→exit trajectories. Multiple passes approximate a Gaussian.
+    std::vector<double> smoothed = boosted;
+    std::vector<double> temp(N);
+    for (int pass = 0; pass < SMOOTH_PASSES; ++pass) {
+        for (int i = 0; i < N; ++i) {
+            double sum = 0.0;
+            double weight = 0.0;
+            for (int j = -SMOOTH_RADIUS; j <= SMOOTH_RADIUS; ++j) {
+                int idx = std::clamp(i + j, 0, N - 1);
+                double w = 1.0 / (1.0 + std::abs(j));  // triangular weight
+                sum += smoothed[idx] * w;
+                weight += w;
+            }
+            temp[i] = sum / weight;
+        }
+        smoothed = temp;
+    }
+
+    // Step 5: Clamp and compute positions from final offsets.
     for (int i = 0; i < N; ++i) {
         const TrackNode& prev = nodes[std::max(0, i - 1)];
         const TrackNode& next = nodes[std::min(N - 1, i + 1)];
@@ -44,15 +117,14 @@ std::vector<RacingLineNode> computeRacingLine(
         double len = std::sqrt(dx * dx + dy * dy);
         if (len < 1e-6) len = 1e-6;
 
-        double raw    = -nodes[i].curvature * 100.0;
-        double offset = std::max(-max_offset, std::min(max_offset, raw));
+        double offset = std::clamp(smoothed[i], -max_offset, max_offset);
 
         // Right-perpendicular of (dx, dy): (dy/len, -dx/len)
         rl[i].x = nodes[i].x + (dy / len) * offset;
         rl[i].y = nodes[i].y - (dx / len) * offset;
     }
 
-    // Pass 2: signed effective curvature via Menger formula on RL positions.
+    // Step 6: Signed effective curvature via Menger formula on RL positions.
     // k = 2 * cross(B-A, C-A) / (|AB| * |BC| * |AC|)
     // Positive k = CCW (left turn); negative = CW (right turn).
     rl[0].effective_curvature     = nodes[0].curvature;

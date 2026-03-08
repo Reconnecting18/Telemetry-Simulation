@@ -267,7 +267,13 @@ TelemetrySession runSimulation(const Track& track, const VehicleConfig& config) 
     // ── Racing line ──────────────────────────────────────────────────────────
     // Computes lateral offsets toward corner insides and the effective curvature
     // of the resulting path (wider arcs → lower curvature → higher speed limit).
-    std::vector<RacingLineNode> rl = computeRacingLine(track.nodes, 5.0);
+    std::vector<RacingLineNode> rl = computeRacingLine(track.nodes, 6.0);
+
+    // Store racing line positions for JSON output
+    session.racing_line.resize(N);
+    for (int i = 0; i < N; ++i) {
+        session.racing_line[i] = { rl[i].x, rl[i].y };
+    }
 
     std::vector<double> rl_curv(N);
     for (int i = 0; i < N; ++i) {

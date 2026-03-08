@@ -73,6 +73,7 @@ export default function App() {
         <div className="track-panel">
           <TrackMap
             trackNodes={data.track?.nodes}
+            racingLineData={data.track?.racing_line}
             frames={data.frames}
             currentTime={currentTime}
             carX={f?.x}

@@ -2,7 +2,6 @@ import { useMemo, useRef, useState, useCallback, useEffect } from 'react'
 import { findFrameIndex } from '../utils/interpolate'
 
 const TRACK_WIDTH   = 14
-const MAX_RL_OFFSET = 5
 const KERB_OFFSET   = TRACK_WIDTH / 2 + 0.5
 const TRAIL_SECS    = 2.0      // comet tail duration
 const TRAIL_POINTS  = 30       // sample count for trail
@@ -17,16 +16,23 @@ const CORNER_LABELS = [
   { idx: 80, name: 'Parabolica', ox: 18, oy: -10 },
 ]
 
-function computeRacingLine(nodes) {
+// Use the C++ racing line from JSON (late-apex, smoothed).
+// Falls back to simple curvature-based offset if not available.
+function getRacingLine(nodes, jsonRacingLine) {
+  if (jsonRacingLine && jsonRacingLine.length === nodes.length) {
+    return jsonRacingLine.map(p => ({ x: p.x, y: -p.y }))
+  }
+  // Fallback: simple offset (should not normally be needed)
   const N = nodes.length
+  const MAX_OFFSET = 6
   return nodes.map((node, i) => {
     const prev = nodes[Math.max(0, i - 1)]
     const next = nodes[Math.min(N - 1, i + 1)]
     const dx   = next.x - prev.x
     const dy   = next.y - prev.y
     const len  = Math.sqrt(dx * dx + dy * dy) || 1
-    const raw    = -node.curvature * 100
-    const offset = Math.max(-MAX_RL_OFFSET, Math.min(MAX_RL_OFFSET, raw))
+    const raw    = -node.curvature * 120
+    const offset = Math.max(-MAX_OFFSET, Math.min(MAX_OFFSET, raw))
     return {
       x: node.x + (dy / len) * offset,
       y: -node.y + (dx / len) * offset,
@@ -105,7 +111,7 @@ function buildTrail(frames, currentTime) {
   return points
 }
 
-export default function TrackMap({ trackNodes, frames, currentTime, carX, carY }) {
+export default function TrackMap({ trackNodes, racingLineData, frames, currentTime, carX, carY }) {
   const svgRef = useRef(null)
   const isDragging = useRef(false)
   const lastMouse  = useRef({ x: 0, y: 0 })
@@ -124,7 +130,7 @@ export default function TrackMap({ trackNodes, frames, currentTime, carX, carY }
     const maxY = Math.max(...ys) + pad
 
     const segs = computeSegments(trackNodes)
-    const rl = computeRacingLine(trackNodes)
+    const rl = getRacingLine(trackNodes, racingLineData)
     const dirty = computeDirtyZones(trackNodes, segs)
 
     // Grip overlay: color each segment by its surface grip level
@@ -152,7 +158,7 @@ export default function TrackMap({ trackNodes, frames, currentTime, carX, carY }
       startY: -trackNodes[0].y,
       cornerPositions: cPos,
     }
-  }, [trackNodes])
+  }, [trackNodes, racingLineData])
 
   useEffect(() => {
     if (baseVB && !vbState) setVbState(baseVB)
