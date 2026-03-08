@@ -3,6 +3,7 @@ export function interpolateFrame(a, b, t) {
   const lerp = (x, y) => x + (y - x) * t
   return {
     node: a.node,
+    lap: t < 0.5 ? a.lap : b.lap,
     time_s: lerp(a.time_s, b.time_s),
     x: lerp(a.x, b.x),
     y: lerp(a.y, b.y),
