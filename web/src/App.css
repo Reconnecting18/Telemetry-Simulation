@@ -55,14 +55,21 @@ header {
   font-weight: 600;
 }
 
-/* ---- Playback Controls ---- */
+/* ---- Playback Controls + Race Timeline ---- */
 .playback-controls {
   background: #0e0e0e;
   border-bottom: 1px solid #1a1a1a;
-  padding: 6px 20px;
+  padding: 8px 20px 4px;
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+}
+
+.playback-left {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 8px;
+  flex-shrink: 0;
 }
 
 .play-btn {
@@ -80,19 +87,12 @@ header {
 }
 .play-btn:hover { background: #ff1a0e; }
 
-.scrubber {
-  flex: 1;
-  height: 4px;
-  accent-color: #e10600;
-  cursor: pointer;
-}
-
 .time-display {
   font-family: 'Courier New', monospace;
-  font-size: 0.7rem;
-  color: #666;
+  font-size: 0.65rem;
+  color: #555;
   white-space: nowrap;
-  min-width: 90px;
+  min-width: 80px;
 }
 
 .speed-btns { display: flex; gap: 3px; }
@@ -112,6 +112,77 @@ header {
   border-color: #e10600;
 }
 .speed-btn:hover { border-color: #e10600; }
+
+/* Race Timeline Bar */
+.race-timeline {
+  flex: 1;
+  position: relative;
+  height: 24px;
+  background: #161616;
+  border-radius: 3px;
+  cursor: pointer;
+  touch-action: none;
+  user-select: none;
+  margin-top: 2px;
+}
+
+.stint-bg {
+  position: absolute;
+  top: 0;
+  height: 100%;
+  border-radius: 3px;
+  pointer-events: none;
+}
+
+.lap-tick {
+  position: absolute;
+  top: 0;
+  width: 1px;
+  height: 6px;
+  background: #333;
+  pointer-events: none;
+}
+.lap-tick.major {
+  height: 10px;
+  background: #555;
+}
+
+.timeline-progress {
+  position: absolute;
+  top: 0;
+  left: 0;
+  height: 100%;
+  background: rgba(225, 6, 0, 0.08);
+  border-radius: 3px 0 0 3px;
+  pointer-events: none;
+}
+
+.timeline-cursor {
+  position: absolute;
+  top: -2px;
+  transform: translateX(-5px);
+  pointer-events: none;
+  filter: drop-shadow(0 0 2px rgba(255,255,255,0.4));
+  z-index: 2;
+}
+
+.lap-labels {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  height: 12px;
+  pointer-events: none;
+}
+
+.lap-label {
+  position: absolute;
+  transform: translateX(-50%);
+  font-family: 'Courier New', monospace;
+  font-size: 0.5rem;
+  color: #444;
+  line-height: 12px;
+}
 
 /* ---- Two-Panel Layout ---- */
 .dashboard {

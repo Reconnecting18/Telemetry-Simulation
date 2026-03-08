@@ -518,8 +518,8 @@ function CarModel({ frame, vehicle, mode }) {
         inner:  tireWearColor(td.inner_wear, td.compound),
       }
     } else {
-      // Default mode: black fill
-      tireColors[id] = { outer: '#111', center: '#111', inner: '#111' }
+      // Default mode: white fill
+      tireColors[id] = { outer: '#ddd', center: '#ddd', inner: '#ddd' }
     }
   }
 

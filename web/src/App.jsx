@@ -28,6 +28,7 @@ export default function App() {
         maxTime={maxTime}
         isPlaying={isPlaying}
         playbackSpeed={playbackSpeed}
+        frames={data.frames}
         onToggle={toggle}
         onSeek={seekTo}
         onSetSpeed={setPlaybackSpeed}
