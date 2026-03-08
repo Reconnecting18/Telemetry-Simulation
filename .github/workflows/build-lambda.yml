@@ -1,0 +1,55 @@
+name: Build Lambda Package
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'src/**'
+      - 'include/**'
+      - 'CMakeLists.txt'
+  workflow_dispatch:
+
+jobs:
+  build-lambda:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Build C++ for Amazon Linux 2
+        run: |
+          docker run --rm \
+            -v ${{ github.workspace }}:/workspace \
+            -w /workspace \
+            amazonlinux:2 \
+            bash -c "
+              yum update -y && \
+              yum install -y gcc gcc-c++ cmake3 make && \
+              cmake3 -DCMAKE_BUILD_TYPE=Release . && \
+              make -j4 && \
+              strip telemetry_sim
+            "
+
+      - name: Prepare deployment package
+        run: |
+          mkdir -p deployment
+          cp telemetry_sim deployment/
+          cp data/monza.csv deployment/track.csv
+          cp deployment_src/handler.js deployment/
+          chmod +x deployment/telemetry_sim
+
+      - name: Create Lambda zip
+        run: |
+          cd deployment
+          zip -r ../lambda-package.zip .
+          cd ..
+          echo "Package contents:"
+          unzip -l lambda-package.zip
+
+      - name: Upload Lambda package
+        uses: actions/upload-artifact@v4
+        with:
+          name: lambda-package
+          path: lambda-package.zip
+          retention-days: 30
