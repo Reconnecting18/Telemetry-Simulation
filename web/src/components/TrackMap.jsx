@@ -1,9 +1,21 @@
 import { useMemo, useRef, useState, useCallback, useEffect } from 'react'
-import { curvatureToColor } from '../utils/colors'
+import { findFrameIndex } from '../utils/interpolate'
 
 const TRACK_WIDTH   = 14
 const MAX_RL_OFFSET = 5
 const KERB_OFFSET   = TRACK_WIDTH / 2 + 0.5
+const TRAIL_SECS    = 2.0      // comet tail duration
+const TRAIL_POINTS  = 30       // sample count for trail
+
+// ── Monza corner labels (SVG coords: y negated) ──
+const CORNER_LABELS = [
+  { idx: 21, name: 'T1',       ox: 25,  oy: -5  },
+  { idx: 35, name: 'T2',       ox: 20,  oy: 10  },
+  { idx: 51, name: 'Lesmo 1',  ox: -10, oy: 18  },
+  { idx: 59, name: 'Lesmo 2',  ox: 18,  oy: 10  },
+  { idx: 66, name: 'Ascari',   ox: 22,  oy: 0   },
+  { idx: 80, name: 'Parabolica', ox: 18, oy: -10 },
+]
 
 function computeRacingLine(nodes) {
   const N = nodes.length
@@ -22,73 +34,108 @@ function computeRacingLine(nodes) {
   })
 }
 
-// Elevation → blue-green-yellow-orange gradient
-function elevToColor(z, minZ, maxZ) {
-  if (maxZ <= minZ) return '#7ed321'
-  const t = (z - minZ) / (maxZ - minZ)
-  if (t < 0.33) {
-    const s = t / 0.33
-    return `rgb(${Math.round(74 + s * 26)},${Math.round(144 + s * 90)},${Math.round(226 - s * 191)})`
+// Perpendicular vectors for each segment
+function computeSegments(nodes) {
+  const segs = []
+  for (let i = 0; i < nodes.length - 1; i++) {
+    const n = nodes[i], n2 = nodes[i + 1]
+    const dx = n2.x - n.x, dy = (-n2.y) - (-n.y)
+    const len = Math.sqrt(dx * dx + dy * dy) || 1
+    segs.push({
+      x1: n.x, y1: -n.y, x2: n2.x, y2: -n2.y,
+      curvature: n.curvature,
+      kerb: n.kerb || 0,
+      z: n.z || 0,
+      rpx: dy / len, rpy: -dx / len,
+      lpx: -dy / len, lpy: dx / len,
+    })
   }
-  if (t < 0.67) {
-    const s = (t - 0.33) / 0.34
-    return `rgb(${Math.round(100 + s * 145)},${Math.round(234 - s * 68)},${Math.round(35)})`
-  }
-  const s = (t - 0.67) / 0.33
-  return `rgb(${Math.round(245 - s * 20)},${Math.round(166 - s * 86)},${Math.round(35 - s * 25)})`
+  return segs
 }
 
-export default function TrackMap({ trackNodes, carX, carY }) {
+// Identify dirty zones: outer edge patches at high-curvature corners
+function computeDirtyZones(nodes, segments) {
+  const zones = []
+  for (let i = 0; i < segments.length; i++) {
+    const absK = Math.abs(nodes[i].curvature)
+    if (absK < 0.008) continue
+    const s = segments[i]
+    const k = nodes[i].curvature
+    // Dirty is on the OUTSIDE of the corner
+    const px = k > 0 ? s.lpx : s.rpx
+    const py = k > 0 ? s.lpy : s.rpy
+    const off = TRACK_WIDTH / 2 - 1
+    zones.push({
+      x1: s.x1 + px * off, y1: s.y1 + py * off,
+      x2: s.x2 + px * off, y2: s.y2 + py * off,
+      intensity: Math.min(1, absK / 0.05),
+    })
+  }
+  return zones
+}
+
+// Build trail points from frames
+function buildTrail(frames, currentTime) {
+  if (!frames || !frames.length || currentTime <= 0) return []
+  const startT = Math.max(0, currentTime - TRAIL_SECS)
+  const points = []
+  const step = (currentTime - startT) / TRAIL_POINTS
+  for (let t = startT; t <= currentTime; t += step) {
+    const idx = findFrameIndex(frames, t)
+    if (idx < frames.length - 1) {
+      const a = frames[idx], b = frames[idx + 1]
+      const range = b.time_s - a.time_s
+      const frac = range > 0 ? (t - a.time_s) / range : 0
+      points.push({
+        x: a.x + (b.x - a.x) * frac,
+        y: -(a.y + (b.y - a.y) * frac),
+        t: (t - startT) / TRAIL_SECS,  // 0 = tail, 1 = head
+      })
+    }
+  }
+  return points
+}
+
+export default function TrackMap({ trackNodes, frames, currentTime, carX, carY }) {
   const svgRef = useRef(null)
   const isDragging = useRef(false)
   const lastMouse  = useRef({ x: 0, y: 0 })
-
-  // viewBox state: { x, y, w, h }
   const [vbState, setVbState] = useState(null)
 
-  const { baseVB, segments, racingLine, startX, startY, minZ, maxZ } = useMemo(() => {
-    if (!trackNodes || trackNodes.length === 0)
-      return { baseVB: null, segments: [], racingLine: [], startX: undefined, startY: undefined, minZ: 0, maxZ: 1 }
+  const { baseVB, segments, racingLine, dirtyZones, startX, startY, cornerPositions } = useMemo(() => {
+    if (!trackNodes || !trackNodes.length)
+      return { baseVB: null, segments: [], racingLine: [], dirtyZones: [], cornerPositions: [] }
 
     const xs  = trackNodes.map(n => n.x)
     const ys  = trackNodes.map(n => -n.y)
-    const zs  = trackNodes.map(n => n.z || 0)
     const pad = 40 + TRACK_WIDTH
     const minX = Math.min(...xs) - pad
     const maxX = Math.max(...xs) + pad
     const minY = Math.min(...ys) - pad
     const maxY = Math.max(...ys) + pad
 
-    const segs = []
-    for (let i = 0; i < trackNodes.length - 1; i++) {
-      const n  = trackNodes[i]
-      const n2 = trackNodes[i + 1]
-      const sdx  = n2.x - n.x
-      const sdy  = (-n2.y) - (-n.y)
-      const slen = Math.sqrt(sdx * sdx + sdy * sdy) || 1
-      segs.push({
-        x1: n.x,  y1: -n.y,
-        x2: n2.x, y2: -n2.y,
-        color: curvatureToColor(n.curvature),
-        kerb:  n.kerb || 0,
-        z:     n.z || 0,
-        rpx:   sdy / slen,  rpy: -sdx / slen,
-        lpx:  -sdy / slen,  lpy:  sdx / slen,
-      })
-    }
+    const segs = computeSegments(trackNodes)
+    const rl = computeRacingLine(trackNodes)
+    const dirty = computeDirtyZones(trackNodes, segs)
+
+    // Corner label positions
+    const cPos = CORNER_LABELS.map(cl => {
+      const n = trackNodes[cl.idx]
+      if (!n) return null
+      return { name: cl.name, x: n.x + cl.ox, y: -n.y + cl.oy }
+    }).filter(Boolean)
 
     return {
       baseVB: { x: minX, y: minY, w: maxX - minX, h: maxY - minY },
       segments: segs,
-      racingLine: computeRacingLine(trackNodes),
+      racingLine: rl,
+      dirtyZones: dirty,
       startX: trackNodes[0].x,
       startY: -trackNodes[0].y,
-      minZ: Math.min(...zs),
-      maxZ: Math.max(...zs),
+      cornerPositions: cPos,
     }
   }, [trackNodes])
 
-  // Initialize viewBox once data is ready
   useEffect(() => {
     if (baseVB && !vbState) setVbState(baseVB)
   }, [baseVB]) // eslint-disable-line
@@ -96,7 +143,6 @@ export default function TrackMap({ trackNodes, carX, carY }) {
   const vb = vbState || baseVB || { x: 0, y: 0, w: 100, h: 100 }
   const vbStr = `${vb.x} ${vb.y} ${vb.w} ${vb.h}`
 
-  // Convert screen pixel delta → SVG coordinate delta
   const screenToSVG = useCallback((dx, dy) => {
     const svg = svgRef.current
     if (!svg) return { dx: 0, dy: 0 }
@@ -104,7 +150,6 @@ export default function TrackMap({ trackNodes, carX, carY }) {
     return { dx: dx / rect.width * vb.w, dy: dy / rect.height * vb.h }
   }, [vb.w, vb.h])
 
-  // Zoom around a point in SVG space
   const zoomAround = useCallback((clientX, clientY, factor) => {
     const svg = svgRef.current
     if (!svg) return
@@ -121,8 +166,7 @@ export default function TrackMap({ trackNodes, carX, carY }) {
 
   const handleWheel = useCallback((e) => {
     e.preventDefault()
-    const factor = e.deltaY < 0 ? 0.82 : 1.22
-    zoomAround(e.clientX, e.clientY, factor)
+    zoomAround(e.clientX, e.clientY, e.deltaY < 0 ? 0.82 : 1.22)
   }, [zoomAround])
 
   const handleMouseDown = useCallback((e) => {
@@ -142,23 +186,46 @@ export default function TrackMap({ trackNodes, carX, carY }) {
     setVbState(v => ({ ...v, x: v.x + dx, y: v.y + dy }))
   }, [screenToSVG])
 
-  const handleMouseUp   = useCallback(() => { isDragging.current = false }, [])
-  const resetView       = useCallback(() => baseVB && setVbState(baseVB),   [baseVB])
-  const zoomIn          = useCallback(() => setVbState(v => ({ x: v.x + v.w*0.1, y: v.y + v.h*0.1, w: v.w*0.8, h: v.h*0.8 })), [])
-  const zoomOut         = useCallback(() => setVbState(v => ({ x: v.x - v.w*0.125, y: v.y - v.h*0.125, w: v.w*1.25, h: v.h*1.25 })), [])
+  const handleMouseUp = useCallback(() => { isDragging.current = false }, [])
+  const resetView    = useCallback(() => baseVB && setVbState(baseVB), [baseVB])
+  const zoomIn       = useCallback(() => setVbState(v => ({ x: v.x + v.w*0.1, y: v.y + v.h*0.1, w: v.w*0.8, h: v.h*0.8 })), [])
+  const zoomOut      = useCallback(() => setVbState(v => ({ x: v.x - v.w*0.125, y: v.y - v.h*0.125, w: v.w*1.25, h: v.h*1.25 })), [])
 
-  // Car snapped to nearest RL point
+  // Car position (SVG coords)
   const cx = carX ?? 0
   const cy = carY !== undefined ? -carY : 0
-  const carRlPos = useMemo(() => {
-    if (!racingLine.length || carX == null) return { x: cx, y: cy }
+
+  // Snap car to nearest racing line point + get heading
+  const { carPos, headingDeg } = useMemo(() => {
+    if (!racingLine.length || carX == null) return { carPos: { x: cx, y: cy }, headingDeg: 0 }
     let best = 0, bestD = Infinity
     racingLine.forEach((p, i) => {
       const d = (p.x - cx) ** 2 + (p.y - cy) ** 2
       if (d < bestD) { bestD = d; best = i }
     })
-    return racingLine[best]
+    const pos = racingLine[best]
+    // Heading from prev→next RL point
+    const prev = racingLine[Math.max(0, best - 1)]
+    const next = racingLine[Math.min(racingLine.length - 1, best + 1)]
+    const hdx = next.x - prev.x, hdy = next.y - prev.y
+    const deg = Math.atan2(hdy, hdx) * (180 / Math.PI) + 90  // +90 so "up" is forward
+    return { carPos: pos, headingDeg: deg }
   }, [racingLine, cx, cy, carX])
+
+  // Comet trail
+  const trail = useMemo(() => buildTrail(frames, currentTime), [frames, currentTime])
+  // Snap trail to racing line
+  const snappedTrail = useMemo(() => {
+    if (!racingLine.length || !trail.length) return []
+    return trail.map(tp => {
+      let best = 0, bestD = Infinity
+      racingLine.forEach((p, i) => {
+        const d = (p.x - tp.x) ** 2 + (p.y - tp.y) ** 2
+        if (d < bestD) { bestD = d; best = i }
+      })
+      return { ...racingLine[best], t: tp.t }
+    })
+  }, [racingLine, trail])
 
   const rlPoints = racingLine.map(p => `${p.x.toFixed(1)},${p.y.toFixed(1)}`).join(' ')
 
@@ -168,8 +235,8 @@ export default function TrackMap({ trackNodes, carX, carY }) {
         <h3>Track Map</h3>
         <div className="track-map-btns">
           <button className="map-btn" onClick={zoomIn}  title="Zoom in">+</button>
-          <button className="map-btn" onClick={zoomOut} title="Zoom out">−</button>
-          <button className="map-btn" onClick={resetView} title="Reset view">⊡</button>
+          <button className="map-btn" onClick={zoomOut} title="Zoom out">-</button>
+          <button className="map-btn" onClick={resetView} title="Reset view">R</button>
         </div>
       </div>
 
@@ -188,38 +255,41 @@ export default function TrackMap({ trackNodes, carX, carY }) {
           preserveAspectRatio="xMidYMid meet"
           width="100%" height="100%"
         >
-          {/* ── Outer track shadow / border ── */}
+          {/* ── Track outer edge (dark border) ── */}
           {segments.map((s, i) => (
-            <line key={`shadow-${i}`}
+            <line key={`edge-${i}`}
               x1={s.x1} y1={s.y1} x2={s.x2} y2={s.y2}
-              stroke="#000" strokeWidth={TRACK_WIDTH + 4} strokeLinecap="round"
-            />
+              stroke="#1a1a1a" strokeWidth={TRACK_WIDTH + 4} strokeLinecap="round" />
           ))}
 
-          {/* ── Track surface ── */}
+          {/* ── Track surface (road) ── */}
           {segments.map((s, i) => (
-            <line key={`surf-${i}`}
+            <line key={`road-${i}`}
               x1={s.x1} y1={s.y1} x2={s.x2} y2={s.y2}
-              stroke="#282828" strokeWidth={TRACK_WIDTH} strokeLinecap="round"
-            />
+              stroke="#2a2a2a" strokeWidth={TRACK_WIDTH} strokeLinecap="round" />
           ))}
 
-          {/* ── Elevation color centerline (thin overlay) ── */}
+          {/* ── Lighter edge stripes (road edge markings) ── */}
           {segments.map((s, i) => (
-            <line key={`elev-${i}`}
+            <line key={`stripe-${i}`}
               x1={s.x1} y1={s.y1} x2={s.x2} y2={s.y2}
-              stroke={elevToColor(s.z, minZ, maxZ)} strokeWidth={3}
-              strokeLinecap="round" opacity={0.75}
-            />
+              stroke="#3a3a3a" strokeWidth={TRACK_WIDTH + 1} strokeLinecap="round"
+              opacity={0.4} />
           ))}
 
-          {/* ── Curvature overlay (subtle) ── */}
+          {/* ── Darker center fill (inner road surface) ── */}
           {segments.map((s, i) => (
-            <line key={`col-${i}`}
+            <line key={`inner-${i}`}
               x1={s.x1} y1={s.y1} x2={s.x2} y2={s.y2}
-              stroke={s.color} strokeWidth={TRACK_WIDTH - 6}
-              strokeLinecap="round" opacity={0.18}
-            />
+              stroke="#222" strokeWidth={TRACK_WIDTH - 4} strokeLinecap="round" />
+          ))}
+
+          {/* ── Dirty zones (outside of corners) ── */}
+          {dirtyZones.map((dz, i) => (
+            <line key={`dirty-${i}`}
+              x1={dz.x1} y1={dz.y1} x2={dz.x2} y2={dz.y2}
+              stroke="#3a2e20" strokeWidth={4}
+              strokeLinecap="round" opacity={0.35 * dz.intensity} />
           ))}
 
           {/* ── Left kerbs ── */}
@@ -252,16 +322,27 @@ export default function TrackMap({ trackNodes, carX, carY }) {
             )
           })}
 
-          {/* ── Racing line ── */}
+          {/* ── Racing line (cyan, thin, solid) ── */}
           {rlPoints && (
             <polyline
               points={rlPoints}
-              stroke="#f5c518" strokeWidth={1.8}
-              fill="none" opacity={0.9}
-              strokeDasharray="10 6"
-              strokeLinecap="round"
+              stroke="#00d4d4" strokeWidth={1.5}
+              fill="none" opacity={0.85}
+              strokeLinecap="round" strokeLinejoin="round"
             />
           )}
+
+          {/* ── Corner labels ── */}
+          {cornerPositions.map((cp, i) => (
+            <text key={`corner-${i}`}
+              x={cp.x} y={cp.y}
+              fill="#888" fontSize={12}
+              fontFamily="'Segoe UI', system-ui, sans-serif"
+              fontWeight="600" textAnchor="middle"
+              opacity={0.7}>
+              {cp.name}
+            </text>
+          ))}
 
           {/* ── Start/finish marker ── */}
           {startX !== undefined && (
@@ -273,27 +354,38 @@ export default function TrackMap({ trackNodes, carX, carY }) {
             </g>
           )}
 
-          {/* ── Car indicator ── */}
-          <circle cx={carRlPos.x} cy={carRlPos.y} r={14}
-            fill="none" stroke="#e10600" strokeWidth={1} opacity={0.3} />
-          <circle cx={carRlPos.x} cy={carRlPos.y} r={7}
-            fill="#e10600" stroke="white" strokeWidth={1.5} />
+          {/* ── Comet trail ── */}
+          {snappedTrail.length > 1 && snappedTrail.map((pt, i) => {
+            if (i === 0) return null
+            const prev = snappedTrail[i - 1]
+            return (
+              <line key={`trail-${i}`}
+                x1={prev.x} y1={prev.y} x2={pt.x} y2={pt.y}
+                stroke="#e10600" strokeWidth={Math.max(0.5, pt.t * 4)}
+                strokeLinecap="round"
+                opacity={pt.t * 0.7} />
+            )
+          })}
+
+          {/* ── Car arrow (directional triangle) ── */}
+          <g transform={`translate(${carPos.x},${carPos.y}) rotate(${headingDeg.toFixed(1)})`}>
+            <polygon points="0,-8 5,6 -5,6"
+              fill="#e10600" stroke="white" strokeWidth={1.2}
+              strokeLinejoin="round" />
+          </g>
         </svg>
       </div>
 
-      {/* Elevation gradient legend */}
-      <div className="track-elev-legend">
-        <span className="elev-label">↓ Low</span>
-        <div className="elev-gradient-bar" />
-        <span className="elev-label">High ↑</span>
-      </div>
-
+      {/* Legend */}
       <div className="track-legend">
         <span className="legend-item">
-          <span className="legend-line legend-yellow" />Racing line
+          <span className="legend-line" style={{ background: '#00d4d4' }} />Racing line
         </span>
         <span className="legend-item">
-          <span className="legend-dot legend-red" />Car
+          <svg width="10" height="10" style={{ display:'inline-block', verticalAlign:'middle' }}>
+            <polygon points="5,1 9,9 1,9" fill="#e10600" stroke="white" strokeWidth="1" />
+          </svg>
+          &nbsp;Car
         </span>
         <span className="legend-item">
           <svg width="18" height="4" style={{ display:'inline-block', verticalAlign:'middle' }}>

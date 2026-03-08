@@ -250,31 +250,6 @@ header {
   user-select: none;
 }
 
-.track-elev-legend {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  margin: 4px 4px 0;
-}
-
-.elev-label {
-  font-size: 0.5rem;
-  color: #444;
-  white-space: nowrap;
-}
-
-.elev-gradient-bar {
-  flex: 1;
-  height: 4px;
-  border-radius: 2px;
-  background: linear-gradient(to right,
-    rgb(74,144,226),
-    rgb(100,234,35),
-    rgb(245,166,35),
-    rgb(225,80,10));
-  opacity: 0.6;
-}
-
 /* ---- Track Legend ---- */
 .track-legend {
   display: flex;

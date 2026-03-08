@@ -23,7 +23,8 @@ const STEER_GAIN  = 12.5  // deg per 1g lateral
 const STEER_MAX   = 25    // deg
 const ROLL_MAX    = 3     // deg
 const PITCH_MAX   = 4     // deg
-const TIRE_W      = 5     // tire half-width
+const TIRE_W_F    = 4.5   // front tire half-width (narrower)
+const TIRE_W_R    = 5.5   // rear tire half-width (wider)
 const TIRE_H      = 9     // tire half-height
 const RIM_W       = 2.5   // rim half-width
 const RIM_H       = 5     // rim half-height
@@ -73,22 +74,21 @@ defCorner('rl', ...RL_HUB, -1)
 defCorner('rr', ...RR_HUB, -1)
 
 // ── 1c. Wheel nodes (7 per corner, children of hub) ────────────
-function defWheel(p, hx, hy, side) {
+function defWheel(p, hx, hy, side, tw) {
   const out = side === 'L' ? -1 : 1
   const hub = `${p}.hub`
-  defNode(`${p}.rim.t`,   hx,                hy - RIM_H,  hub)
-  defNode(`${p}.rim.b`,   hx,                hy + RIM_H,  hub)
-  defNode(`${p}.tire.ot`, hx + out * TIRE_W, hy - TIRE_H, hub)
-  defNode(`${p}.tire.ob`, hx + out * TIRE_W, hy + TIRE_H, hub)
-  defNode(`${p}.tire.it`, hx - out * TIRE_W, hy - TIRE_H, hub)
-  defNode(`${p}.tire.ib`, hx - out * TIRE_W, hy + TIRE_H, hub)
-  // rim centre = hub itself (shared node, 6 new + hub = 7)
+  defNode(`${p}.rim.t`,   hx,              hy - RIM_H,  hub)
+  defNode(`${p}.rim.b`,   hx,              hy + RIM_H,  hub)
+  defNode(`${p}.tire.ot`, hx + out * tw,   hy - TIRE_H, hub)
+  defNode(`${p}.tire.ob`, hx + out * tw,   hy + TIRE_H, hub)
+  defNode(`${p}.tire.it`, hx - out * tw,   hy - TIRE_H, hub)
+  defNode(`${p}.tire.ib`, hx - out * tw,   hy + TIRE_H, hub)
 }
 
-defWheel('fl', ...FL_HUB, 'L')
-defWheel('fr', ...FR_HUB, 'R')
-defWheel('rl', ...RL_HUB, 'L')
-defWheel('rr', ...RR_HUB, 'R')
+defWheel('fl', ...FL_HUB, 'L', TIRE_W_F)
+defWheel('fr', ...FR_HUB, 'R', TIRE_W_F)
+defWheel('rl', ...RL_HUB, 'L', TIRE_W_R)
+defWheel('rr', ...RR_HUB, 'R', TIRE_W_R)
 
 // ── 1d. Front wing (10 nodes) ──────────────────────────────────
 defNode('fw.lt',    -22, -53)          // left tip
@@ -221,10 +221,10 @@ const BEAM_RENDER = {
   susp:       { w: 0.8,  op: 0.75 },
   upright:    { w: 0.9,  op: 0.6  },
   hub_link:   { w: 0.5,  op: 0.5  },
-  tire_outer: { w: 1.2,  op: 0.85 },
-  tire_inner: { w: 1.2,  op: 0.85 },
-  tire_top:   { w: 0.8,  op: 0.7  },
-  tire_bot:   { w: 0.8,  op: 0.7  },
+  tire_outer: { w: 0.4,  op: 0.15 },
+  tire_inner: { w: 0.4,  op: 0.15 },
+  tire_top:   { w: 0.3,  op: 0.1  },
+  tire_bot:   { w: 0.3,  op: 0.1  },
   rim:        { w: 0.5,  op: 0.5  },
   spoke:      { w: 0.3,  op: 0.35 },
   wing:       { w: 0.9,  op: 0.7  },
@@ -354,10 +354,10 @@ function detectDamageZone(dLat, dLon) {
 // 7. CORNER DEFINITIONS
 // ═══════════════════════════════════════════════════════════════════
 const CORNERS = [
-  { id: 'FL', p: 'fl', side: 'L', steers: true },
-  { id: 'FR', p: 'fr', side: 'R', steers: true },
-  { id: 'RL', p: 'rl', side: 'L', steers: false },
-  { id: 'RR', p: 'rr', side: 'R', steers: false },
+  { id: 'FL', p: 'fl', side: 'L', steers: true,  tw: TIRE_W_F },
+  { id: 'FR', p: 'fr', side: 'R', steers: true,  tw: TIRE_W_F },
+  { id: 'RL', p: 'rl', side: 'L', steers: false, tw: TIRE_W_R },
+  { id: 'RR', p: 'rr', side: 'R', steers: false, tw: TIRE_W_R },
 ]
 
 // ═══════════════════════════════════════════════════════════════════
@@ -568,28 +568,50 @@ function CarModel({ frame, vehicle, mode }) {
         )
       })}
 
-      {/* Tire fills — 3 vertical strips per tire (outer / center / inner) */}
-      {CORNERS.map(({ id, p }) => {
-        const ot = pos[`${p}.tire.ot`], ob = pos[`${p}.tire.ob`]
-        const it = pos[`${p}.tire.it`], ib = pos[`${p}.tire.ib`]
-        if (!ot || !ob || !it || !ib) return null
+      {/* Tire rounded rects with 3-zone gradient fill */}
+      <defs>
+        {CORNERS.map(({ id, p, side }) => {
+          const tc = tireColors[id]
+          // Gradient goes from outer edge to inner edge
+          // L-side: outer is left (x1=0), inner is right (x2=1)
+          // R-side: outer is right (x1=1), inner is left (x2=0)
+          const x1 = side === 'L' ? '0' : '1'
+          const x2 = side === 'L' ? '1' : '0'
+          return (
+            <linearGradient key={`tg-${id}`} id={`tg-${id}`}
+              x1={x1} y1="0" x2={x2} y2="0">
+              <stop offset="0%"   stopColor={tc.outer} />
+              <stop offset="33%"  stopColor={tc.outer} />
+              <stop offset="40%"  stopColor={tc.center} />
+              <stop offset="60%"  stopColor={tc.center} />
+              <stop offset="67%"  stopColor={tc.inner} />
+              <stop offset="100%" stopColor={tc.inner} />
+            </linearGradient>
+          )
+        })}
+      </defs>
+      {CORNERS.map(({ id, p, tw, steers }) => {
+        const hub = pos[`${p}.hub`]
+        if (!hub) return null
         const tc = tireColors[id]
-        // Split tire width into thirds using lerp between outer and inner edges
-        const lx = (a, b, t) => a + (b - a) * t
-        const ly = (a, b, t) => a + (b - a) * t
-        // Top edge: ot → it,  Bottom edge: ob → ib
-        // t=0 is outer, t=1 is inner
-        const pt = (t) => ({ x: lx(ot.x, it.x, t), y: ly(ot.y, it.y, t) })
-        const pb = (t) => ({ x: lx(ob.x, ib.x, t), y: ly(ob.y, ib.y, t) })
-        const t0 = pt(0), t1 = pt(0.333), t2 = pt(0.667), t3 = pt(1)
-        const b0 = pb(0), b1 = pb(0.333), b2 = pb(0.667), b3 = pb(1)
-        const poly = (tl, tr, br, bl) =>
-          `${tl.x},${tl.y} ${tr.x},${tr.y} ${br.x},${br.y} ${bl.x},${bl.y}`
+        const isDefault = mode === 'default'
+        const w = tw * 2, h = TIRE_H * 2
+        // Compute rotation from hub orientation (steering + suspension)
+        const ot = pos[`${p}.tire.ot`], it = pos[`${p}.tire.it`]
+        let angle = 0
+        if (ot && it) {
+          const midTopX = (ot.x + it.x) / 2, midTopY = (ot.y + it.y) / 2
+          angle = Math.atan2(midTopX - hub.x, -(midTopY - hub.y)) * (180 / Math.PI)
+        }
         return (
-          <g key={`tire-fill-${id}`} opacity={0.6}>
-            <polygon points={poly(t0, t1, b1, b0)} fill={tc.outer}  stroke="none" />
-            <polygon points={poly(t1, t2, b2, b1)} fill={tc.center} stroke="none" />
-            <polygon points={poly(t2, t3, b3, b2)} fill={tc.inner}  stroke="none" />
+          <g key={`tire-${id}`}
+            transform={`translate(${hub.x},${hub.y}) rotate(${angle.toFixed(2)})`}>
+            <rect x={-tw} y={-TIRE_H} width={w} height={h}
+              rx={2.5} ry={2.5}
+              fill={isDefault ? '#111' : `url(#tg-${id})`}
+              stroke={isDefault ? '#fff' : tc.center}
+              strokeWidth={isDefault ? 1.2 : 0.8}
+              opacity={isDefault ? 0.9 : 0.85} />
           </g>
         )
       })}
