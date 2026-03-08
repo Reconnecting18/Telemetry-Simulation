@@ -7,6 +7,7 @@ import PlaybackControls from './components/PlaybackControls'
 import TrackMap from './components/TrackMap'
 import CarModel from './components/CarModel'
 import TireDetailPanel from './components/TireDetailPanel'
+import StrategyPanel from './components/StrategyPanel'
 
 function statusColor(frac) {
   if (frac < 0.4) return '#7ed321'
@@ -112,31 +113,7 @@ export default function App() {
             </div>
 
             <div className="strategy-panel">
-              <h4 className="panel-title">Race Strategy</h4>
-              <div className="strategy-content">
-                <div className="strategy-row">
-                  <span className="strategy-label">Compound</span>
-                  <span className="strategy-value">Medium</span>
-                </div>
-                <div className="strategy-row">
-                  <span className="strategy-label">Stint</span>
-                  <span className="strategy-value">Lap {f?.lap || 1} / {data.session?.total_laps || '--'}</span>
-                </div>
-                <div className="strategy-row">
-                  <span className="strategy-label">Fuel</span>
-                  <span className="strategy-value">{(f?.fuel_L || 0).toFixed(1)} L</span>
-                </div>
-                <div className="strategy-row">
-                  <span className="strategy-label">Avg Wear</span>
-                  <span className="strategy-value" style={{ color: statusColor(avgWear) }}>
-                    {(avgWear * 100).toFixed(1)}%
-                  </span>
-                </div>
-                <div className="strategy-row">
-                  <span className="strategy-label">End</span>
-                  <span className="strategy-value">{data.session?.end_reason || '--'}</span>
-                </div>
-              </div>
+              <StrategyPanel session={data.session} frames={data.frames} />
             </div>
           </div>
         </div>
