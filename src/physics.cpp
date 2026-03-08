@@ -197,7 +197,8 @@ static double segmentLength(const std::vector<TrackNode>& nodes, int i) {
     if (i + 1 >= static_cast<int>(nodes.size())) return 1.0;
     double dx = nodes[i + 1].x - nodes[i].x;
     double dy = nodes[i + 1].y - nodes[i].y;
-    return std::max(std::sqrt(dx * dx + dy * dy), 0.1);
+    double dz = nodes[i + 1].z - nodes[i].z;
+    return std::max(std::sqrt(dx * dx + dy * dy + dz * dz), 0.1);
 }
 
 std::vector<double> computeVelocityProfile(

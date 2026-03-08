@@ -61,7 +61,8 @@ bool Track::loadFromCSV(const std::string& path) {
         if (!nodes.empty()) {
             double dx = node.x - nodes.back().x;
             double dy = node.y - nodes.back().y;
-            cumulative_dist += std::sqrt(dx * dx + dy * dy);
+            double dz = node.z - nodes.back().z;
+            cumulative_dist += std::sqrt(dx * dx + dy * dy + dz * dz);
         }
         node.distance = cumulative_dist;
         nodes.push_back(node);
@@ -367,12 +368,13 @@ TelemetrySession runSimulation(const Track& track, const VehicleConfig& config) 
         for (int i = 0; i < N && !session_done; ++i) {
             const TrackNode& node = track.nodes[i];
 
-            // Segment length from previous node (matches velocity profile phase)
+            // Segment length from previous node (3D — matches velocity profile)
             double seg_len = 0.1;
             if (i > 0) {
                 double dx = node.x - track.nodes[i - 1].x;
                 double dy = node.y - track.nodes[i - 1].y;
-                seg_len = std::max(std::sqrt(dx * dx + dy * dy), 0.1);
+                double dz = node.z - track.nodes[i - 1].z;
+                seg_len = std::max(std::sqrt(dx * dx + dy * dy + dz * dz), 0.1);
             }
 
             // Grade at this node
