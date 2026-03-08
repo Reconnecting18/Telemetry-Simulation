@@ -4,7 +4,15 @@
 #include <iomanip>
 #include <iostream>
 #include <sstream>
-#include <filesystem>
+#if __has_include(<filesystem>)
+  #include <filesystem>
+  namespace fs = std::filesystem;
+#elif __has_include(<experimental/filesystem>)
+  #include <experimental/filesystem>
+  namespace fs = std::experimental::filesystem;
+#else
+  #error "No filesystem header available"
+#endif
 
 // ---------------------------------------------------------------------------
 // Minimal JSON helpers (no external dependencies)
@@ -23,9 +31,9 @@ static std::string jVal(double v, int precision = 4) {
 // ---------------------------------------------------------------------------
 
 bool TelemetrySession::writeJSON(const std::string& path) const {
-    std::filesystem::path p(path);
+    fs::path p(path);
     if (p.has_parent_path()) {
-        std::filesystem::create_directories(p.parent_path());
+        fs::create_directories(p.parent_path());
     }
 
     std::ofstream out(path);
