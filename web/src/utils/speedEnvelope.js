@@ -106,13 +106,112 @@ export function calculateSpeedEnvelope(trackData, corners, carParams) {
   // Step 5: Final envelope = min(cornering, forward, backward) — already folded
   // vBackward is the final result since it takes min with vForward at each step
   const speedKph = new Array(N)
+  const forwardKph = new Array(N)
   for (let i = 0; i < N; i++) {
-    const vFinal = vBackward[i]
-    speedKph[i] = vFinal * 3.6
+    speedKph[i] = vBackward[i] * 3.6
+    forwardKph[i] = vForward[i] * 3.6
     nodes[i].speed_kph = speedKph[i]
   }
 
+  // Attach forward-only profile for braking point detection
+  speedKph._forwardKph = forwardKph
+
   return speedKph
+}
+
+/**
+ * Calculate braking points for each corner.
+ *
+ * For each corner, walks backward from the corner start_node along the speed
+ * envelope. The braking point is the first node where the car must begin
+ * braking to reach the corner entry speed.
+ *
+ * Dynamic adjustments:
+ *   - Extra fuel above base weight: +2m per 10kg of extra fuel
+ *   - Tire wear: multiply braking distance by (1 + avg_wear * 0.15)
+ *
+ * @param {object}   trackData  - track object with .nodes[]
+ * @param {number[]} speedKph   - speed envelope (kph per node)
+ * @param {Array}    corners    - output of analyzeCorners()
+ * @param {object}   [carParams]
+ * @param {object}   [conditions] - { fuel_L, tire_wear: {FL,FR,RL,RR}, base_fuel_L }
+ * @returns {Array} corners with braking_point_node, braking_distance_m added
+ */
+export function calculateBrakingPoints(trackData, speedKph, corners, carParams, conditions) {
+  const params = { ...DEFAULT_CAR_PARAMS, ...carParams }
+  const nodes = trackData?.nodes
+  if (!nodes || !speedKph || !corners) return corners || []
+
+  const N = nodes.length
+  const maxBrake = params.max_braking_deceleration * G  // m/s^2
+
+  // Dynamic adjustments
+  const baseFuel = conditions?.base_fuel_L ?? params.fuel_capacity_L ?? 120
+  const currentFuel = conditions?.fuel_L ?? baseFuel
+  const extraFuelKg = Math.max(0, currentFuel - baseFuel * 0.5) * 0.74  // fuel density ~0.74 kg/L, base = half tank
+  const fuelExtension = extraFuelKg / 10 * 2  // +2m per 10kg extra
+
+  const wear = conditions?.tire_wear
+  const avgWear = wear
+    ? ((wear.FL || 0) + (wear.FR || 0) + (wear.RL || 0) + (wear.RR || 0)) / 4
+    : 0
+  const wearMultiplier = 1 + avgWear * 0.15
+
+  // Forward-only profile (no braking constraint) for comparison
+  const fwdKph = speedKph._forwardKph || speedKph
+
+  for (const corner of corners) {
+    const entryNode = corner.start_node
+
+    // The braking point is where the final envelope first drops below the
+    // forward-only profile — i.e., where braking begins constraining speed.
+    // Walk backward from entry to find where they converge.
+    let brakeNode = -1
+    let brakeDist = 0
+
+    for (let i = entryNode; i >= 0; i--) {
+      const finalSpd = speedKph[i] || 0
+      const fwdSpd = fwdKph[i] || 0
+
+      // When final envelope matches forward profile (within 2%), braking
+      // hasn't kicked in yet — the previous node was the braking point
+      if (finalSpd >= fwdSpd * 0.98) {
+        brakeNode = i
+        // Compute distance from braking node to corner entry
+        brakeDist = 0
+        for (let j = i; j < entryNode; j++) {
+          brakeDist += nodeDist(nodes[j], nodes[j + 1])
+        }
+        break
+      }
+    }
+
+    if (brakeNode < 0 || brakeDist < 5) {
+      corner.braking_point_node = undefined
+      corner.braking_distance_m = 0
+      continue
+    }
+
+    // Apply dynamic adjustments to braking distance
+    const rawDist = brakeDist
+    const adjustedDist = (rawDist + fuelExtension) * wearMultiplier
+
+    // Walk back from entry by adjustedDist to find the adjusted braking node
+    let accumDist = 0
+    let adjNode = brakeNode
+    for (let i = entryNode - 1; i >= 0; i--) {
+      accumDist += nodeDist(nodes[i], nodes[i + 1])
+      if (accumDist >= adjustedDist) {
+        adjNode = i
+        break
+      }
+    }
+
+    corner.braking_point_node = adjNode
+    corner.braking_distance_m = parseFloat(adjustedDist.toFixed(1))
+  }
+
+  return corners
 }
 
 /**

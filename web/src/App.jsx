@@ -2,7 +2,7 @@ import { useState, useMemo } from 'react'
 import { useTelemetryData } from './hooks/useTelemetryData'
 import { usePlayback } from './hooks/usePlayback'
 import { logCornerAnalysis, analyzeCorners } from './utils/cornerDetection'
-import { calculateSpeedEnvelope } from './utils/speedEnvelope'
+import { calculateSpeedEnvelope, calculateBrakingPoints } from './utils/speedEnvelope'
 
 import Header from './components/Header'
 import PlaybackControls from './components/PlaybackControls'
@@ -41,17 +41,28 @@ export default function App() {
   const [mode, setMode] = useState('default')
 
   // Corner analysis + speed envelope (computed once on data load)
-  const speedData = useMemo(() => {
-    if (!data?.track) return null
-    const corners = analyzeCorners(data.track)
+  const { speedData, corners } = useMemo(() => {
+    if (!data?.track) return { speedData: null, corners: [] }
+    const c = analyzeCorners(data.track)
     logCornerAnalysis(data.track)
-    return calculateSpeedEnvelope(data.track, corners)
+    const spd = calculateSpeedEnvelope(data.track, c)
+    return { speedData: spd, corners: c }
   }, [data?.track])
+
+  // Dynamic braking points — recalculate when fuel/wear changes
+  const f = interpolatedFrame
+  const brakingPoints = useMemo(() => {
+    if (!data?.track || !speedData || !corners.length) return null
+    return calculateBrakingPoints(data.track, speedData, corners, null, {
+      fuel_L: f?.fuel_L,
+      tire_wear: f?.tire_wear,
+      base_fuel_L: data.vehicle?.fuel_capacity_L,
+    })
+  }, [data?.track, speedData, corners, f?.fuel_L, f?.tire_wear])
 
   if (error) return <div className="state-msg error">Failed to load telemetry: {error}</div>
   if (!data) return <div className="state-msg">Loading telemetry data...</div>
 
-  const f = interpolatedFrame
   const v = data.vehicle
 
   // Mechanical indicators
@@ -85,6 +96,7 @@ export default function App() {
             trackNodes={data.track?.nodes}
             racingLineData={data.track?.racing_line}
             speedData={speedData}
+            brakingPoints={brakingPoints}
             frames={data.frames}
             currentTime={currentTime}
             carX={f?.x}

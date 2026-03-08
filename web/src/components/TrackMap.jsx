@@ -143,7 +143,7 @@ function buildTrail(frames, currentTime) {
   return points
 }
 
-export default function TrackMap({ trackNodes, racingLineData, speedData, frames, currentTime, carX, carY }) {
+export default function TrackMap({ trackNodes, racingLineData, speedData, brakingPoints, frames, currentTime, carX, carY }) {
   const svgRef = useRef(null)
   const isDragging = useRef(false)
   const lastMouse  = useRef({ x: 0, y: 0 })
@@ -204,6 +204,33 @@ export default function TrackMap({ trackNodes, racingLineData, speedData, frames
       cornerPositions: cPos,
     }
   }, [trackNodes, racingLineData, speedData])
+
+  // Brake marker boards — computed from dynamic brakingPoints prop
+  const brakeMarkers = useMemo(() => {
+    if (!brakingPoints || !trackNodes || !trackNodes.length) return []
+    const N = trackNodes.length
+    return brakingPoints
+      .filter(c => c.braking_point_node !== undefined && c.braking_point_node < N)
+      .map(c => {
+        const idx = c.braking_point_node
+        const n = trackNodes[idx]
+        const prev = trackNodes[Math.max(0, idx - 1)]
+        const next = trackNodes[Math.min(N - 1, idx + 1)]
+        // Track direction
+        const dx = next.x - prev.x, dy = next.y - prev.y
+        const len = Math.sqrt(dx * dx + dy * dy) || 1
+        // Perpendicular (normal to track)
+        const nx = -dy / len, ny = dx / len
+        const hw = TRACK_WIDTH / 2 + 2  // half-width of marker line
+        return {
+          x1: n.x + nx * hw,  y1: -n.y - ny * hw,
+          x2: n.x - nx * hw,  y2: -n.y + ny * hw,
+          labelX: n.x + nx * (hw + 10),
+          labelY: -n.y - ny * (hw + 10),
+          dist: c.braking_distance_m,
+        }
+      })
+  }, [brakingPoints, trackNodes])
 
   useEffect(() => {
     if (baseVB && !vbState) setVbState(baseVB)
@@ -407,6 +434,22 @@ export default function TrackMap({ trackNodes, racingLineData, speedData, frames
             )
           })}
 
+          {/* ── Braking point markers (orange boards) ── */}
+          {brakeMarkers.map((bm, i) => (
+            <g key={`brake-${i}`}>
+              <line x1={bm.x1} y1={bm.y1} x2={bm.x2} y2={bm.y2}
+                stroke="#ff8c00" strokeWidth={2.5} strokeLinecap="round" />
+              <text x={bm.labelX} y={bm.labelY}
+                fill="#ff8c00" fontSize={9}
+                fontFamily="'Segoe UI', system-ui, sans-serif"
+                fontWeight="700" textAnchor="middle"
+                dominantBaseline="central"
+                opacity={0.9}>
+                {Math.round(bm.dist)}m
+              </text>
+            </g>
+          ))}
+
           {/* ── Racing line (cyan, thin, solid) ── */}
           {rlPoints && (
             <polyline
@@ -472,6 +515,14 @@ export default function TrackMap({ trackNodes, racingLineData, speedData, frames
           </svg>
           &nbsp;Car
         </span>
+        {brakeMarkers.length > 0 && (
+          <span className="legend-item">
+            <svg width="12" height="8" style={{ display:'inline-block', verticalAlign:'middle' }}>
+              <line x1="1" y1="4" x2="11" y2="4" stroke="#ff8c00" strokeWidth="2.5" />
+            </svg>
+            &nbsp;Brake
+          </span>
+        )}
         {speedOverlay.length > 0 && (
           <span className="legend-item">
             <svg width="30" height="6" style={{ display:'inline-block', verticalAlign:'middle' }}>
