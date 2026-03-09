@@ -215,25 +215,26 @@ export function calculateBrakingPoints(trackData, speedKph, corners, carParams, 
 }
 
 /**
- * Map speed (kph) to a color: blue (slow) → green (mid) → red (fast).
+ * Map speed (kph) to a color: light grey (slow) → yellow (mid) → red (fast).
+ * Motorsport-standard: white/grey for braking zones, red for full-speed sections.
  * Returns a CSS color string.
  */
 export function speedColor(speedKph, minSpeed, maxSpeed) {
   const range = maxSpeed - minSpeed || 1
   const t = Math.max(0, Math.min(1, (speedKph - minSpeed) / range))
 
-  // blue (0) → green (0.5) → red (1.0)
+  // #cccccc (0) → #ffdd00 (0.5) → #ff3d00 (1.0)
   let r, g, b
   if (t < 0.5) {
     const s = t / 0.5
-    r = 0
-    g = Math.round(200 * s)
-    b = Math.round(220 * (1 - s))
+    r = Math.round(204 + (255 - 204) * s)  // 204 → 255
+    g = Math.round(204 + (221 - 204) * s)  // 204 → 221
+    b = Math.round(204 * (1 - s))          // 204 → 0
   } else {
     const s = (t - 0.5) / 0.5
-    r = Math.round(230 * s)
-    g = Math.round(200 * (1 - s))
-    b = 0
+    r = 255                                 // 255 → 255
+    g = Math.round(221 * (1 - s))          // 221 → 0
+    b = 0                                   // 0   → 0
   }
   return `rgb(${r},${g},${b})`
 }
