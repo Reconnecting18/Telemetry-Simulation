@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useCallback } from 'react'
 import { useTelemetryData } from './hooks/useTelemetryData'
 import { usePlayback } from './hooks/usePlayback'
 import { logCornerAnalysis, analyzeCorners } from './utils/cornerDetection'
@@ -11,6 +11,29 @@ import TrackMap from './components/TrackMap'
 import CarModel from './components/CarModel'
 import TireDetailPanel from './components/TireDetailPanel'
 import StrategyPanel from './components/StrategyPanel'
+
+const API_URL = import.meta.env.VITE_SIMULATION_API_URL
+
+// Map StrategyBuilder compound IDs to C++ engine names
+const COMPOUND_MAP = { S: 'soft', M: 'medium', H: 'hard' }
+
+function transformPayload(payload) {
+  return {
+    stints: payload.stints.map(s => ({
+      compound: COMPOUND_MAP[s.compound] || s.compound.toLowerCase(),
+      tire_age: s.tireAge ?? 0,
+      fuel_load: s.fuelLoad ?? 100,
+      lap_count: s.lapCount ?? 10,
+    })),
+    modifiers: {
+      wear_multiplier: payload.modifiers?.wearMultiplier ?? 1.0,
+      fuel_multiplier: payload.modifiers?.fuelMultiplier ?? 1.0,
+      weather: (payload.modifiers?.weather || 'dry').toLowerCase(),
+      track_temp: payload.modifiers?.trackTemp ?? 35,
+      ambient_temp: payload.modifiers?.ambientTemp ?? 25,
+    },
+  }
+}
 
 function statusColor(frac) {
   if (frac < 0.4) return '#00e676'
@@ -34,12 +57,63 @@ function StatusBar({ label, value, fraction }) {
 
 export default function App() {
   const { data, error } = useTelemetryData()
+
+  // Simulation state
+  const [simulatedData, setSimulatedData] = useState(null)
+  const [simStatus, setSimStatus] = useState('idle') // idle | simulating | success | fallback
+  const [dataSource, setDataSource] = useState('static') // static | engine | estimate
+
+  // Active data: simulated results take priority over static telemetry
+  const activeFrames = simulatedData?.frames || data?.frames
+  const activeSession = simulatedData?.session || data?.session
+  const activeVehicle = simulatedData?.vehicle || data?.vehicle
+  const activeWeather = simulatedData?.weather || data?.weather
+
   const {
     currentTime, maxTime, isPlaying, playbackSpeed,
     interpolatedFrame, toggle, seekTo, setPlaybackSpeed,
-  } = usePlayback(data?.frames)
+  } = usePlayback(activeFrames)
 
   const [mode, setMode] = useState('default')
+
+  // API call handler
+  const handleRunSimulation = useCallback(async (payload) => {
+    setSimStatus('simulating')
+
+    try {
+      const body = transformPayload(payload)
+      const controller = new AbortController()
+      const timeout = setTimeout(() => controller.abort(), 30000)
+
+      const res = await fetch(API_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+        signal: controller.signal,
+      })
+      clearTimeout(timeout)
+
+      if (!res.ok) throw new Error(`API ${res.status}`)
+
+      const json = await res.json()
+      // The API returns the full telemetry JSON (session, vehicle, frames, track, weather)
+      const result = typeof json.body === 'string' ? JSON.parse(json.body) : json
+
+      if (result.frames?.length) {
+        setSimulatedData(result)
+        setDataSource('engine')
+        setSimStatus('success')
+        seekTo(0)
+      } else {
+        throw new Error('No frames in response')
+      }
+    } catch (err) {
+      console.error('Simulation API error:', err)
+      setSimStatus('fallback')
+      setDataSource('estimate')
+      // Keep showing static data — StrategyPanel can show its local estimate
+    }
+  }, [seekTo])
 
   // Corner analysis + speed envelope + racing line (computed once on data load)
   const { speedData, corners, generatedLine } = useMemo(() => {
@@ -65,7 +139,7 @@ export default function App() {
   if (error) return <div className="state-msg error">Failed to load telemetry: {error}</div>
   if (!data) return <div className="state-msg">Loading telemetry data...</div>
 
-  const v = data.vehicle
+  const v = activeVehicle || data.vehicle
 
   // Mechanical indicators
   const rpm = f?.rpm || 0
@@ -78,14 +152,14 @@ export default function App() {
 
   return (
     <div className="dashboard">
-      <Header session={data.session} vehicle={v} track={data.track} weather={data.weather} currentLap={f?.lap} />
+      <Header session={activeSession} vehicle={v} track={data.track} weather={activeWeather} currentLap={f?.lap} />
 
       <PlaybackControls
         currentTime={currentTime}
         maxTime={maxTime}
         isPlaying={isPlaying}
         playbackSpeed={playbackSpeed}
-        frames={data.frames}
+        frames={activeFrames}
         onToggle={toggle}
         onSeek={seekTo}
         onSetSpeed={setPlaybackSpeed}
@@ -100,7 +174,7 @@ export default function App() {
             speedData={speedData}
             brakingPoints={brakingPoints}
             generatedLine={generatedLine}
-            frames={data.frames}
+            frames={activeFrames}
             currentTime={currentTime}
             carX={f?.x}
             carY={f?.y}
@@ -140,7 +214,17 @@ export default function App() {
             </div>
 
             <div className="strategy-panel">
-              <StrategyPanel session={data.session} frames={data.frames} />
+              <StrategyPanel
+                session={activeSession}
+                frames={activeFrames}
+                onRunSimulation={handleRunSimulation}
+                simStatus={simStatus}
+              />
+              {dataSource !== 'static' && (
+                <div className={`source-badge ${dataSource}`}>
+                  {dataSource === 'engine' ? 'Physics Engine' : 'Strategy Estimate'}
+                </div>
+              )}
             </div>
           </div>
         </div>
