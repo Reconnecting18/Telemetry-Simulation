@@ -1,4 +1,4 @@
-import { useState, memo, useCallback } from 'react'
+import { useState, useEffect, useRef, memo, useCallback } from 'react'
 
 // ── Constants ──
 const COMPOUNDS = [
@@ -212,7 +212,7 @@ function TireWearMini({ wear, compound }) {
 // ═══════════════════════════════════════════════════════════════════
 // STRATEGY BUILDER
 // ═══════════════════════════════════════════════════════════════════
-function StrategyBuilder({ onRunSimulation }) {
+function StrategyBuilder({ onRunSimulation, simStatus }) {
   const [totalLaps, setTotalLaps] = useState(26)
   const [durationType, setDurationType] = useState('laps')
   const [durationMinutes, setDurationMinutes] = useState(60)
@@ -224,6 +224,30 @@ function StrategyBuilder({ onRunSimulation }) {
   const [weather, setWeather] = useState('Dry')
   const [trackTemp, setTrackTemp] = useState(35)
   const [ambientTemp, setAmbientTemp] = useState(25)
+
+  // Button visual state: tracks the displayed state separately so we can
+  // hold success/fallback for a brief flash before returning to idle.
+  const [btnState, setBtnState] = useState('idle') // idle | simulating | success | fallback
+  const timerRef = useRef(null)
+  const lastPayloadRef = useRef(null)
+
+  useEffect(() => {
+    // Clear any pending reset timer on unmount
+    return () => { if (timerRef.current) clearTimeout(timerRef.current) }
+  }, [])
+
+  useEffect(() => {
+    if (simStatus === 'simulating') {
+      setBtnState('simulating')
+      if (timerRef.current) clearTimeout(timerRef.current)
+    } else if (simStatus === 'success') {
+      setBtnState('success')
+      timerRef.current = setTimeout(() => setBtnState('idle'), 800)
+    } else if (simStatus === 'fallback') {
+      setBtnState('fallback')
+      timerRef.current = setTimeout(() => setBtnState('idle'), 2000)
+    }
+  }, [simStatus])
 
   const addStint = useCallback(() => {
     if (stints.length >= MAX_STINTS) return
@@ -239,7 +263,8 @@ function StrategyBuilder({ onRunSimulation }) {
   }, [])
 
   const handleRun = useCallback(() => {
-    onRunSimulation?.({
+    if (btnState === 'simulating') return // prevent double-click
+    const payload = {
       totalLaps: durationType === 'laps' ? totalLaps : null,
       durationMinutes: durationType === 'time' ? durationMinutes : null,
       durationType,
@@ -247,6 +272,9 @@ function StrategyBuilder({ onRunSimulation }) {
         compound: s.compound,
         tireAge: s.tireAge,
         fuelLoad: s.fuelLoad,
+        lapCount: Math.max(1, Math.floor(
+          (durationType === 'laps' ? totalLaps : Math.round(durationMinutes / 1.5)) / stints.length
+        )),
         pitActions: i > 0 ? {
           changeTires: s.changeTires,
           refuelAmount: s.refuelAmount,
@@ -261,8 +289,32 @@ function StrategyBuilder({ onRunSimulation }) {
         trackTemp,
         ambientTemp,
       },
-    })
-  }, [totalLaps, durationType, durationMinutes, stints, wearMultiplier, fuelMultiplier, weather, trackTemp, ambientTemp, onRunSimulation])
+    }
+    lastPayloadRef.current = payload
+    onRunSimulation?.(payload)
+  }, [btnState, totalLaps, durationType, durationMinutes, stints, wearMultiplier, fuelMultiplier, weather, trackTemp, ambientTemp, onRunSimulation])
+
+  // Status text above button
+  const effectiveLaps = durationType === 'laps' ? totalLaps : Math.round(durationMinutes / 1.5)
+  let statusText = null
+  if (btnState === 'simulating') {
+    statusText = `Simulating ${effectiveLaps} laps...`
+  } else if (btnState === 'success') {
+    const p = lastPayloadRef.current
+    const nStints = p?.stints?.length || stints.length
+    const nLaps = p?.totalLaps || effectiveLaps
+    statusText = `Physics simulation complete \u2014 ${nLaps} laps across ${nStints} stint${nStints > 1 ? 's' : ''}`
+  } else if (btnState === 'fallback') {
+    statusText = 'Live engine unavailable \u2014 using strategy estimate'
+  }
+
+  // Button label + class
+  const btnDisabled = btnState === 'simulating'
+  const btnClass = `strat-run-btn strat-run-${btnState}`
+  const btnLabel = btnState === 'simulating' ? 'Simulating...'
+    : btnState === 'success' ? 'Complete \u2713'
+    : btnState === 'fallback' ? 'Using Estimate'
+    : 'RUN SIMULATION'
 
   return (
     <div className="strategy-builder">
@@ -334,9 +386,13 @@ function StrategyBuilder({ onRunSimulation }) {
         </div>
       </div>
 
-      {/* Run button */}
-      <button className="strat-run-btn" onClick={handleRun}>
-        RUN SIMULATION
+      {/* Status line + Run button */}
+      {statusText && (
+        <div className={`strat-run-status strat-run-status-${btnState}`}>{statusText}</div>
+      )}
+      <button className={btnClass} onClick={handleRun} disabled={btnDisabled}>
+        {btnState === 'simulating' && <span className="strat-run-spinner" />}
+        {btnLabel}
       </button>
     </div>
   )
@@ -445,7 +501,7 @@ function StrategySummary({ session, frames, stints: stintData }) {
 // ═══════════════════════════════════════════════════════════════════
 // MAIN PANEL — toggles between Builder and Summary
 // ═══════════════════════════════════════════════════════════════════
-function StrategyPanel({ session, frames, onRunSimulation }) {
+function StrategyPanel({ session, frames, onRunSimulation, simStatus }) {
   const [view, setView] = useState('builder')
   const hasData = session && frames && frames.length > 0
 
@@ -463,7 +519,7 @@ function StrategyPanel({ session, frames, onRunSimulation }) {
       </div>
 
       {view === 'builder' ? (
-        <StrategyBuilder onRunSimulation={onRunSimulation} />
+        <StrategyBuilder onRunSimulation={onRunSimulation} simStatus={simStatus} />
       ) : (
         <StrategySummary session={session} frames={frames} />
       )}

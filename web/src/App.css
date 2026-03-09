@@ -886,6 +886,10 @@ header {
 
 /* -- Run Button -- */
 .strat-run-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
   background: #0a0a0a;
   color: #00a8a8;
   border: 1px solid #00a8a8;
@@ -896,10 +900,87 @@ header {
   letter-spacing: 0.1em;
   text-transform: uppercase;
   cursor: pointer;
-  transition: all 0.15s;
+  transition: background 0.3s ease, color 0.3s ease, border-color 0.3s ease, opacity 0.3s ease;
   margin-top: auto;
 }
-.strat-run-btn:hover { background: #00a8a8; color: #0a0a0a; }
+.strat-run-btn:hover:not(:disabled) { background: #00a8a8; color: #0a0a0a; }
+
+/* Idle (default) — no extra rules needed */
+
+/* Simulating */
+.strat-run-btn.strat-run-simulating {
+  background: #00a8a8;
+  color: #0a0a0a;
+  border-color: #00a8a8;
+  cursor: not-allowed;
+  opacity: 0.9;
+  animation: runPulse 1.2s ease-in-out infinite;
+}
+@keyframes runPulse {
+  0%, 100% { opacity: 0.9; }
+  50% { opacity: 0.6; }
+}
+
+/* Success */
+.strat-run-btn.strat-run-success {
+  background: #00c853;
+  color: #0a0a0a;
+  border-color: #00c853;
+}
+
+/* Fallback */
+.strat-run-btn.strat-run-fallback {
+  background: #f5a623;
+  color: #0a0a0a;
+  border-color: #f5a623;
+}
+
+/* Disabled state */
+.strat-run-btn:disabled {
+  pointer-events: none;
+}
+
+/* Spinner */
+.strat-run-spinner {
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  border: 2px solid rgba(10,10,10,0.3);
+  border-top-color: #0a0a0a;
+  border-radius: 50%;
+  animation: spin 0.6s linear infinite;
+}
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+/* Status line above button */
+.strat-run-status {
+  font-size: 0.55rem;
+  text-align: center;
+  padding: 3px 0;
+  letter-spacing: 0.02em;
+  transition: color 0.3s ease, opacity 0.3s ease;
+  opacity: 1;
+}
+.strat-run-status-simulating { color: #00a8a8; }
+.strat-run-status-success    { color: #00c853; }
+.strat-run-status-fallback   { color: #f5a623; }
+
+/* Source badge */
+.source-badge {
+  font-size: 0.5rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  text-align: center;
+  padding: 3px 8px;
+  border-radius: 3px;
+  margin-top: 4px;
+  transition: background 0.3s ease, color 0.3s ease;
+}
+.source-badge.engine   { background: rgba(0,168,168,0.15); color: #00a8a8; }
+.source-badge.estimate { background: rgba(245,166,35,0.15); color: #f5a623; }
 
 /* -- Strategy Summary -- */
 .strategy-summary { display: flex; flex-direction: column; gap: 10px; }
