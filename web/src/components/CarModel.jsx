@@ -90,31 +90,33 @@ defWheel('fr', ...FR_HUB, 'R', TIRE_W_F)
 defWheel('rl', ...RL_HUB, 'L', TIRE_W_R)
 defWheel('rr', ...RR_HUB, 'R', TIRE_W_R)
 
-// ── 1d. Front wing (10 nodes) ──────────────────────────────────
-defNode('fw.lt',    -22, -53)          // left tip
-defNode('fw.lepT',  -22, -55)          // left endplate top
-defNode('fw.lepB',  -22, -51)          // left endplate bottom
+// ── 1d. Front wing (12 nodes) — main plane + cascade + endplates ──
+defNode('fw.lt',    -22, -53)          // left tip (main plane edge)
+defNode('fw.rt',     22, -53)          // right tip
 defNode('fw.cL',     -4, -53)          // centre left
 defNode('fw.cR',      4, -53)          // centre right
-defNode('fw.repT',   22, -55)          // right endplate top
-defNode('fw.repB',   22, -51)          // right endplate bottom
-defNode('fw.rt',     22, -53)          // right tip
+defNode('fw.csL',   -19, -50)          // cascade left
+defNode('fw.csR',    19, -50)          // cascade right
+defNode('fw.lepT',  -25, -58)          // left endplate forward
+defNode('fw.lepB',  -25, -40)          // left endplate rear
+defNode('fw.repT',   25, -58)          // right endplate forward
+defNode('fw.repB',   25, -40)          // right endplate rear
 defNode('fw.aL',     -2, -49)          // attach left
 defNode('fw.aR',      2, -49)          // attach right
 
-// ── 1e. Rear wing (12 nodes) ───────────────────────────────────
-defNode('rw.lt',    -17,  42)          // left tip
-defNode('rw.lepT',  -17,  40)          // left endplate top
-defNode('rw.lepB',  -17,  44)          // left endplate bottom
-defNode('rw.cL',     -4,  42)          // centre left
-defNode('rw.cR',      4,  42)          // centre right
-defNode('rw.repT',   17,  40)          // right endplate top
-defNode('rw.repB',   17,  44)          // right endplate bottom
-defNode('rw.rt',     17,  42)          // right tip
-defNode('rw.piL',    -5,  42)          // pillar left
-defNode('rw.piR',     5,  42)          // pillar right
-defNode('rw.baL',    -5,  34)          // base left (chassis)
-defNode('rw.baR',     5,  34)          // base right (chassis)
+// ── 1e. Rear wing (12 nodes) — main plane + tall endplates + pillars ──
+defNode('rw.lt',    -17,  43)          // left tip (main plane)
+defNode('rw.rt',     17,  43)          // right tip
+defNode('rw.cL',     -4,  43)          // centre left
+defNode('rw.cR',      4,  43)          // centre right
+defNode('rw.lepT',  -21,  32)          // left endplate forward
+defNode('rw.lepB',  -21,  53)          // left endplate rear
+defNode('rw.repT',   21,  32)          // right endplate forward
+defNode('rw.repB',   21,  53)          // right endplate rear
+defNode('rw.piL',    -4,  43)          // pillar left (wing)
+defNode('rw.piR',     4,  43)          // pillar right (wing)
+defNode('rw.baL',    -4,  34)          // pillar base left (chassis)
+defNode('rw.baR',     4,  34)          // pillar base right (chassis)
 
 // ── 1f. Sidepods (4 nodes each × 2) ────────────────────────────
 defNode('lsp.ft',   -8,  -3)
@@ -188,9 +190,14 @@ for (const p of ['fl','fr','rl','rr']) {
 
 // ── 2f. Front wing beams — light grey, damage-reactive ─────────
 ;[
-  ['fw.lt','fw.lepT'], ['fw.lt','fw.lepB'], ['fw.lepT','fw.lepB'],
-  ['fw.lt','fw.cL'], ['fw.cL','fw.cR'], ['fw.cR','fw.rt'],
-  ['fw.rt','fw.repT'], ['fw.rt','fw.repB'], ['fw.repT','fw.repB'],
+  // Endplates (front-to-back span)
+  ['fw.lepT','fw.lepB'], ['fw.repT','fw.repB'],
+  // Main plane span + endplate connections
+  ['fw.lepT','fw.lt'], ['fw.lt','fw.cL'], ['fw.cL','fw.cR'], ['fw.cR','fw.rt'], ['fw.rt','fw.repT'],
+  // Cascade span + connections to main plane & endplates
+  ['fw.csL','fw.csR'], ['fw.lt','fw.csL'], ['fw.rt','fw.csR'],
+  ['fw.csL','fw.lepB'], ['fw.csR','fw.repB'],
+  // Nose attachment
   ['fw.cL','fw.aL'], ['fw.cR','fw.aR'],
   ['fw.aL','ch.nose'], ['fw.aR','ch.nose'],
 ].forEach(([a,b]) => defBeam(a, b, 'wing', '#888'))
@@ -254,7 +261,7 @@ const NODE_VIS = {}
   NODE_VIS[`${p}.pro`] = 'susp_out'
   NODE_VIS[`${p}.upr`] = 'upright';  NODE_VIS[`${p}.hub`] = 'hub'
 })
-;['fw.lt','fw.lepT','fw.lepB','fw.cL','fw.cR','fw.repT','fw.repB','fw.rt','fw.aL','fw.aR']
+;['fw.lt','fw.lepT','fw.lepB','fw.cL','fw.cR','fw.repT','fw.repB','fw.rt','fw.csL','fw.csR','fw.aL','fw.aR']
   .forEach(k => NODE_VIS[k] = 'aero')
 ;['rw.lt','rw.lepT','rw.lepB','rw.cL','rw.cR','rw.repT','rw.repB','rw.rt',
   'rw.piL','rw.piR','rw.baL','rw.baR'].forEach(k => NODE_VIS[k] = 'aero')
@@ -533,8 +540,34 @@ function CarModel({ frame, vehicle, mode }) {
     <svg viewBox="-35 -62 70 115" className="car-svg"
       style={{ transform, transformOrigin: '50% 50%' }}>
 
-      {/* Monocoque fill — the only filled polygon */}
+      {/* Monocoque fill */}
       <polygon points={monoPoints} fill="#0d0d0d" stroke="none" />
+
+      {/* Front wing filled shapes */}
+      <g opacity={0.9}>
+        <polygon points={`${pos['fw.lepT'].x-3},${pos['fw.lepT'].y} ${pos['fw.lepT'].x+3},${pos['fw.lepT'].y} ${pos['fw.lepB'].x+3},${pos['fw.lepB'].y} ${pos['fw.lepB'].x-3},${pos['fw.lepB'].y}`}
+          fill="#1a1a1a" />
+        <polygon points={`${pos['fw.repT'].x-3},${pos['fw.repT'].y} ${pos['fw.repT'].x+3},${pos['fw.repT'].y} ${pos['fw.repB'].x+3},${pos['fw.repB'].y} ${pos['fw.repB'].x-3},${pos['fw.repB'].y}`}
+          fill="#1a1a1a" />
+        <polygon points={`${pos['fw.lt'].x},${pos['fw.lt'].y-4} ${pos['fw.rt'].x},${pos['fw.rt'].y-4} ${pos['fw.rt'].x},${pos['fw.rt'].y+4} ${pos['fw.lt'].x},${pos['fw.lt'].y+4}`}
+          fill="#1a1a1a" />
+        <polygon points={`${pos['fw.csL'].x},${pos['fw.csL'].y-2.5} ${pos['fw.csR'].x},${pos['fw.csR'].y-2.5} ${pos['fw.csR'].x},${pos['fw.csR'].y+2.5} ${pos['fw.csL'].x},${pos['fw.csL'].y+2.5}`}
+          fill="#1a1a1a" />
+      </g>
+
+      {/* Rear wing filled shapes */}
+      <g opacity={0.9}>
+        <polygon points={`${pos['rw.lepT'].x-4},${pos['rw.lepT'].y} ${pos['rw.lepT'].x+4},${pos['rw.lepT'].y} ${pos['rw.lepB'].x+4},${pos['rw.lepB'].y} ${pos['rw.lepB'].x-4},${pos['rw.lepB'].y}`}
+          fill="#1a1a1a" />
+        <polygon points={`${pos['rw.repT'].x-4},${pos['rw.repT'].y} ${pos['rw.repT'].x+4},${pos['rw.repT'].y} ${pos['rw.repB'].x+4},${pos['rw.repB'].y} ${pos['rw.repB'].x-4},${pos['rw.repB'].y}`}
+          fill="#1a1a1a" />
+        <polygon points={`${pos['rw.lt'].x},${pos['rw.lt'].y-5} ${pos['rw.rt'].x},${pos['rw.rt'].y-5} ${pos['rw.rt'].x},${pos['rw.rt'].y+5} ${pos['rw.lt'].x},${pos['rw.lt'].y+5}`}
+          fill="#1a1a1a" />
+        <line x1={pos['rw.piL'].x} y1={pos['rw.piL'].y} x2={pos['rw.baL'].x} y2={pos['rw.baL'].y}
+          stroke="#1a1a1a" strokeWidth={2} />
+        <line x1={pos['rw.piR'].x} y1={pos['rw.piR'].y} x2={pos['rw.baR'].x} y2={pos['rw.baR'].y}
+          stroke="#1a1a1a" strokeWidth={2} />
+      </g>
 
       {/* All beams */}
       {BEAMS.map((beam, i) => {
