@@ -264,6 +264,8 @@ header {
   border-right: 1px solid #1e1e1e;
 }
 
+.track-map { position: relative; }
+
 .track-map-header {
   display: flex;
   align-items: center;
@@ -296,6 +298,20 @@ header {
   justify-content: center;
 }
 .map-btn:hover { border-color: #007a7a; color: #ffffff; }
+.map-btn-active { border-color: #007a7a !important; color: #00d4d4 !important; background: #0a1a1a; }
+
+.zoom-indicator {
+  position: absolute;
+  bottom: 28px;
+  right: 8px;
+  font-size: 0.6rem;
+  color: #555;
+  opacity: 0;
+  transition: opacity 0.3s ease;
+  pointer-events: none;
+  font-family: 'Segoe UI', system-ui, sans-serif;
+}
+.zoom-indicator.visible { opacity: 1; }
 
 .track-map-viewport {
   flex: 1;

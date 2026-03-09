@@ -12,6 +12,9 @@ const TRAIL_POINTS  = 30       // sample count for trail
 const MIN_CURVATURE = 0.006     // |k| threshold to qualify as a corner
 const MIN_CORNER_GAP = 4        // minimum node gap between distinct corners
 const LABEL_OFFSET = 22         // px offset from track for label placement
+const ZOOM_MIN  = 0.5
+const ZOOM_MAX  = 4.0
+const ZOOM_STEP = 0.25
 
 function detectCorners(nodes) {
   if (!nodes || nodes.length < 3) return []
@@ -148,6 +151,13 @@ export default function TrackMap({ trackNodes, racingLineData, speedData, brakin
   const isDragging = useRef(false)
   const lastMouse  = useRef({ x: 0, y: 0 })
   const [vbState, setVbState] = useState(null)
+  const [followCam, setFollowCam] = useState(false)
+  const followRef = useRef(false)
+  const [zoomLevel, setZoomLevel] = useState(1.0)
+  const zoomRef = useRef(1.0)
+  const [zoomVisible, setZoomVisible] = useState(false)
+  const zoomFadeRef = useRef(null)
+  const panAnimRef = useRef(null)
 
   const { baseVB, segments, surfacePath, racingLine, dirtyZones, gripOverlay, speedOverlay, startX, startY, cornerPositions } = useMemo(() => {
     if (!trackNodes || !trackNodes.length)
@@ -300,8 +310,19 @@ export default function TrackMap({ trackNodes, racingLineData, speedData, brakin
     if (baseVB && !vbState) setVbState(baseVB)
   }, [baseVB]) // eslint-disable-line
 
+  useEffect(() => () => {
+    if (panAnimRef.current) cancelAnimationFrame(panAnimRef.current)
+    if (zoomFadeRef.current) clearTimeout(zoomFadeRef.current)
+  }, [])
+
   const vb = vbState || baseVB || { x: 0, y: 0, w: 100, h: 100 }
   const vbStr = `${vb.x} ${vb.y} ${vb.w} ${vb.h}`
+
+  const flashZoom = useCallback(() => {
+    setZoomVisible(true)
+    if (zoomFadeRef.current) clearTimeout(zoomFadeRef.current)
+    zoomFadeRef.current = setTimeout(() => setZoomVisible(false), 2000)
+  }, [])
 
   const screenToSVG = useCallback((dx, dy) => {
     const svg = svgRef.current
@@ -310,27 +331,31 @@ export default function TrackMap({ trackNodes, racingLineData, speedData, brakin
     return { dx: dx / rect.width * vb.w, dy: dy / rect.height * vb.h }
   }, [vb.w, vb.h])
 
-  const zoomAround = useCallback((clientX, clientY, factor) => {
-    const svg = svgRef.current
-    if (!svg) return
-    const rect = svg.getBoundingClientRect()
-    const px = (clientX - rect.left) / rect.width  * vb.w + vb.x
-    const py = (clientY - rect.top)  / rect.height * vb.h + vb.y
-    setVbState(v => ({
-      x: px + (v.x - px) * factor,
-      y: py + (v.y - py) * factor,
-      w: v.w * factor,
-      h: v.h * factor,
-    }))
-  }, [vb.x, vb.y, vb.w, vb.h])
+  const zoomTo = useCallback((target) => {
+    const z = Math.max(ZOOM_MIN, Math.min(ZOOM_MAX, Math.round(target * 4) / 4))
+    zoomRef.current = z
+    setZoomLevel(z)
+    flashZoom()
+    if (!followRef.current && baseVB) {
+      setVbState(v => {
+        if (!v) return v
+        const cx = v.x + v.w / 2, cy = v.y + v.h / 2
+        const nw = baseVB.w / z, nh = baseVB.h / z
+        return { x: cx - nw / 2, y: cy - nh / 2, w: nw, h: nh }
+      })
+    }
+  }, [baseVB, flashZoom])
+
+  const zoomIn  = useCallback(() => zoomTo(zoomRef.current + ZOOM_STEP), [zoomTo])
+  const zoomOut = useCallback(() => zoomTo(zoomRef.current - ZOOM_STEP), [zoomTo])
 
   const handleWheel = useCallback((e) => {
     e.preventDefault()
-    zoomAround(e.clientX, e.clientY, e.deltaY < 0 ? 0.82 : 1.22)
-  }, [zoomAround])
+    zoomTo(zoomRef.current + (e.deltaY < 0 ? ZOOM_STEP : -ZOOM_STEP))
+  }, [zoomTo])
 
   const handleMouseDown = useCallback((e) => {
-    if (e.button !== 0) return
+    if (e.button !== 0 || followRef.current) return
     isDragging.current = true
     lastMouse.current = { x: e.clientX, y: e.clientY }
     e.preventDefault()
@@ -347,9 +372,13 @@ export default function TrackMap({ trackNodes, racingLineData, speedData, brakin
   }, [screenToSVG])
 
   const handleMouseUp = useCallback(() => { isDragging.current = false }, [])
-  const resetView    = useCallback(() => baseVB && setVbState(baseVB), [baseVB])
-  const zoomIn       = useCallback(() => setVbState(v => ({ x: v.x + v.w*0.1, y: v.y + v.h*0.1, w: v.w*0.8, h: v.h*0.8 })), [])
-  const zoomOut      = useCallback(() => setVbState(v => ({ x: v.x - v.w*0.125, y: v.y - v.h*0.125, w: v.w*1.25, h: v.h*1.25 })), [])
+
+  const resetView = useCallback(() => {
+    if (!baseVB) return
+    setVbState(baseVB)
+    zoomRef.current = 1.0; setZoomLevel(1.0)
+    followRef.current = false; setFollowCam(false)
+  }, [baseVB])
 
   // Car position (SVG coords)
   const cx = carX ?? 0
@@ -414,6 +443,41 @@ export default function TrackMap({ trackNodes, racingLineData, speedData, brakin
     })
   }, [racingLine, trail, projectOntoRL])
 
+  // Follow cam: keep viewport centered on car
+  useEffect(() => {
+    if (!followCam || !baseVB) return
+    const z = zoomRef.current
+    const w = baseVB.w / z, h = baseVB.h / z
+    setVbState({ x: carPos.x - w / 2, y: carPos.y - h / 2, w, h })
+  }, [followCam, zoomLevel, carPos.x, carPos.y, baseVB])
+
+  const toggleFollowCam = useCallback(() => {
+    if (panAnimRef.current) { cancelAnimationFrame(panAnimRef.current); panAnimRef.current = null }
+    if (!followRef.current && baseVB) {
+      // Activating: smooth pan to car over 300ms
+      const start = { ...(vbState || baseVB) }
+      const z = zoomRef.current
+      const w = baseVB.w / z, h = baseVB.h / z
+      const end = { x: carPos.x - w / 2, y: carPos.y - h / 2, w, h }
+      const t0 = performance.now()
+      const anim = (now) => {
+        const t = Math.min(1, (now - t0) / 300)
+        const e = t * (2 - t) // ease-out quadratic
+        setVbState({
+          x: start.x + (end.x - start.x) * e,
+          y: start.y + (end.y - start.y) * e,
+          w: start.w + (end.w - start.w) * e,
+          h: start.h + (end.h - start.h) * e,
+        })
+        if (t < 1) { panAnimRef.current = requestAnimationFrame(anim) }
+        else { panAnimRef.current = null; followRef.current = true; setFollowCam(true) }
+      }
+      panAnimRef.current = requestAnimationFrame(anim)
+    } else {
+      followRef.current = false; setFollowCam(false)
+    }
+  }, [baseVB, vbState, carPos])
+
   const rlPoints = racingLine.map(p => `${p.x.toFixed(1)},${p.y.toFixed(1)}`).join(' ')
 
   return (
@@ -421,9 +485,20 @@ export default function TrackMap({ trackNodes, racingLineData, speedData, brakin
       <div className="track-map-header">
         <h3>Track Map</h3>
         <div className="track-map-btns">
+          <button className={`map-btn${followCam ? ' map-btn-active' : ''}`}
+            onClick={toggleFollowCam} title="Follow car">
+            <svg width="10" height="10" viewBox="0 0 10 10">
+              <circle cx="5" cy="5" r="4" fill="none" stroke="currentColor" strokeWidth="1.2" />
+              <circle cx="5" cy="5" r="1.5" fill="currentColor" />
+            </svg>
+          </button>
           <button className="map-btn" onClick={zoomIn}  title="Zoom in">+</button>
           <button className="map-btn" onClick={zoomOut} title="Zoom out">-</button>
-          <button className="map-btn" onClick={resetView} title="Reset view">R</button>
+          <button className="map-btn" onClick={resetView} title="Reset view">
+            <svg width="10" height="10" viewBox="0 0 10 10">
+              <path d="M5 1L1 5h2v4h4V5h2z" fill="none" stroke="currentColor" strokeWidth="1.2" strokeLinejoin="round" />
+            </svg>
+          </button>
         </div>
       </div>
 
@@ -434,7 +509,7 @@ export default function TrackMap({ trackNodes, racingLineData, speedData, brakin
         onMouseMove={handleMouseMove}
         onMouseUp={handleMouseUp}
         onMouseLeave={handleMouseUp}
-        style={{ cursor: isDragging.current ? 'grabbing' : 'grab' }}
+        style={{ cursor: followCam ? 'default' : (isDragging.current ? 'grabbing' : 'grab') }}
       >
         <svg
           ref={svgRef}
@@ -597,6 +672,10 @@ export default function TrackMap({ trackNodes, racingLineData, speedData, brakin
               strokeLinejoin="round" />
           </g>
         </svg>
+      </div>
+
+      <div className={`zoom-indicator${zoomVisible ? ' visible' : ''}`}>
+        {zoomLevel.toFixed(1)}x
       </div>
 
       {/* Legend */}
