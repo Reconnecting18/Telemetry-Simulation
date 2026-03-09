@@ -11,7 +11,7 @@ const WEATHER_ICONS = {
   wet:  { symbol: '\uD83C\uDF27\uFE0F', color: '#5588cc' }, // rain
 }
 
-export default function Header({ session, vehicle, track, weather, currentLap }) {
+export default function Header({ session, vehicle, track, weather, currentLap, dataSource }) {
   const totalLaps = session?.total_laps
   const endReason = session?.end_reason
   const cond = weather?.condition || 'dry'
@@ -36,6 +36,11 @@ export default function Header({ session, vehicle, track, weather, currentLap })
           </div>
           <span className="weather-cond">{cond}</span>
         </div>
+      )}
+      {dataSource && dataSource !== 'static' && (
+        <span className={`data-source-dot ${dataSource}`}>
+          {dataSource === 'engine' ? 'Physics Engine' : 'Estimate'}
+        </span>
       )}
       <div className="header-stats">
         <Stat label="Track"    value={track?.name || session?.track?.split('/').pop()} />

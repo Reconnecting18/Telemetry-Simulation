@@ -967,20 +967,26 @@ header {
 .strat-run-status-success    { color: #00c853; }
 .strat-run-status-fallback   { color: #f5a623; }
 
-/* Source badge */
-.source-badge {
-  font-size: 0.5rem;
+/* Data source indicator in header */
+.data-source-dot {
+  font-size: 11px;
   font-weight: 600;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  text-align: center;
-  padding: 3px 8px;
-  border-radius: 3px;
-  margin-top: 4px;
-  transition: background 0.3s ease, color 0.3s ease;
+  letter-spacing: 0.03em;
+  white-space: nowrap;
 }
-.source-badge.engine   { background: rgba(0,168,168,0.15); color: #00a8a8; }
-.source-badge.estimate { background: rgba(245,166,35,0.15); color: #f5a623; }
+.data-source-dot::before {
+  content: '';
+  display: inline-block;
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  margin-right: 4px;
+  vertical-align: middle;
+}
+.data-source-dot.engine          { color: #00c853; }
+.data-source-dot.engine::before  { background: #00c853; }
+.data-source-dot.estimate          { color: #f5a623; }
+.data-source-dot.estimate::before  { background: #f5a623; }
 
 /* -- Strategy Summary -- */
 .strategy-summary { display: flex; flex-direction: column; gap: 10px; }

@@ -152,7 +152,7 @@ export default function App() {
 
   return (
     <div className="dashboard">
-      <Header session={activeSession} vehicle={v} track={data.track} weather={activeWeather} currentLap={f?.lap} />
+      <Header session={activeSession} vehicle={v} track={data.track} weather={activeWeather} currentLap={f?.lap} dataSource={dataSource} />
 
       <PlaybackControls
         currentTime={currentTime}
@@ -220,11 +220,6 @@ export default function App() {
                 onRunSimulation={handleRunSimulation}
                 simStatus={simStatus}
               />
-              {dataSource !== 'static' && (
-                <div className={`source-badge ${dataSource}`}>
-                  {dataSource === 'engine' ? 'Physics Engine' : 'Strategy Estimate'}
-                </div>
-              )}
             </div>
           </div>
         </div>
