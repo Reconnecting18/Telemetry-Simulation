@@ -83,11 +83,16 @@ export function analyzeCorners(trackData) {
     // Found start of a corner region
     const startNode = i
 
-    // Walk forward while curvature stays above threshold
+    // Walk forward while curvature stays above threshold AND same sign.
+    // A sign change mid-corner indicates a chicane transition — split there
+    // so each direction becomes its own corner.
     let apexNode = i
     let maxAbsK = Math.abs(curvatures[i])
+    const startSign = Math.sign(curvatures[i])
 
     while (i < N && Math.abs(curvatures[i]) >= CURVATURE_THRESHOLD) {
+      const s = Math.sign(curvatures[i])
+      if (startSign !== 0 && s !== 0 && s !== startSign) break
       if (Math.abs(curvatures[i]) > maxAbsK) {
         maxAbsK = Math.abs(curvatures[i])
         apexNode = i

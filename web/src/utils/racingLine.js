@@ -101,40 +101,85 @@ export function generateRacingLine(trackData, corners) {
 
   for (let ci = 0; ci < corners.length; ci++) {
     const c = corners[ci]
+    const nextC = corners[ci + 1]
+
+    // ── Chicane pair: process both corners as a single unit ──
+    // This avoids the exit/approach control points of individual corners
+    // from extending 20-25 nodes and overlapping with unrelated corners.
+    const isChicanePair = c.corner_type === 4 && nextC?.corner_type === 4
+    if (isChicanePair) {
+      const out1 = outsideSign(c), in1 = -out1
+      const out2 = outsideSign(nextC), in2 = -out2
+
+      // Approach: outside of first corner, normal lead distance
+      const approachIdx = Math.max(0, c.start_node - APPROACH_LEAD)
+      controlPoints.push({ idx: approachIdx, val: out1 * EDGE })
+
+      // Turn-in for first corner
+      controlPoints.push({ idx: c.start_node, val: out1 * 0.3 })
+      turnInNodes.push(c.start_node)
+
+      // First apex: reduced depth (chicane entry = 0.45)
+      const apex1Depth = (c.recommended_apex_offset || 0.45) * EDGE
+      controlPoints.push({ idx: c.apex_node, val: in1 * apex1Depth })
+      apexNodes.push(c.apex_node)
+
+      // Smooth S-curve transition: centerline crossing between the two apexes
+      const midIdx = Math.round((c.apex_node + nextC.apex_node) / 2)
+      controlPoints.push({ idx: midIdx, val: 0 })
+
+      // Turn-in for second corner
+      turnInNodes.push(nextC.start_node)
+
+      // Second apex: aggressive depth (chicane exit = 0.60)
+      const apex2Depth = (nextC.recommended_apex_offset || 0.60) * EDGE
+      controlPoints.push({ idx: nextC.apex_node, val: in2 * apex2Depth })
+      apexNodes.push(nextC.apex_node)
+
+      // Exit: outside of second corner, normal trail distance
+      const exitIdx = Math.min(N - 1, nextC.end_node + EXIT_TRAIL)
+      controlPoints.push({ idx: exitIdx, val: out2 * EDGE })
+
+      // Straight between chicane exit and next corner approach
+      if (ci + 2 < corners.length) {
+        const afterC = corners[ci + 2]
+        const afterOutside = outsideSign(afterC)
+        const afterApproachIdx = Math.max(0, afterC.start_node - APPROACH_LEAD)
+        if (afterApproachIdx > exitIdx + 5) {
+          const gapMid = Math.round((exitIdx + afterApproachIdx) / 2)
+          controlPoints.push({ idx: gapMid, val: afterOutside * 0.5 })
+        }
+      }
+
+      ci++ // skip the exit corner — already handled
+      continue
+    }
+
+    // ── Normal (non-chicane) corner ──
     const outside = outsideSign(c)
     const inside = -outside
 
-    // --- Approach control point: outside edge, APPROACH_LEAD nodes before start ---
     const approachIdx = Math.max(0, c.start_node - APPROACH_LEAD)
     controlPoints.push({ idx: approachIdx, val: outside * EDGE })
 
-    // --- Turn-in point: at corner start, begin transitioning inside ---
     const turnInIdx = c.start_node
     controlPoints.push({ idx: turnInIdx, val: outside * 0.3 })
     turnInNodes.push(turnInIdx)
 
-    // --- Apex: inside edge, scaled by recommended_apex_offset ---
-    // The rec. apex offset tells us how deep to go:
-    // 0.4 = conservative (less inside), 0.6 = aggressive (more inside)
     const apexDepth = (c.recommended_apex_offset || 0.5) * EDGE
     controlPoints.push({ idx: c.apex_node, val: inside * apexDepth })
     apexNodes.push(c.apex_node)
 
-    // --- Exit control point: outside edge, EXIT_TRAIL nodes after end ---
     const exitIdx = Math.min(N - 1, c.end_node + EXIT_TRAIL)
     controlPoints.push({ idx: exitIdx, val: outside * EDGE })
 
-    // --- Straight between this exit and next approach: position for next corner ---
     if (ci < corners.length - 1) {
-      const nextC = corners[ci + 1]
-      const nextOutside = outsideSign(nextC)
-      const nextApproachIdx = Math.max(0, nextC.start_node - APPROACH_LEAD)
-
-      // If there's a gap between this exit and next approach, add a midpoint
-      // on the side needed for the next corner
-      if (nextApproachIdx > exitIdx + 5) {
-        const midIdx = Math.round((exitIdx + nextApproachIdx) / 2)
-        controlPoints.push({ idx: midIdx, val: nextOutside * 0.5 })
+      const nxtC = corners[ci + 1]
+      const nxtOutside = outsideSign(nxtC)
+      const nxtApproachIdx = Math.max(0, nxtC.start_node - APPROACH_LEAD)
+      if (nxtApproachIdx > exitIdx + 5) {
+        const midIdx = Math.round((exitIdx + nxtApproachIdx) / 2)
+        controlPoints.push({ idx: midIdx, val: nxtOutside * 0.5 })
       }
     }
   }
@@ -165,6 +210,17 @@ export function generateRacingLine(trackData, corners) {
 
   // Interpolate with Catmull-Rom
   const lateral = catmullRomInterpolate(dedupedCPs, N)
+
+  // Smoothing pass: 5-node moving average to eliminate spline jank
+  const raw = [...lateral]
+  for (let i = 0; i < N; i++) {
+    let sum = 0, count = 0
+    for (let j = Math.max(0, i - 2); j <= Math.min(N - 1, i + 2); j++) {
+      sum += raw[j]
+      count++
+    }
+    lateral[i] = sum / count
+  }
 
   // Clamp to track boundaries
   for (let i = 0; i < N; i++) {
