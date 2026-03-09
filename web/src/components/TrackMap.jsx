@@ -329,37 +329,64 @@ export default function TrackMap({ trackNodes, racingLineData, speedData, brakin
   const cx = carX ?? 0
   const cy = carY !== undefined ? -carY : 0
 
-  // Snap car to nearest racing line point + get heading
+  // Project a point onto the nearest racing-line segment, returning the
+  // projected position, segment index, and fractional t along that segment.
+  const projectOntoRL = useCallback((px, py) => {
+    let bestDist = Infinity, bestX = px, bestY = py, bestSeg = 0, bestT = 0
+    for (let i = 0; i < racingLine.length - 1; i++) {
+      const ax = racingLine[i].x, ay = racingLine[i].y
+      const bx = racingLine[i + 1].x, by = racingLine[i + 1].y
+      const dx = bx - ax, dy = by - ay
+      const lenSq = dx * dx + dy * dy
+      if (lenSq === 0) continue
+      const t = Math.max(0, Math.min(1, ((px - ax) * dx + (py - ay) * dy) / lenSq))
+      const projX = ax + t * dx, projY = ay + t * dy
+      const dist = (px - projX) ** 2 + (py - projY) ** 2
+      if (dist < bestDist) {
+        bestDist = dist; bestX = projX; bestY = projY; bestSeg = i; bestT = t
+      }
+    }
+    return { x: bestX, y: bestY, seg: bestSeg, t: bestT }
+  }, [racingLine])
+
+  // Smooth car position + heading along the racing line
   const { carPos, headingDeg } = useMemo(() => {
     if (!racingLine.length || carX == null) return { carPos: { x: cx, y: cy }, headingDeg: 0 }
-    let best = 0, bestD = Infinity
-    racingLine.forEach((p, i) => {
-      const d = (p.x - cx) ** 2 + (p.y - cy) ** 2
-      if (d < bestD) { bestD = d; best = i }
-    })
-    const pos = racingLine[best]
-    // Heading from prev→next RL point
-    const prev = racingLine[Math.max(0, best - 1)]
-    const next = racingLine[Math.min(racingLine.length - 1, best + 1)]
-    const hdx = next.x - prev.x, hdy = next.y - prev.y
-    const deg = Math.atan2(hdy, hdx) * (180 / Math.PI) + 90  // +90 so "up" is forward
-    return { carPos: pos, headingDeg: deg }
-  }, [racingLine, cx, cy, carX])
+    const proj = projectOntoRL(cx, cy)
+
+    // Heading: blend current segment direction with next segment for smoothness
+    const i = proj.seg
+    const a = racingLine[i], b = racingLine[Math.min(racingLine.length - 1, i + 1)]
+    const dx1 = b.x - a.x, dy1 = b.y - a.y
+    const h1 = Math.atan2(dy1, dx1)
+
+    let deg
+    if (i + 2 < racingLine.length) {
+      const c = racingLine[i + 2]
+      const dx2 = c.x - b.x, dy2 = c.y - b.y
+      const h2 = Math.atan2(dy2, dx2)
+      // Shortest-arc blend
+      let diff = h2 - h1
+      if (diff > Math.PI) diff -= 2 * Math.PI
+      if (diff < -Math.PI) diff += 2 * Math.PI
+      deg = (h1 + proj.t * diff) * (180 / Math.PI) + 90
+    } else {
+      deg = h1 * (180 / Math.PI) + 90
+    }
+
+    return { carPos: { x: proj.x, y: proj.y }, headingDeg: deg }
+  }, [racingLine, cx, cy, carX, projectOntoRL])
 
   // Comet trail
   const trail = useMemo(() => buildTrail(frames, currentTime), [frames, currentTime])
-  // Snap trail to racing line
+  // Project trail onto racing line segments
   const snappedTrail = useMemo(() => {
     if (!racingLine.length || !trail.length) return []
     return trail.map(tp => {
-      let best = 0, bestD = Infinity
-      racingLine.forEach((p, i) => {
-        const d = (p.x - tp.x) ** 2 + (p.y - tp.y) ** 2
-        if (d < bestD) { bestD = d; best = i }
-      })
-      return { ...racingLine[best], t: tp.t }
+      const proj = projectOntoRL(tp.x, tp.y)
+      return { x: proj.x, y: proj.y, t: tp.t }
     })
-  }, [racingLine, trail])
+  }, [racingLine, trail, projectOntoRL])
 
   const rlPoints = racingLine.map(p => `${p.x.toFixed(1)},${p.y.toFixed(1)}`).join(' ')
 
