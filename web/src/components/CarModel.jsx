@@ -16,8 +16,8 @@ import { buildTireData, tireTempColor, tireWearColor } from '../utils/tireModel'
 
 // ── CONSTANTS ───────────────────────────────────────────────────
 const MAX_SUSP_MM = 30
-const HUB_DY      = 3.5   // max forward displacement at full compression
-const HUB_DX      = 3.5   // max inward displacement (camber gain)
+const HUB_DY      = 1.4   // max forward displacement at full compression
+const HUB_DX      = 1.4   // max inward displacement (camber gain)
 const LERP_K      = 0.15  // suspension smoothing per frame
 const STEER_GAIN  = 12.5  // deg per 1g lateral
 const STEER_MAX   = 25    // deg
