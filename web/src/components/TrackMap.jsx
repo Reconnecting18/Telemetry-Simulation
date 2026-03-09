@@ -149,19 +149,44 @@ export default function TrackMap({ trackNodes, racingLineData, speedData, brakin
   const lastMouse  = useRef({ x: 0, y: 0 })
   const [vbState, setVbState] = useState(null)
 
-  const { baseVB, segments, racingLine, dirtyZones, gripOverlay, speedOverlay, startX, startY, cornerPositions } = useMemo(() => {
+  const { baseVB, segments, surfacePath, racingLine, dirtyZones, gripOverlay, speedOverlay, startX, startY, cornerPositions } = useMemo(() => {
     if (!trackNodes || !trackNodes.length)
-      return { baseVB: null, segments: [], racingLine: [], dirtyZones: [], gripOverlay: [], speedOverlay: [], cornerPositions: [] }
+      return { baseVB: null, segments: [], surfacePath: '', racingLine: [], dirtyZones: [], gripOverlay: [], speedOverlay: [], cornerPositions: [] }
 
     const xs  = trackNodes.map(n => n.x)
     const ys  = trackNodes.map(n => -n.y)
-    const pad = 40 + TRACK_WIDTH
-    const minX = Math.min(...xs) - pad
-    const maxX = Math.max(...xs) + pad
-    const minY = Math.min(...ys) - pad
-    const maxY = Math.max(...ys) + pad
+    const rawMinX = Math.min(...xs), rawMaxX = Math.max(...xs)
+    const rawMinY = Math.min(...ys), rawMaxY = Math.max(...ys)
+    const rawW = rawMaxX - rawMinX || 1, rawH = rawMaxY - rawMinY || 1
+    // Auto-fit: pad with TRACK_WIDTH for road edges, then scale to ~85% fill
+    const edgePad = TRACK_WIDTH + 16
+    const fitScale = 0.85
+    const cx0 = (rawMinX + rawMaxX) / 2, cy0 = (rawMinY + rawMaxY) / 2
+    const fitW = (rawW + edgePad * 2) / fitScale
+    const fitH = (rawH + edgePad * 2) / fitScale
+    const minX = cx0 - fitW / 2
+    const maxX = cx0 + fitW / 2
+    const minY = cy0 - fitH / 2
+    const maxY = cy0 + fitH / 2
 
     const segs = computeSegments(trackNodes)
+
+    // Build closed track surface polygon: left edge forward, right edge reversed
+    const hw = TRACK_WIDTH / 2
+    const leftEdge = [], rightEdge = []
+    for (let i = 0; i < trackNodes.length; i++) {
+      const prev = trackNodes[Math.max(0, i - 1)]
+      const next = trackNodes[Math.min(trackNodes.length - 1, i + 1)]
+      const dx = next.x - prev.x, dy = (-next.y) - (-prev.y)
+      const len = Math.sqrt(dx * dx + dy * dy) || 1
+      const lx = -dy / len, ly = dx / len  // left perpendicular
+      leftEdge.push({ x: trackNodes[i].x + lx * hw, y: -trackNodes[i].y + ly * hw })
+      rightEdge.push({ x: trackNodes[i].x - lx * hw, y: -trackNodes[i].y - ly * hw })
+    }
+    const surfacePts = [...leftEdge, ...rightEdge.reverse()]
+    const surfacePath = surfacePts.map((p, i) =>
+      `${i === 0 ? 'M' : 'L'}${p.x.toFixed(1)},${p.y.toFixed(1)}`
+    ).join(' ') + ' Z'
     // Prefer generated racing line positions, fall back to C++ JSON / simple offset
     let rl
     if (generatedLine?.positions?.length === trackNodes.length) {
@@ -201,6 +226,7 @@ export default function TrackMap({ trackNodes, racingLineData, speedData, brakin
     return {
       baseVB: { x: minX, y: minY, w: maxX - minX, h: maxY - minY },
       segments: segs,
+      surfacePath,
       racingLine: rl,
       dirtyZones: dirty,
       gripOverlay: grip,
@@ -416,34 +442,13 @@ export default function TrackMap({ trackNodes, racingLineData, speedData, brakin
           preserveAspectRatio="xMidYMid meet"
           width="100%" height="100%"
         >
-          {/* ── Track outer edge (dark border) ── */}
-          {segments.map((s, i) => (
-            <line key={`edge-${i}`}
-              x1={s.x1} y1={s.y1} x2={s.x2} y2={s.y2}
-              stroke="#1a1a1a" strokeWidth={TRACK_WIDTH + 4} strokeLinecap="round" />
-          ))}
-
-          {/* ── Track surface (road) ── */}
-          {segments.map((s, i) => (
-            <line key={`road-${i}`}
-              x1={s.x1} y1={s.y1} x2={s.x2} y2={s.y2}
-              stroke="#2a2a2a" strokeWidth={TRACK_WIDTH} strokeLinecap="round" />
-          ))}
-
-          {/* ── Lighter edge stripes (road edge markings) ── */}
-          {segments.map((s, i) => (
-            <line key={`stripe-${i}`}
-              x1={s.x1} y1={s.y1} x2={s.x2} y2={s.y2}
-              stroke="#3a3a3a" strokeWidth={TRACK_WIDTH + 1} strokeLinecap="round"
-              opacity={0.4} />
-          ))}
-
-          {/* ── Darker center fill (inner road surface) ── */}
-          {segments.map((s, i) => (
-            <line key={`inner-${i}`}
-              x1={s.x1} y1={s.y1} x2={s.x2} y2={s.y2}
-              stroke="#222" strokeWidth={TRACK_WIDTH - 4} strokeLinecap="round" />
-          ))}
+          {/* ── Track surface fill + border ── */}
+          {surfacePath && (
+            <>
+              <path d={surfacePath} fill="#1a1a1a" stroke="#333333" strokeWidth={1.5}
+                strokeLinejoin="round" />
+            </>
+          )}
 
           {/* ── Grip overlay (surface grip heatmap on road) ── */}
           {gripOverlay.map((go, i) => (
