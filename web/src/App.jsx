@@ -60,6 +60,7 @@ export default function App() {
   const activeSession = simulatedData?.session || data?.session
   const activeVehicle = simulatedData?.vehicle || data?.vehicle
   const activeWeather = simulatedData?.weather || data?.weather
+  const activePitStops = simulatedData?.pit_stops || data?.pitStops
 
   const {
     currentTime, maxTime, isPlaying, playbackSpeed,
@@ -112,10 +113,13 @@ export default function App() {
         setDataSource('engine')
         setSimStatus('success')
         seekTo(0)
-        // Diagnostic: strategy sent vs what timeline previously read
-        console.log('[Timeline Debug] Strategy payload sent:', body.stints.map(s => `${s.compound} (${s.lap_count} laps)`))
-        console.log('[Timeline Debug] Static pitStops (was source of compounds):', JSON.stringify(data.pitStops))
-        console.log('[Timeline Debug] Timeline now reads from: lastSubmittedStrategy.stints (matches payload)')
+        // Diagnostic: verify Lambda response structure
+        console.log('[Sim Response] frames:', result.frames.length,
+          '| lat_g@100:', result.frames[100]?.lateral_g,
+          '| lat_g@500:', result.frames[500]?.lateral_g,
+          '| pit_stops:', result.pit_stops?.length ?? 'MISSING')
+        console.log('[Sim Response] pit_stops:', JSON.stringify(result.pit_stops))
+        console.log('[Sim Response] strategy sent:', body.stints.map(s => `${s.compound} (${s.lap_count} laps)`))
         simRanOnceRef.current = true
         setStrategyDirty(false)
       } else {
@@ -146,7 +150,7 @@ export default function App() {
     return calculateBrakingPoints(data.track, speedData, corners, null, {
       fuel_L: f?.fuel_L,
       tire_wear: f?.tire_wear,
-      base_fuel_L: data.vehicle?.fuel_capacity_L,
+      base_fuel_L: v?.fuel_capacity_L,
     })
   }, [data?.track, speedData, corners, f?.fuel_L, f?.tire_wear])
 
@@ -165,7 +169,7 @@ export default function App() {
         isPlaying={isPlaying}
         playbackSpeed={playbackSpeed}
         frames={activeFrames}
-        pitStops={data.pitStops}
+        pitStops={activePitStops}
         lastSubmittedStrategy={lastSubmittedStrategy}
         onToggle={toggle}
         onSeek={seekTo}
@@ -212,7 +216,7 @@ export default function App() {
           {/* Bottom row: Lap Time Analysis + Race Strategy */}
           <div className="bottom-row">
             <div className="health-panel">
-              <LapTimePanel frames={activeFrames} pitStops={data.pitStops} currentLap={f?.lap} />
+              <LapTimePanel frames={activeFrames} pitStops={activePitStops} currentLap={f?.lap} />
             </div>
 
             <div className="strategy-panel">
