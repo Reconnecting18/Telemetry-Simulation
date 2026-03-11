@@ -1,3 +1,4 @@
+// Telemetry JSON serializer — writes signed lateral_g (curv_sign fix included)
 #include "types.hpp"
 
 #include <fstream>
