@@ -75,6 +75,32 @@ function buildStints(laps, pitStops) {
   return stints
 }
 
+// Build stints directly from submitted strategy payload (authoritative source)
+function buildStintsFromStrategy(strategyStints, laps) {
+  if (!strategyStints?.length || !laps.length) return []
+  const result = []
+  let lapStart = laps[0].lap
+  const maxLap = laps[laps.length - 1].lap
+
+  for (const st of strategyStints) {
+    const endLap = Math.min(lapStart + st.lap_count - 1, maxLap)
+    const startEntry = laps.find(l => l.lap >= lapStart) || laps[0]
+    const endEntry = [...laps].reverse().find(l => l.lap <= endLap) || laps[laps.length - 1]
+
+    result.push({
+      compound: st.compound,
+      startLap: lapStart,
+      endLap,
+      startTime: startEntry.start,
+      endTime: endEntry.end,
+    })
+
+    lapStart = endLap + 1
+    if (lapStart > maxLap) break
+  }
+  return result
+}
+
 // Build pit marker data with time positions
 function buildPitMarkers(pitStops, laps) {
   if (!pitStops || !pitStops.length || !laps.length) return []
@@ -89,14 +115,19 @@ function buildPitMarkers(pitStops, laps) {
 
 export default function PlaybackControls({
   currentTime, maxTime, isPlaying, playbackSpeed,
-  frames, pitStops, onToggle, onSeek, onSetSpeed,
+  frames, pitStops, lastSubmittedStrategy, onToggle, onSeek, onSetSpeed,
 }) {
   const barRef = useRef(null)
   const [hoveredPit, setHoveredPit] = useState(null)
   const [tooltipPos, setTooltipPos] = useState({ x: 0, y: 0 })
 
   const laps = useMemo(() => buildLaps(frames), [frames])
-  const stints = useMemo(() => buildStints(laps, pitStops), [laps, pitStops])
+  const stints = useMemo(() => {
+    if (lastSubmittedStrategy?.stints?.length) {
+      return buildStintsFromStrategy(lastSubmittedStrategy.stints, laps)
+    }
+    return buildStints(laps, pitStops)
+  }, [laps, pitStops, lastSubmittedStrategy])
   const pitMarkers = useMemo(() => buildPitMarkers(pitStops, laps), [pitStops, laps])
   const totalLaps = laps.length
 

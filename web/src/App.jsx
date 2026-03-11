@@ -62,6 +62,7 @@ export default function App() {
   const [simulatedData, setSimulatedData] = useState(null)
   const [simStatus, setSimStatus] = useState('idle') // idle | simulating | success | fallback
   const [dataSource, setDataSource] = useState('static') // static | engine | estimate
+  const [lastSubmittedStrategy, setLastSubmittedStrategy] = useState(null)
 
   // Active data: simulated results take priority over static telemetry
   const activeFrames = simulatedData?.frames || data?.frames
@@ -82,6 +83,7 @@ export default function App() {
 
     try {
       const body = transformPayload(payload)
+      setLastSubmittedStrategy(body)
       const controller = new AbortController()
       const timeout = setTimeout(() => controller.abort(), 30000)
 
@@ -104,6 +106,10 @@ export default function App() {
         setDataSource('engine')
         setSimStatus('success')
         seekTo(0)
+        // Diagnostic: strategy sent vs what timeline previously read
+        console.log('[Timeline Debug] Strategy payload sent:', body.stints.map(s => `${s.compound} (${s.lap_count} laps)`))
+        console.log('[Timeline Debug] Static pitStops (was source of compounds):', JSON.stringify(data.pitStops))
+        console.log('[Timeline Debug] Timeline now reads from: lastSubmittedStrategy.stints (matches payload)')
       } else {
         throw new Error('No frames in response')
       }
@@ -161,6 +167,7 @@ export default function App() {
         playbackSpeed={playbackSpeed}
         frames={activeFrames}
         pitStops={data.pitStops}
+        lastSubmittedStrategy={lastSubmittedStrategy}
         onToggle={toggle}
         onSeek={seekTo}
         onSetSpeed={setPlaybackSpeed}
