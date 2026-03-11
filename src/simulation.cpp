@@ -74,9 +74,10 @@ bool Track::loadFromCSV(const std::string& path) {
         return false;
     }
 
-    // Deduplication pass: remove near-coincident nodes (< 1.0m apart).
+    // Deduplication pass: remove near-coincident nodes (< 0.1m apart).
     // These break Menger curvature calculations (near-zero denominators)
     // and cause speed envelope collapse + heading snaps.
+    // Safety: skip removal if it would create a gap > 5m between neighbors.
     {
         std::vector<TrackNode> cleaned;
         cleaned.reserve(nodes.size());
@@ -87,27 +88,48 @@ bool Track::loadFromCSV(const std::string& path) {
             double dy = nodes[i].y - cleaned.back().y;
             double dz = nodes[i].z - cleaned.back().z;
             double dist = std::sqrt(dx * dx + dy * dy + dz * dz);
-            if (dist < 1.0) {
-                std::cout << "[Track] Dedup: removed node " << i
-                          << " (dist=" << std::fixed << std::setprecision(2) << dist
-                          << "m to previous)\n";
-                ++removed;
+            if (dist < 0.1) {
+                // Safety: check gap to next node if we remove this one
+                bool safe = true;
+                if (i + 1 < nodes.size()) {
+                    double nx = nodes[i + 1].x - cleaned.back().x;
+                    double ny = nodes[i + 1].y - cleaned.back().y;
+                    double nz = nodes[i + 1].z - cleaned.back().z;
+                    double gap = std::sqrt(nx * nx + ny * ny + nz * nz);
+                    if (gap > 5.0) safe = false;
+                }
+                if (safe) {
+                    std::cout << "[Track] Dedup: removed node " << i
+                              << " (dist=" << std::fixed << std::setprecision(2) << dist
+                              << "m to previous)\n";
+                    ++removed;
+                } else {
+                    cleaned.push_back(nodes[i]);
+                }
             } else {
                 cleaned.push_back(nodes[i]);
             }
         }
-        // Wrap-around check: if last node is < 1.0m from first, remove it
+        // Wrap-around check: if last node is < 0.1m from first, remove it
         if (cleaned.size() > 2) {
             double dx = cleaned.back().x - cleaned.front().x;
             double dy = cleaned.back().y - cleaned.front().y;
             double dz = cleaned.back().z - cleaned.front().z;
             double dist = std::sqrt(dx * dx + dy * dy + dz * dz);
-            if (dist < 1.0) {
-                std::cout << "[Track] Dedup: removed last node (dist="
-                          << std::fixed << std::setprecision(2) << dist
-                          << "m to first, wrap-around)\n";
-                cleaned.pop_back();
-                ++removed;
+            if (dist < 0.1) {
+                // Safety: check gap between second-to-last and first
+                size_t n = cleaned.size();
+                double gx = cleaned[n - 2].x - cleaned[0].x;
+                double gy = cleaned[n - 2].y - cleaned[0].y;
+                double gz = cleaned[n - 2].z - cleaned[0].z;
+                double gap = std::sqrt(gx * gx + gy * gy + gz * gz);
+                if (gap <= 5.0) {
+                    std::cout << "[Track] Dedup: removed last node (dist="
+                              << std::fixed << std::setprecision(2) << dist
+                              << "m to first, wrap-around)\n";
+                    cleaned.pop_back();
+                    ++removed;
+                }
             }
         }
 
