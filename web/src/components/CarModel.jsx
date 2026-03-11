@@ -476,14 +476,17 @@ function CarModel({ frame, vehicle, mode }) {
     ride[id] += (target - ride[id]) * LERP_K
   }
 
-  // ── Steering (signed: positive=right turn, negative=left turn) ──
+  // ── Steering ──
+  // lateral_g sign: positive = left turn (CCW/Menger), negative = right turn
+  // SVG rotation: positive angle = clockwise = visual right
+  // Therefore negate: left turn → negative steerDeg → CCW → wheels point left
   const latG = frame.lateral_g || 0
-  const steerDeg = Math.max(-STEER_MAX, Math.min(STEER_MAX, latG * STEER_GAIN))
+  const steerDeg = Math.max(-STEER_MAX, Math.min(STEER_MAX, -latG * STEER_GAIN))
 
   // Debug: log steering at chicane entries (high |lat_g| with sign change)
   const prevLatG = prevG.current?.lat || 0
   if (Math.abs(latG) > 0.5 && Math.sign(latG) !== Math.sign(prevLatG) && Math.abs(prevLatG) > 0.1) {
-    console.log(`[Steering] chicane entry: lat_g=${latG.toFixed(3)} steer=${steerDeg.toFixed(1)}° (${latG < 0 ? 'LEFT' : 'RIGHT'})`)
+    console.log(`[Steering] chicane entry: lat_g=${latG.toFixed(3)} steer=${steerDeg.toFixed(1)}° (${latG > 0 ? 'LEFT' : 'RIGHT'})`)
   }
 
   // ── Roll & Pitch (CSS) ──

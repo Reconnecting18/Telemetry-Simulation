@@ -201,6 +201,14 @@ export function generateRacingLine(trackData, corners) {
     controlPoints.push({ idx: N - 1, val: outside * 0.5 })
   }
 
+  // Diagnostic: log each corner's apex control point
+  console.log('[RacingLine] Corner apex control points:')
+  for (let ci = 0; ci < corners.length; ci++) {
+    const c = corners[ci]
+    const apexCP = controlPoints.find(cp => cp.idx === c.apex_node)
+    console.log(`  Corner ${ci}: apex=${c.apex_node}, dir=${c.turn_direction}, lateral=${apexCP?.val.toFixed(3) ?? 'N/A'}`)
+  }
+
   // Deduplicate: if multiple control points at same index, keep the last one
   const cpMap = new Map()
   for (const cp of controlPoints) {
@@ -211,15 +219,14 @@ export function generateRacingLine(trackData, corners) {
   // Interpolate with Catmull-Rom
   const lateral = catmullRomInterpolate(dedupedCPs, N)
 
-  // Smoothing pass: 5-node moving average to eliminate spline jank
+  // Smoothing pass: 5-node moving average with wrap-around for closed track
   const raw = [...lateral]
   for (let i = 0; i < N; i++) {
-    let sum = 0, count = 0
-    for (let j = Math.max(0, i - 2); j <= Math.min(N - 1, i + 2); j++) {
-      sum += raw[j]
-      count++
+    let sum = 0
+    for (let j = -2; j <= 2; j++) {
+      sum += raw[((i + j) % N + N) % N]
     }
-    lateral[i] = sum / count
+    lateral[i] = sum / 5
   }
 
   // Clamp to track boundaries
@@ -227,12 +234,12 @@ export function generateRacingLine(trackData, corners) {
     lateral[i] = Math.max(-CLAMP, Math.min(CLAMP, lateral[i]))
   }
 
-  // Convert lateral offsets to world positions
+  // Convert lateral offsets to world positions (wrap-around for closed track)
   const halfWidth = 14 / 2  // TRACK_WIDTH / 2
   const positions = new Array(N)
   for (let i = 0; i < N; i++) {
-    const prev = nodes[Math.max(0, i - 1)]
-    const next = nodes[Math.min(N - 1, i + 1)]
+    const prev = nodes[((i - 1) % N + N) % N]
+    const next = nodes[(i + 1) % N]
     const dx = next.x - prev.x, dy = next.y - prev.y
     const len = Math.sqrt(dx * dx + dy * dy) || 1
     // Perpendicular: (dy, -dx) / len is the "right" direction
