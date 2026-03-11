@@ -13,7 +13,7 @@ const MIN_CURVATURE = 0.006     // |k| threshold to qualify as a corner
 const MIN_CORNER_GAP = 4        // minimum node gap between distinct corners
 const LABEL_OFFSET = 22         // px offset from track for label placement
 const ZOOM_MIN  = 0.5
-const ZOOM_MAX  = 4.0
+const ZOOM_MAX  = 8.0
 const ZOOM_STEP = 0.25
 
 function detectCorners(nodes) {
