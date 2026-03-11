@@ -16,9 +16,12 @@ function TireCard({ id, td, mode }) {
     ? [tireWearColor(td.outer_wear, td.compound), tireWearColor(td.center_wear, td.compound), tireWearColor(td.inner_wear, td.compound)]
     : ['#333', '#444', '#333']
 
-  // Pressure bar
+  // Pressure arc gauge — uses stroke-dashoffset (no transforms needed)
   const pFrac = pressureFraction(td.pressure)
   const pColor = pressureColor(td.pressure)
+  const ARC_R = 18
+  const ARC_LEN = Math.PI * ARC_R  // semicircle arc length ≈ 56.55
+  const arcOffset = ARC_LEN * (1 - pFrac)
 
   return (
     <div className="tire-card">
@@ -66,10 +69,17 @@ function TireCard({ id, td, mode }) {
           )}
         </svg>
 
-        {/* Pressure bar */}
-        <div className="tire-card-pbar">
-          <div className="tire-card-pbar-fill" style={{ width: `${pFrac * 100}%`, background: pColor }} />
-        </div>
+        {/* Pressure arc gauge */}
+        <svg viewBox="0 0 44 24" className="tire-card-arc">
+          {/* Background arc */}
+          <path d={`M 4 22 A ${ARC_R} ${ARC_R} 0 0 1 40 22`}
+            fill="none" stroke="#1a1a1a" strokeWidth={3} strokeLinecap="round" />
+          {/* Filled arc — dashoffset controls fill from left to right */}
+          <path d={`M 4 22 A ${ARC_R} ${ARC_R} 0 0 1 40 22`}
+            fill="none" stroke={pColor} strokeWidth={3} strokeLinecap="round"
+            strokeDasharray={ARC_LEN} strokeDashoffset={arcOffset}
+            style={{ transition: 'stroke-dashoffset 0.15s ease, stroke 0.15s ease' }} />
+        </svg>
       </div>
 
       <div className="tire-card-stats">
