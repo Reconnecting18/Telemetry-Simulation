@@ -72,14 +72,37 @@ export function calculateSpeedEnvelope(trackData, corners, carParams) {
 
   // Step 2: Cornering speed limit at each node
   // v = sqrt(grip * g / curvature), capped at max_speed
+  // Minimum radius guard: replace R < 10m with average of 5 nearest valid radii
+  const MIN_RADIUS = 10  // meters
+  const MIN_SPEED_KPH = 30  // kph floor
+
   const vCorner = new Array(N)
   for (let i = 0; i < N; i++) {
-    const k = curvature[i]
+    let k = curvature[i]
+    if (k > 1e-6) {
+      const r = 1 / k
+      if (r < MIN_RADIUS) {
+        // Average radius from nearest valid neighbors
+        let sumR = 0, count = 0
+        for (let d = 1; count < 5 && d < N; d++) {
+          for (const j of [i - d, i + d]) {
+            if (j < 0 || j >= N) continue
+            if (curvature[j] > 1e-6) {
+              const rj = 1 / curvature[j]
+              if (rj >= MIN_RADIUS) { sumR += rj; count++ }
+            }
+            if (count >= 5) break
+          }
+        }
+        const avgR = count > 0 ? sumR / count : MIN_RADIUS
+        console.warn(`[SpeedEnvelope] WARNING: node ${i} radius ${r.toFixed(1)}m < 10m, replaced with ${avgR.toFixed(1)}m`)
+        k = 1 / avgR
+      }
+    }
     if (k < 1e-6) {
       vCorner[i] = maxV
     } else {
-      const r = 1 / k
-      vCorner[i] = Math.min(maxV, Math.sqrt(gripAccel * r))
+      vCorner[i] = Math.min(maxV, Math.sqrt(gripAccel / k))
     }
   }
 
@@ -105,9 +128,16 @@ export function calculateSpeedEnvelope(trackData, corners, carParams) {
 
   // Step 5: Final envelope = min(cornering, forward, backward) — already folded
   // vBackward is the final result since it takes min with vForward at each step
+  const minV = MIN_SPEED_KPH / 3.6
   const speedKph = new Array(N)
   const forwardKph = new Array(N)
   for (let i = 0; i < N; i++) {
+    // Speed floor: no node below 30 kph
+    if (vBackward[i] < minV) {
+      const r = curvature[i] > 1e-6 ? (1 / curvature[i]).toFixed(1) : 'inf'
+      console.warn(`[SpeedEnvelope] WARNING: node ${i} speed ${(vBackward[i] * 3.6).toFixed(1)} kph < ${MIN_SPEED_KPH} kph floor (R=${r}m)`)
+      vBackward[i] = minV
+    }
     speedKph[i] = vBackward[i] * 3.6
     forwardKph[i] = vForward[i] * 3.6
     nodes[i].speed_kph = speedKph[i]

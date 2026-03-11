@@ -73,6 +73,61 @@ bool Track::loadFromCSV(const std::string& path) {
         std::cerr << "[Track] ERROR: no valid nodes in '" << path << "'\n";
         return false;
     }
+
+    // Deduplication pass: remove near-coincident nodes (< 1.0m apart).
+    // These break Menger curvature calculations (near-zero denominators)
+    // and cause speed envelope collapse + heading snaps.
+    {
+        std::vector<TrackNode> cleaned;
+        cleaned.reserve(nodes.size());
+        cleaned.push_back(nodes[0]);
+        int removed = 0;
+        for (size_t i = 1; i < nodes.size(); ++i) {
+            double dx = nodes[i].x - cleaned.back().x;
+            double dy = nodes[i].y - cleaned.back().y;
+            double dz = nodes[i].z - cleaned.back().z;
+            double dist = std::sqrt(dx * dx + dy * dy + dz * dz);
+            if (dist < 1.0) {
+                std::cout << "[Track] Dedup: removed node " << i
+                          << " (dist=" << std::fixed << std::setprecision(2) << dist
+                          << "m to previous)\n";
+                ++removed;
+            } else {
+                cleaned.push_back(nodes[i]);
+            }
+        }
+        // Wrap-around check: if last node is < 1.0m from first, remove it
+        if (cleaned.size() > 2) {
+            double dx = cleaned.back().x - cleaned.front().x;
+            double dy = cleaned.back().y - cleaned.front().y;
+            double dz = cleaned.back().z - cleaned.front().z;
+            double dist = std::sqrt(dx * dx + dy * dy + dz * dz);
+            if (dist < 1.0) {
+                std::cout << "[Track] Dedup: removed last node (dist="
+                          << std::fixed << std::setprecision(2) << dist
+                          << "m to first, wrap-around)\n";
+                cleaned.pop_back();
+                ++removed;
+            }
+        }
+
+        if (removed > 0) {
+            std::cout << "[Track] Dedup: removed " << removed
+                      << " near-coincident node(s), " << nodes.size()
+                      << " -> " << cleaned.size() << " nodes\n";
+            // Recompute cumulative distances after removal
+            cleaned[0].distance = 0.0;
+            for (size_t i = 1; i < cleaned.size(); ++i) {
+                double dx = cleaned[i].x - cleaned[i-1].x;
+                double dy = cleaned[i].y - cleaned[i-1].y;
+                double dz = cleaned[i].z - cleaned[i-1].z;
+                cleaned[i].distance = cleaned[i-1].distance
+                                    + std::sqrt(dx * dx + dy * dy + dz * dz);
+            }
+            nodes = std::move(cleaned);
+        }
+    }
+
     return true;
 }
 

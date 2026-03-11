@@ -3,6 +3,8 @@
 
 #include <cmath>
 #include <algorithm>
+#include <iomanip>
+#include <iostream>
 #include <vector>
 
 static constexpr double G_TO_MS2    = 9.81;
@@ -224,11 +226,54 @@ std::vector<double> computeVelocityProfile(
     // Pass 1: cornering speed limit.
     // RL curvatures have larger effective radii → higher limits through corners.
     // Per-node grip scales max_lateral_g: kerb/dirty zones reduce cornering speed.
+    // Minimum radius guard: if computed radius < 10m (likely bad data from
+    // near-coincident nodes), replace with average of 5 nearest valid radii.
+    static constexpr double MIN_RADIUS   = 10.0;   // meters
+    static constexpr double MIN_SPEED_MS = 30.0 / 3.6;  // 30 kph floor
+
     for (int i = 0; i < N; ++i) {
         double k = use_rl ? rl_curvatures[i] : nodes[i].curvature;
+        double abs_k = std::abs(k);
+
+        // Minimum radius guard
+        if (abs_k > 1e-6) {
+            double r = 1.0 / abs_k;
+            if (r < MIN_RADIUS) {
+                // Average radius from nearest valid neighbors
+                double sum_r = 0.0;
+                int count = 0;
+                for (int d = 1; count < 5 && d < N; ++d) {
+                    for (int sign : {-1, 1}) {
+                        int j = i + sign * d;
+                        if (j < 0 || j >= N) continue;
+                        double kj = use_rl ? rl_curvatures[j] : nodes[j].curvature;
+                        double abs_kj = std::abs(kj);
+                        if (abs_kj > 1e-6) {
+                            double rj = 1.0 / abs_kj;
+                            if (rj >= MIN_RADIUS) {
+                                sum_r += rj;
+                                ++count;
+                            }
+                        }
+                        if (count >= 5) break;
+                    }
+                }
+                double avg_r = (count > 0) ? sum_r / count : MIN_RADIUS;
+                abs_k = 1.0 / avg_r;
+                std::cout << "[VelocityProfile] WARNING: node " << i
+                          << " radius " << std::fixed << std::setprecision(1) << r
+                          << "m < 10m, replaced with " << avg_r << "m\n";
+            }
+        }
+
         double effective_lat_g = config.max_lateral_g;
         if (use_grip) effective_lat_g *= grip[i];
-        v[i] = calculateOptimalVelocity(k, effective_lat_g, config.max_speed);
+        if (abs_k < 1e-9) {
+            v[i] = config.max_speed;
+        } else {
+            v[i] = std::min(config.max_speed,
+                            std::sqrt((effective_lat_g * G_TO_MS2) / abs_k));
+        }
     }
 
     // Pass 2 (backward): braking constraints.
@@ -261,6 +306,20 @@ std::vector<double> computeVelocityProfile(
 
         double v_reachable = std::sqrt(v_prev * v_prev + 2.0 * net_accel * seg);
         v[i] = std::min(v[i], v_reachable);
+    }
+
+    // Speed floor: no node may drop below 30 kph.
+    // A real F1 car never crawls at 7 kph on track.
+    for (int i = 0; i < N; ++i) {
+        if (v[i] < MIN_SPEED_MS) {
+            double r = (use_rl ? std::abs(rl_curvatures[i]) : std::abs(nodes[i].curvature));
+            r = (r > 1e-6) ? 1.0 / r : 9999.0;
+            std::cout << "[VelocityProfile] WARNING: node " << i
+                      << " speed " << std::fixed << std::setprecision(1)
+                      << (v[i] * 3.6) << " kph < 30 kph floor (R="
+                      << r << "m)\n";
+            v[i] = MIN_SPEED_MS;
+        }
     }
 
     return v;
