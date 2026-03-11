@@ -34,7 +34,7 @@ int main(int argc, char* argv[]) {
     // Configure vehicle
     VehicleConfig config = defaultVehicleConfig();
 
-    // Run simulation (strategy mode if strategy.json provided)
+    // Run simulation (strategy mode — uses file if provided, else default 3-stint race)
     TelemetrySession session;
     if (!strategy_path.empty()) {
         StrategyConfig strategy;
@@ -43,7 +43,14 @@ int main(int argc, char* argv[]) {
         }
         session = runStrategySimulation(track, config, strategy);
     } else {
-        session = runSimulation(track, config);
+        // Default 3-stint strategy: Soft → Hard → Medium (typical Monza GP)
+        StrategyConfig strategy;
+        strategy.stints = {
+            { "soft",   0, 50.0, 18 },   // Stint 1: Soft, fresh, 50kg, 18 laps
+            { "hard",   0, 50.0, 22 },   // Stint 2: Hard, fresh, 50kg, 22 laps
+            { "medium", 0, 35.0, 15 },   // Stint 3: Medium, fresh, 35kg, 15 laps
+        };
+        session = runStrategySimulation(track, config, strategy);
     }
 
     // Print summary to console

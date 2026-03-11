@@ -24,6 +24,16 @@ function defaultStint(num) {
   }
 }
 
+function defaultModifiers() {
+  return {
+    wearMultiplier: '1x',
+    fuelMultiplier: '1x',
+    weather: 'Dry',
+    trackTemp: 35,
+    ambientTemp: 25,
+  }
+}
+
 // ── Compound Button ──
 function CompoundBtn({ compound, selected, onClick }) {
   const c = COMPOUNDS.find(x => x.id === compound)
@@ -210,21 +220,16 @@ function TireWearMini({ wear, compound }) {
 }
 
 // ═══════════════════════════════════════════════════════════════════
-// STRATEGY BUILDER
+// STRATEGY BUILDER — controlled component, state owned by parent
 // ═══════════════════════════════════════════════════════════════════
-function StrategyBuilder({ onRunSimulation, simStatus }) {
-  const [totalLaps, setTotalLaps] = useState(26)
-  const [durationType, setDurationType] = useState('laps')
-  const [durationMinutes, setDurationMinutes] = useState(60)
-  const [stints, setStints] = useState([defaultStint(0)])
-
-  // Simulation modifiers
-  const [wearMultiplier, setWearMultiplier] = useState('1x')
-  const [fuelMultiplier, setFuelMultiplier] = useState('1x')
-  const [weather, setWeather] = useState('Dry')
-  const [trackTemp, setTrackTemp] = useState(35)
-  const [ambientTemp, setAmbientTemp] = useState(25)
-
+function StrategyBuilder({
+  totalLaps, setTotalLaps,
+  durationType, setDurationType,
+  durationMinutes, setDurationMinutes,
+  stints, setStints,
+  modifiers, setModifiers,
+  onRunSimulation, simStatus, onReset,
+}) {
   // Button visual state: tracks the displayed state separately so we can
   // hold success/fallback for a brief flash before returning to idle.
   const [btnState, setBtnState] = useState('idle') // idle | simulating | success | fallback
@@ -252,18 +257,23 @@ function StrategyBuilder({ onRunSimulation, simStatus }) {
   const addStint = useCallback(() => {
     if (stints.length >= MAX_STINTS) return
     setStints(prev => [...prev, defaultStint(prev.length)])
-  }, [stints.length])
+  }, [stints.length, setStints])
 
   const removeStint = useCallback((idx) => {
     setStints(prev => prev.filter((_, i) => i !== idx))
-  }, [])
+  }, [setStints])
 
   const updateStint = useCallback((idx, newStint) => {
     setStints(prev => prev.map((s, i) => i === idx ? newStint : s))
-  }, [])
+  }, [setStints])
+
+  const setMod = useCallback((key, val) => {
+    setModifiers(prev => ({ ...prev, [key]: val }))
+  }, [setModifiers])
 
   const handleRun = useCallback(() => {
     if (btnState === 'simulating') return // prevent double-click
+    const effectiveLaps = durationType === 'laps' ? totalLaps : Math.round(durationMinutes / 1.5)
     const payload = {
       totalLaps: durationType === 'laps' ? totalLaps : null,
       durationMinutes: durationType === 'time' ? durationMinutes : null,
@@ -272,9 +282,7 @@ function StrategyBuilder({ onRunSimulation, simStatus }) {
         compound: s.compound,
         tireAge: s.tireAge,
         fuelLoad: s.fuelLoad,
-        lapCount: Math.max(1, Math.floor(
-          (durationType === 'laps' ? totalLaps : Math.round(durationMinutes / 1.5)) / stints.length
-        )),
+        lapCount: Math.max(1, Math.floor(effectiveLaps / stints.length)),
         pitActions: i > 0 ? {
           changeTires: s.changeTires,
           refuelAmount: s.refuelAmount,
@@ -283,16 +291,16 @@ function StrategyBuilder({ onRunSimulation, simStatus }) {
         } : null,
       })),
       modifiers: {
-        wearMultiplier: parseFloat(wearMultiplier),
-        fuelMultiplier: parseFloat(fuelMultiplier),
-        weather,
-        trackTemp,
-        ambientTemp,
+        wearMultiplier: parseFloat(modifiers.wearMultiplier),
+        fuelMultiplier: parseFloat(modifiers.fuelMultiplier),
+        weather: modifiers.weather,
+        trackTemp: modifiers.trackTemp,
+        ambientTemp: modifiers.ambientTemp,
       },
     }
     lastPayloadRef.current = payload
     onRunSimulation?.(payload)
-  }, [btnState, totalLaps, durationType, durationMinutes, stints, wearMultiplier, fuelMultiplier, weather, trackTemp, ambientTemp, onRunSimulation])
+  }, [btnState, totalLaps, durationType, durationMinutes, stints, modifiers, onRunSimulation])
 
   // Status text above button
   const effectiveLaps = durationType === 'laps' ? totalLaps : Math.round(durationMinutes / 1.5)
@@ -352,16 +360,19 @@ function StrategyBuilder({ onRunSimulation, simStatus }) {
       <div className="strat-stints-section">
         <div className="strat-section-header">
           <span className="strat-section-title">Stints</span>
-          <button className="strat-add-stint" onClick={addStint}
-            disabled={stints.length >= MAX_STINTS}>
-            + Add Pit Stop
-          </button>
+          <div className="strat-section-header-btns">
+            <button className="strat-reset-btn" onClick={onReset}>Reset</button>
+            <button className="strat-add-stint" onClick={addStint}
+              disabled={stints.length >= MAX_STINTS}>
+              + Add Pit Stop
+            </button>
+          </div>
         </div>
 
         <div className="strat-stint-list">
           {stints.map((stint, i) => (
             <StintRow key={stint.id} stint={stint} index={i}
-              totalLaps={durationType === 'laps' ? totalLaps : Math.round(durationMinutes / 1.5)}
+              totalLaps={effectiveLaps}
               stints={stints}
               onChange={s => updateStint(i, s)}
               onRemove={() => removeStint(i)} />
@@ -373,16 +384,19 @@ function StrategyBuilder({ onRunSimulation, simStatus }) {
       <div className="strat-modifiers">
         <span className="strat-section-title">Simulation Modifiers</span>
         <div className="strat-mod-grid">
-          <MultiBtn label="Tire Wear" value={wearMultiplier} onChange={setWearMultiplier}
+          <MultiBtn label="Tire Wear" value={modifiers.wearMultiplier}
+            onChange={v => setMod('wearMultiplier', v)}
             options={[{ value: '1x', label: '1x' }, { value: '2x', label: '2x' }, { value: '3x', label: '3x' }]} />
-          <MultiBtn label="Fuel Cons." value={fuelMultiplier} onChange={setFuelMultiplier}
+          <MultiBtn label="Fuel Cons." value={modifiers.fuelMultiplier}
+            onChange={v => setMod('fuelMultiplier', v)}
             options={[{ value: '1x', label: '1x' }, { value: '2x', label: '2x' }]} />
-          <MultiBtn label="Weather" value={weather} onChange={setWeather}
+          <MultiBtn label="Weather" value={modifiers.weather}
+            onChange={v => setMod('weather', v)}
             options={WEATHER_OPTIONS} />
-          <Slider label="Track Temp" value={trackTemp} min={20} max={60} step={1} unit="°C"
-            onChange={setTrackTemp} />
-          <Slider label="Ambient" value={ambientTemp} min={10} max={40} step={1} unit="°C"
-            onChange={setAmbientTemp} />
+          <Slider label="Track Temp" value={modifiers.trackTemp} min={20} max={60} step={1} unit="°C"
+            onChange={v => setMod('trackTemp', v)} />
+          <Slider label="Ambient" value={modifiers.ambientTemp} min={10} max={40} step={1} unit="°C"
+            onChange={v => setMod('ambientTemp', v)} />
         </div>
       </div>
 
@@ -499,11 +513,26 @@ function StrategySummary({ session, frames, stints: stintData }) {
 }
 
 // ═══════════════════════════════════════════════════════════════════
-// MAIN PANEL — toggles between Builder and Summary
+// MAIN PANEL — owns strategy state, toggles between Builder/Summary
 // ═══════════════════════════════════════════════════════════════════
 function StrategyPanel({ session, frames, onRunSimulation, simStatus }) {
   const [view, setView] = useState('builder')
   const hasData = session && frames && frames.length > 0
+
+  // ── Persistent strategy state (survives tab switches) ──
+  const [totalLaps, setTotalLaps] = useState(26)
+  const [durationType, setDurationType] = useState('laps')
+  const [durationMinutes, setDurationMinutes] = useState(60)
+  const [stints, setStints] = useState([defaultStint(0)])
+  const [modifiers, setModifiers] = useState(defaultModifiers)
+
+  const handleReset = useCallback(() => {
+    setTotalLaps(26)
+    setDurationType('laps')
+    setDurationMinutes(60)
+    setStints([defaultStint(0)])
+    setModifiers(defaultModifiers())
+  }, [])
 
   return (
     <div className="strategy-panel-container">
@@ -519,7 +548,16 @@ function StrategyPanel({ session, frames, onRunSimulation, simStatus }) {
       </div>
 
       {view === 'builder' ? (
-        <StrategyBuilder onRunSimulation={onRunSimulation} simStatus={simStatus} />
+        <StrategyBuilder
+          totalLaps={totalLaps} setTotalLaps={setTotalLaps}
+          durationType={durationType} setDurationType={setDurationType}
+          durationMinutes={durationMinutes} setDurationMinutes={setDurationMinutes}
+          stints={stints} setStints={setStints}
+          modifiers={modifiers} setModifiers={setModifiers}
+          onRunSimulation={onRunSimulation}
+          simStatus={simStatus}
+          onReset={handleReset}
+        />
       ) : (
         <StrategySummary session={session} frames={frames} />
       )}

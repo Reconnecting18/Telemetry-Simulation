@@ -129,6 +129,7 @@ bool TelemetrySession::writeJSON(const std::string& path) const {
                 << "\"after_lap\": " << ps.after_lap
                 << ", \"from_compound\": " << jStr(ps.from_compound)
                 << ", \"to_compound\": " << jStr(ps.to_compound)
+                << ", \"fuel_added_L\": " << jVal(ps.fuel_added_L, 1)
                 << "}";
             if (i + 1 < pit_stops.size()) out << ",";
             out << "\n";
@@ -189,7 +190,9 @@ bool TelemetrySession::writeJSON(const std::string& path) const {
         out << "\"RL\": " << jVal(f.camber_deg[2], 2) << ", ";
         out << "\"RR\": " << jVal(f.camber_deg[3], 2) << "},\n";
         // Surface grip
-        out << "      \"surface_grip\": " << jVal(f.surface_grip, 3) << "\n";
+        out << "      \"surface_grip\": " << jVal(f.surface_grip, 3) << ",\n";
+        // Compound
+        out << "      \"compound\": " << jStr(f.compound) << "\n";
         out << "    }";
         if (i + 1 < frames.size()) out << ",";
         out << "\n";

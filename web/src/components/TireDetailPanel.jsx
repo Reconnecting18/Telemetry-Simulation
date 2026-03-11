@@ -16,14 +16,9 @@ function TireCard({ id, td, mode }) {
     ? [tireWearColor(td.outer_wear, td.compound), tireWearColor(td.center_wear, td.compound), tireWearColor(td.inner_wear, td.compound)]
     : ['#333', '#444', '#333']
 
-  // Pressure arc
+  // Pressure bar
   const pFrac = pressureFraction(td.pressure)
   const pColor = pressureColor(td.pressure)
-  // SVG arc: 180deg sweep from left to right
-  const arcR = 18
-  const arcAngle = pFrac * Math.PI
-  const arcX = arcR * Math.cos(Math.PI - arcAngle)
-  const arcY = -arcR * Math.sin(Math.PI - arcAngle)
 
   return (
     <div className="tire-card">
@@ -71,15 +66,10 @@ function TireCard({ id, td, mode }) {
           )}
         </svg>
 
-        {/* Pressure arc gauge */}
-        <svg viewBox="-22 -22 44 24" className="tire-card-arc">
-          {/* Track */}
-          <path d={`M -${arcR} 0 A ${arcR} ${arcR} 0 0 1 ${arcR} 0`}
-            fill="none" stroke="#222" strokeWidth={3} />
-          {/* Fill */}
-          <path d={`M -${arcR} 0 A ${arcR} ${arcR} 0 ${pFrac > 0.5 ? 1 : 0} 1 ${arcX.toFixed(1)} ${arcY.toFixed(1)}`}
-            fill="none" stroke={pColor} strokeWidth={3} strokeLinecap="round" />
-        </svg>
+        {/* Pressure bar */}
+        <div className="tire-card-pbar">
+          <div className="tire-card-pbar-fill" style={{ width: `${pFrac * 100}%`, background: pColor }} />
+        </div>
       </div>
 
       <div className="tire-card-stats">

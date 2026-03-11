@@ -160,6 +160,7 @@ export default function App() {
         isPlaying={isPlaying}
         playbackSpeed={playbackSpeed}
         frames={activeFrames}
+        pitStops={data.pitStops}
         onToggle={toggle}
         onSeek={seekTo}
         onSetSpeed={setPlaybackSpeed}

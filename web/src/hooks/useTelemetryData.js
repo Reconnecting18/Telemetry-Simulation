@@ -16,6 +16,7 @@ export function useTelemetryData() {
           vehicle: json.vehicle,
           track: json.track,
           frames: json.frames,
+          pitStops: json.pit_stops || [],
         })
       })
       .catch(e => setError(e.message))

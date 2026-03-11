@@ -66,7 +66,7 @@ function defCorner(p, hx, hy, fwd) {
 }
 
 const FL_HUB = [-20, -28], FR_HUB = [20, -28]
-const RL_HUB = [-20,  25], RR_HUB = [20,  25]
+const RL_HUB = [-20,  35], RR_HUB = [20,  35]
 
 defCorner('fl', ...FL_HUB,  1)
 defCorner('fr', ...FR_HUB,  1)
@@ -476,9 +476,15 @@ function CarModel({ frame, vehicle, mode }) {
     ride[id] += (target - ride[id]) * LERP_K
   }
 
-  // ── Steering ──
+  // ── Steering (signed: positive=right turn, negative=left turn) ──
   const latG = frame.lateral_g || 0
   const steerDeg = Math.max(-STEER_MAX, Math.min(STEER_MAX, latG * STEER_GAIN))
+
+  // Debug: log steering at chicane entries (high |lat_g| with sign change)
+  const prevLatG = prevG.current?.lat || 0
+  if (Math.abs(latG) > 0.5 && Math.sign(latG) !== Math.sign(prevLatG) && Math.abs(prevLatG) > 0.1) {
+    console.log(`[Steering] chicane entry: lat_g=${latG.toFixed(3)} steer=${steerDeg.toFixed(1)}° (${latG < 0 ? 'LEFT' : 'RIGHT'})`)
+  }
 
   // ── Roll & Pitch (CSS) ──
   const lonG = frame.longitudinal_g || 0

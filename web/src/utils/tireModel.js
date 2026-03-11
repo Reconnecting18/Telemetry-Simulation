@@ -179,12 +179,12 @@ export function tireWearColor(wearPct, compound = 'medium') {
 // ═══════════════════════════════════════════════════════════════════
 // PRESSURE HELPERS
 // ═══════════════════════════════════════════════════════════════════
-// Optimal: 26-28 psi. Below 24 or above 30 = warning.
+// Optimal: 28-32 psi. 24-27 or 33-35 = warning. <24 or >35 = critical.
 
-const PSI_OPT_LO = 26
-const PSI_OPT_HI = 28
+const PSI_OPT_LO = 28
+const PSI_OPT_HI = 32
 const PSI_WARN_LO = 24
-const PSI_WARN_HI = 30
+const PSI_WARN_HI = 35
 
 export function pressureStatus(psi) {
   if (psi >= PSI_OPT_LO && psi <= PSI_OPT_HI) return 'optimal'

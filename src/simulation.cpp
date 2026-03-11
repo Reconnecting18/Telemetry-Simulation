@@ -411,7 +411,8 @@ TelemetrySession runSimulation(const Track& track, const VehicleConfig& config) 
             // the curvature alone would suggest, but MORE tire stress from sliding.
             double raw_lat_g = calculateLateralG(state.velocity, curv_rl);
             double grip_limited_lat_g = std::min(raw_lat_g, config.max_lateral_g * node_grip);
-            state.lateral_g      = grip_limited_lat_g;
+            double curv_sign = (curv_rl >= 0.0) ? 1.0 : -1.0;
+            state.lateral_g      = grip_limited_lat_g * curv_sign;
             state.longitudinal_g = long_g;
             double lat_force_N   = calculateForceFromCurvature(config.mass, state.velocity, curv_rl);
 
@@ -547,6 +548,7 @@ TelemetrySession runSimulation(const Track& track, const VehicleConfig& config) 
                 f.camber_deg[t]    = state.dynamic_camber[t];
             }
             f.surface_grip = node_grip;
+            f.compound     = "medium";
             session.frames.push_back(f);
 
             // ── Stop conditions ──────────────────────────────────────────────
@@ -712,6 +714,7 @@ TelemetrySession runStrategySimulation(
             ps.after_lap      = cumulative_lap; // 1-indexed (last completed lap)
             ps.from_compound  = strategy.stints[stint_idx - 1].compound;
             ps.to_compound    = stint.compound;
+            ps.fuel_added_L   = stint.fuel_load / FUEL_DENSITY_KG_PL;
             session.pit_stops.push_back(ps);
 
             std::cout << "[Strategy] PIT STOP after lap " << cumulative_lap
@@ -798,7 +801,8 @@ TelemetrySession runStrategySimulation(
 
                 double raw_lat_g = calculateLateralG(state.velocity, curv_rl);
                 double grip_limited_lat_g = std::min(raw_lat_g, cfg.max_lateral_g * node_grip);
-                state.lateral_g      = grip_limited_lat_g;
+                double curv_sign = (curv_rl >= 0.0) ? 1.0 : -1.0;
+                state.lateral_g      = grip_limited_lat_g * curv_sign;
                 state.longitudinal_g = long_g;
                 double lat_force_N   = calculateForceFromCurvature(cfg.mass, state.velocity, curv_rl);
 
@@ -930,6 +934,7 @@ TelemetrySession runStrategySimulation(
                     f.camber_deg[t]    = state.dynamic_camber[t];
                 }
                 f.surface_grip = node_grip;
+                f.compound     = stint.compound;
                 session.frames.push_back(f);
 
                 // Stop conditions

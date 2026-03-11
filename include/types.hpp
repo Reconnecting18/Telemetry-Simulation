@@ -187,6 +187,7 @@ struct TelemetryFrame {
     double suspension_mm[4];        // mm (deflection * 1000)
     double camber_deg[4];           // dynamic camber
     double surface_grip;            // 0–1 effective grip (base + rubber buildup)
+    std::string compound;           // "soft", "medium", "hard"
 };
 
 struct RacingLinePoint {
@@ -197,6 +198,7 @@ struct PitStop {
     int         after_lap;       // last lap before pit stop (1-indexed)
     std::string from_compound;   // compound being replaced
     std::string to_compound;     // compound being fitted
+    double      fuel_added_L;    // liters of fuel added during stop
 };
 
 struct TelemetrySession {
