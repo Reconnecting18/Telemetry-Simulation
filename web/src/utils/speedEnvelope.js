@@ -106,39 +106,64 @@ export function calculateSpeedEnvelope(trackData, corners, carParams) {
     }
   }
 
-  // Step 3: Forward pass (acceleration-limited)
-  // v_next^2 = v_prev^2 + 2 * a * dist
+  // Closed-loop speed envelope: run forward+backward passes twice so that
+  // speed constraints propagate correctly across the lap boundary.
+  const wrapDist = nodeDist(nodes[N - 1], nodes[0])
+  const v = new Array(N)
+  for (let i = 0; i < N; i++) v[i] = vCorner[i]
+
+  for (let pass = 0; pass < 2; pass++) {
+    // Backward pass (braking-limited)
+    for (let i = N - 2; i >= 0; i--) {
+      const dist = nodeDist(nodes[i], nodes[i + 1])
+      const vMax = Math.sqrt(v[i + 1] ** 2 + 2 * maxBrake * dist)
+      v[i] = Math.min(v[i], vMax)
+    }
+    // Backward wrap-around: propagate braking from node 0 back to final nodes
+    {
+      let vNext = v[0]
+      for (let i = N - 1; i >= Math.max(0, N - 30); i--) {
+        const dist = i === N - 1 ? wrapDist : nodeDist(nodes[i], nodes[i + 1])
+        const vMax = Math.sqrt(vNext ** 2 + 2 * maxBrake * dist)
+        v[i] = Math.min(v[i], vMax)
+        vNext = v[i]
+      }
+    }
+
+    // Forward pass (acceleration-limited)
+    for (let i = 1; i < N; i++) {
+      const dist = nodeDist(nodes[i - 1], nodes[i])
+      const vMax = Math.sqrt(v[i - 1] ** 2 + 2 * maxAccel * dist)
+      v[i] = Math.min(v[i], vMax)
+    }
+    // Forward wrap-around: propagate acceleration from node N-1 to first nodes
+    {
+      let vPrev = v[N - 1]
+      for (let i = 0; i < Math.min(N, 30); i++) {
+        const dist = i === 0 ? wrapDist : nodeDist(nodes[i - 1], nodes[i])
+        const vMax = Math.sqrt(vPrev ** 2 + 2 * maxAccel * dist)
+        v[i] = Math.min(v[i], vMax)
+        vPrev = v[i]
+      }
+    }
+  }
+
+  // Keep a copy for forward-only profile (used by braking point detection)
   const vForward = new Array(N)
-  vForward[0] = vCorner[0]
-  for (let i = 1; i < N; i++) {
-    const dist = nodeDist(nodes[i - 1], nodes[i])
-    const vMax = Math.sqrt(vForward[i - 1] ** 2 + 2 * maxAccel * dist)
-    vForward[i] = Math.min(vCorner[i], vMax)
-  }
+  for (let i = 0; i < N; i++) vForward[i] = v[i]
 
-  // Step 4: Backward pass (braking-limited)
-  // v_prev^2 = v_next^2 + 2 * brake * dist
-  const vBackward = new Array(N)
-  vBackward[N - 1] = vForward[N - 1]
-  for (let i = N - 2; i >= 0; i--) {
-    const dist = nodeDist(nodes[i], nodes[i + 1])
-    const vMax = Math.sqrt(vBackward[i + 1] ** 2 + 2 * maxBrake * dist)
-    vBackward[i] = Math.min(vForward[i], vMax)
-  }
-
-  // Step 5: Final envelope = min(cornering, forward, backward) — already folded
-  // vBackward is the final result since it takes min with vForward at each step
+  // Step 5: Final envelope
   const minV = MIN_SPEED_KPH / 3.6
   const speedKph = new Array(N)
   const forwardKph = new Array(N)
   for (let i = 0; i < N; i++) {
     // Speed floor: no node below 30 kph
-    if (vBackward[i] < minV) {
+    if (v[i] < minV) {
       const r = curvature[i] > 1e-6 ? (1 / curvature[i]).toFixed(1) : 'inf'
-      console.warn(`[SpeedEnvelope] WARNING: node ${i} speed ${(vBackward[i] * 3.6).toFixed(1)} kph < ${MIN_SPEED_KPH} kph floor (R=${r}m)`)
-      vBackward[i] = minV
+      console.warn(`[SpeedEnvelope] WARNING: node ${i} speed ${(v[i] * 3.6).toFixed(1)} kph < ${MIN_SPEED_KPH} kph floor (R=${r}m)`)
+      v[i] = minV
     }
-    speedKph[i] = vBackward[i] * 3.6
+    speedKph[i] = v[i] * 3.6
     forwardKph[i] = vForward[i] * 3.6
     nodes[i].speed_kph = speedKph[i]
   }

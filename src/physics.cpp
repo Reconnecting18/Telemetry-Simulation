@@ -143,7 +143,9 @@ std::vector<RacingLineNode> computeRacingLine(
         double AC = std::sqrt((cx-ax)*(cx-ax) + (cy-ay)*(cy-ay));
 
         double denom = AB * BC * AC;
-        if (denom < 1e-10) {
+        // Fall back to centerline curvature when any segment is too short
+        // (near-coincident RL points produce numerically unstable curvature)
+        if (denom < 1e-10 || AB < 1.0 || BC < 1.0) {
             rl[i].effective_curvature = nodes[i].curvature;
             continue;
         }
@@ -276,36 +278,78 @@ std::vector<double> computeVelocityProfile(
         }
     }
 
-    // Pass 2 (backward): braking constraints.
-    // Uphill (grade > 0) aids braking; downhill (grade < 0) reduces effective brake.
-    for (int i = N - 2; i >= 0; --i) {
-        double seg        = segmentLength(nodes, i);
-        double v_next     = v[i + 1];
-        double drag_decel = 0.5 * AIR_DENSITY * config.drag_coeff
-                          * config.frontal_area * v_next * v_next / config.mass;
-        double grade_decel = use_grade ? G_TO_MS2 * grade[i] : 0.0;
-        double total_decel = config.max_brake + drag_decel + grade_decel;
-        total_decel = std::max(total_decel, config.max_brake * 0.1);  // safety floor
-        double v_reachable = std::sqrt(v_next * v_next + 2.0 * total_decel * seg);
-        v[i] = std::min(v[i], v_reachable);
-    }
+    // Closed-loop speed envelope: run forward+backward passes twice so that
+    // speed constraints propagate correctly across the lap boundary.
+    // Wrap-around segments use the distance between last and first node.
+    double wrap_seg = std::sqrt(
+        std::pow(nodes[0].x - nodes[N-1].x, 2) +
+        std::pow(nodes[0].y - nodes[N-1].y, 2) +
+        std::pow(nodes[0].z - nodes[N-1].z, 2));
 
-    // Pass 3 (forward): power-limited acceleration constraints.
-    // Uphill (grade > 0) reduces net accel; downhill adds a small gravity boost.
-    for (int i = 1; i < N; ++i) {
-        double seg    = segmentLength(nodes, i - 1);
-        double v_prev = v[i - 1];
+    for (int pass = 0; pass < 2; ++pass) {
+        // Backward pass: braking constraints.
+        // Uphill (grade > 0) aids braking; downhill (grade < 0) reduces effective brake.
+        for (int i = N - 2; i >= 0; --i) {
+            double seg        = segmentLength(nodes, i);
+            double v_next     = v[i + 1];
+            double drag_decel = 0.5 * AIR_DENSITY * config.drag_coeff
+                              * config.frontal_area * v_next * v_next / config.mass;
+            double grade_decel = use_grade ? G_TO_MS2 * grade[i] : 0.0;
+            double total_decel = config.max_brake + drag_decel + grade_decel;
+            total_decel = std::max(total_decel, config.max_brake * 0.1);
+            double v_reachable = std::sqrt(v_next * v_next + 2.0 * total_decel * seg);
+            v[i] = std::min(v[i], v_reachable);
+        }
+        // Backward wrap-around: propagate braking from node 0 back to final nodes
+        {
+            double v_next = v[0];
+            for (int i = N - 1; i >= std::max(0, N - 30); --i) {
+                double seg = (i == N - 1) ? wrap_seg : segmentLength(nodes, i);
+                double drag_decel = 0.5 * AIR_DENSITY * config.drag_coeff
+                                  * config.frontal_area * v_next * v_next / config.mass;
+                double grade_decel = use_grade ? G_TO_MS2 * grade[i] : 0.0;
+                double total_decel = config.max_brake + drag_decel + grade_decel;
+                total_decel = std::max(total_decel, config.max_brake * 0.1);
+                double v_reachable = std::sqrt(v_next * v_next + 2.0 * total_decel * seg);
+                v[i] = std::min(v[i], v_reachable);
+                v_next = v[i];
+            }
+        }
 
-        double engine_accel = (v_prev > 1.0)
-            ? std::min(config.max_accel, engine_power / (config.mass * v_prev))
-            : config.max_accel;
-        double drag_decel = 0.5 * AIR_DENSITY * config.drag_coeff
-                          * config.frontal_area * v_prev * v_prev / config.mass;
-        double grade_decel = use_grade ? G_TO_MS2 * grade[i] : 0.0;
-        double net_accel   = std::max(engine_accel - drag_decel - grade_decel, 0.0);
+        // Forward pass: power-limited acceleration constraints.
+        // Uphill (grade > 0) reduces net accel; downhill adds a small gravity boost.
+        for (int i = 1; i < N; ++i) {
+            double seg    = segmentLength(nodes, i - 1);
+            double v_prev = v[i - 1];
 
-        double v_reachable = std::sqrt(v_prev * v_prev + 2.0 * net_accel * seg);
-        v[i] = std::min(v[i], v_reachable);
+            double engine_accel = (v_prev > 1.0)
+                ? std::min(config.max_accel, engine_power / (config.mass * v_prev))
+                : config.max_accel;
+            double drag_decel = 0.5 * AIR_DENSITY * config.drag_coeff
+                              * config.frontal_area * v_prev * v_prev / config.mass;
+            double grade_decel = use_grade ? G_TO_MS2 * grade[i] : 0.0;
+            double net_accel   = std::max(engine_accel - drag_decel - grade_decel, 0.0);
+
+            double v_reachable = std::sqrt(v_prev * v_prev + 2.0 * net_accel * seg);
+            v[i] = std::min(v[i], v_reachable);
+        }
+        // Forward wrap-around: propagate acceleration from node N-1 to first nodes
+        {
+            double v_prev = v[N - 1];
+            for (int i = 0; i < std::min(N, 30); ++i) {
+                double seg = (i == 0) ? wrap_seg : segmentLength(nodes, i - 1);
+                double engine_accel = (v_prev > 1.0)
+                    ? std::min(config.max_accel, engine_power / (config.mass * v_prev))
+                    : config.max_accel;
+                double drag_decel = 0.5 * AIR_DENSITY * config.drag_coeff
+                                  * config.frontal_area * v_prev * v_prev / config.mass;
+                double grade_decel = use_grade ? G_TO_MS2 * grade[i] : 0.0;
+                double net_accel   = std::max(engine_accel - drag_decel - grade_decel, 0.0);
+                double v_reachable = std::sqrt(v_prev * v_prev + 2.0 * net_accel * seg);
+                v[i] = std::min(v[i], v_reachable);
+                v_prev = v[i];
+            }
+        }
     }
 
     // Speed floor: no node may drop below 30 kph.
