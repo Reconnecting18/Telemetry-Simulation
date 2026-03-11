@@ -458,6 +458,174 @@ function zoneTemps(temp, camberDeg) {
 }
 
 // ═══════════════════════════════════════════════════════════════════
+// 8b. MECHANICAL HEALTH OVERLAY
+// ═══════════════════════════════════════════════════════════════════
+// Computes health fractions from frame data. Components appear at 30%+.
+
+function healthColor(fraction) {
+  // 0.3→white, 0.6→yellow, 0.9+→red
+  const t = Math.max(0, Math.min(1, (fraction - 0.3) / 0.7))
+  if (t <= 0.5) {
+    // white → yellow
+    const s = t / 0.5
+    const r = 255
+    const g = Math.round(255 - (255 - 204) * s) // 255→204
+    const b = Math.round(255 * (1 - s))          // 255→0
+    return `rgb(${r},${g},${b})`
+  }
+  // yellow → red
+  const s = (t - 0.5) / 0.5
+  const r = 255
+  const g = Math.round(204 * (1 - s))  // 204→0
+  const b = 0
+  return `rgb(${r},${g},${b})`
+}
+
+function computeHealth(frame, vehicle) {
+  if (!frame) return null
+  const rpm = frame.rpm || 0
+  const maxRpm = vehicle?.max_rpm || 9000
+  const throttle = frame.throttle || 0
+  const brake = frame.brake || 0
+  const tw = frame.tire_wear || {}
+  const avgWear = ((tw.FL || 0) + (tw.FR || 0) + (tw.RL || 0) + (tw.RR || 0)) / 4
+  const latG = Math.abs(frame.lateral_g || 0)
+
+  return {
+    engine:   Math.min(1, (rpm / maxRpm) * 0.65 + throttle * 0.35),
+    gearbox:  Math.min(1, avgWear * 0.4 + (rpm / maxRpm) * 0.15),
+    brakes:   { FL: brake, FR: brake, RL: brake * 0.7, RR: brake * 0.7 },
+    steering: Math.min(1, latG * 0.25 + (Math.abs(frame.lateral_g || 0) > 1.5 ? 0.15 : 0)),
+    radiator: Math.min(1, (rpm / maxRpm) * 0.5 + throttle * 0.3),
+  }
+}
+
+// Health overlay zone definitions
+// { name, cx, cy, w, h, r (for circle), getValue(health) }
+const HEALTH_ZONES = [
+  { name: 'Engine',   cx: 0, cy: 15,  w: 12, h: 16, labelX: -30, labelY: 10,  getValue: h => h.engine },
+  { name: 'Gearbox',  cx: 0, cy: 30,  w: 8,  h: 10, labelX: -30, labelY: 30,  getValue: h => h.gearbox },
+  { name: 'Steering', cx: 0, cy: -22, w: 14, h: 8,  labelX: -30, labelY: -25, getValue: h => h.steering },
+]
+
+const BRAKE_ZONES = [
+  { id: 'FL', cx: -20, cy: -28, labelX: -32, labelY: -35 },
+  { id: 'FR', cx:  20, cy: -28, labelX:  32, labelY: -35 },
+  { id: 'RL', cx: -20, cy:  35, labelX: -32, labelY:  42 },
+  { id: 'RR', cx:  20, cy:  35, labelX:  32, labelY:  42 },
+]
+
+const RADIATOR_ZONES = [
+  { side: 'L', cx: -12, cy: -1, w: 5, h: 10, labelX: -30, labelY: -5 },
+  { side: 'R', cx:  12, cy: -1, w: 5, h: 10, labelX:  30, labelY: -5 },
+]
+
+function HealthOverlay({ health, pos }) {
+  if (!health) return null
+
+  const elements = []
+
+  // Rectangular zones: engine, gearbox, steering
+  for (const zone of HEALTH_ZONES) {
+    const frac = zone.getValue(health)
+    if (frac < 0.3) continue
+    const color = healthColor(frac)
+    const opacity = Math.min(0.6, (frac - 0.3) / 0.7 * 0.6)
+    elements.push(
+      <rect key={zone.name}
+        x={zone.cx - zone.w / 2} y={zone.cy - zone.h / 2}
+        width={zone.w} height={zone.h}
+        rx={2} ry={2}
+        fill={color} opacity={opacity}
+        style={{ transition: 'opacity 0.3s ease, fill 0.3s ease' }}
+      />
+    )
+    if (frac >= 0.5) {
+      elements.push(
+        <line key={`${zone.name}-line`}
+          x1={zone.cx} y1={zone.cy}
+          x2={zone.labelX} y2={zone.labelY}
+          stroke={color} strokeWidth={0.4} opacity={0.7}
+        />,
+        <text key={`${zone.name}-label`}
+          x={zone.labelX} y={zone.labelY - 1.5}
+          fill={color} fontSize={3} fontFamily="'Courier New', monospace"
+          textAnchor={zone.labelX < 0 ? 'end' : 'start'} opacity={0.85}>
+          {zone.name} {(frac * 100).toFixed(0)}%
+        </text>
+      )
+    }
+  }
+
+  // Brake circles at hub positions
+  for (const bz of BRAKE_ZONES) {
+    const frac = health.brakes[bz.id]
+    if (frac < 0.3) continue
+    const hub = pos[`${bz.id.toLowerCase()}.hub`]
+    const cx = hub ? hub.x : bz.cx
+    const cy = hub ? hub.y : bz.cy
+    const color = healthColor(frac)
+    const opacity = Math.min(0.55, (frac - 0.3) / 0.7 * 0.55)
+    elements.push(
+      <circle key={`brake-${bz.id}`}
+        cx={cx} cy={cy} r={4}
+        fill={color} opacity={opacity}
+        style={{ transition: 'opacity 0.3s ease, fill 0.3s ease' }}
+      />
+    )
+    if (frac >= 0.5) {
+      elements.push(
+        <line key={`brake-${bz.id}-line`}
+          x1={cx} y1={cy}
+          x2={bz.labelX} y2={bz.labelY}
+          stroke={color} strokeWidth={0.4} opacity={0.7}
+        />,
+        <text key={`brake-${bz.id}-label`}
+          x={bz.labelX} y={bz.labelY - 1.5}
+          fill={color} fontSize={2.8} fontFamily="'Courier New', monospace"
+          textAnchor={bz.labelX < 0 ? 'end' : 'start'} opacity={0.85}>
+          Brake {bz.id} {(frac * 100).toFixed(0)}%
+        </text>
+      )
+    }
+  }
+
+  // Radiator rectangles at sidepod fronts
+  for (const rz of RADIATOR_ZONES) {
+    const frac = health.radiator
+    if (frac < 0.3) continue
+    const color = healthColor(frac)
+    const opacity = Math.min(0.5, (frac - 0.3) / 0.7 * 0.5)
+    elements.push(
+      <rect key={`rad-${rz.side}`}
+        x={rz.cx - rz.w / 2} y={rz.cy - rz.h / 2}
+        width={rz.w} height={rz.h}
+        rx={1} ry={1}
+        fill={color} opacity={opacity}
+        style={{ transition: 'opacity 0.3s ease, fill 0.3s ease' }}
+      />
+    )
+    if (frac >= 0.5) {
+      elements.push(
+        <line key={`rad-${rz.side}-line`}
+          x1={rz.cx} y1={rz.cy}
+          x2={rz.labelX} y2={rz.labelY}
+          stroke={color} strokeWidth={0.4} opacity={0.7}
+        />,
+        <text key={`rad-${rz.side}-label`}
+          x={rz.labelX} y={rz.labelY - 1.5}
+          fill={color} fontSize={2.8} fontFamily="'Courier New', monospace"
+          textAnchor={rz.labelX < 0 ? 'end' : 'start'} opacity={0.85}>
+          Radiator {(frac * 100).toFixed(0)}%
+        </text>
+      )
+    }
+  }
+
+  return <g className="health-overlay">{elements}</g>
+}
+
+// ═══════════════════════════════════════════════════════════════════
 // 9. REACT COMPONENT — RENDERING
 // ═══════════════════════════════════════════════════════════════════
 function CarModel({ frame, vehicle, mode }) {
@@ -506,6 +674,9 @@ function CarModel({ frame, vehicle, mode }) {
   // ── Solve all node positions ──
   const pos = solvePositions(ride, steerDeg, dmgRef.current)
   updateBeamLengths(pos)
+
+  // ── Mechanical health overlay (default mode only) ──
+  const health = mode === 'default' ? computeHealth(frame, vehicle) : null
 
   // ── Per-corner strain colors ──
   const sColor = {}
@@ -657,6 +828,9 @@ function CarModel({ frame, vehicle, mode }) {
           </g>
         )
       })}
+
+      {/* Mechanical health overlay (default mode only) */}
+      {mode === 'default' && <HealthOverlay health={health} pos={pos} />}
 
       {/* Node dots */}
       {Object.entries(NODE_VIS).map(([k, cls]) => {
