@@ -8,7 +8,7 @@ import { generateRacingLine } from './utils/racingLine'
 import Header from './components/Header'
 import PlaybackControls from './components/PlaybackControls'
 import TrackMap from './components/TrackMap'
-import CarModel from './components/CarModel'
+import CarModelViews from './components/CarModelViews'
 import TireDetailPanel from './components/TireDetailPanel'
 import StrategyPanel, { defaultStint, defaultModifiers } from './components/StrategyPanel'
 import LapTimePanel from './components/LapTimePanel'
@@ -201,7 +201,7 @@ export default function App() {
                   </button>
                 ))}
               </div>
-              <CarModel frame={f} vehicle={v} mode={mode} />
+              <CarModelViews frame={f} vehicle={v} mode={mode} />
             </div>
 
             <div className="tire-panel">
