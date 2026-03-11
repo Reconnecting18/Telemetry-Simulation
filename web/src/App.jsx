@@ -113,13 +113,31 @@ export default function App() {
         setDataSource('engine')
         setSimStatus('success')
         seekTo(0)
-        // Diagnostic: verify Lambda response structure
-        console.log('[Sim Response] frames:', result.frames.length,
-          '| lat_g@100:', result.frames[100]?.lateral_g,
-          '| lat_g@500:', result.frames[500]?.lateral_g,
-          '| pit_stops:', result.pit_stops?.length ?? 'MISSING')
-        console.log('[Sim Response] pit_stops:', JSON.stringify(result.pit_stops))
-        console.log('[Sim Response] strategy sent:', body.stints.map(s => `${s.compound} (${s.lap_count} laps)`))
+        // Diagnostic: full Lambda response debug dump
+        {
+          const fr = result.frames
+          let latMin = Infinity, latMax = -Infinity, pos = 0, neg = 0, zero = 0
+          for (const f of fr) {
+            const g = f.lateral_g
+            if (g == null) { zero++; continue }
+            if (g < latMin) latMin = g
+            if (g > latMax) latMax = g
+            if (g > 0.1) pos++
+            else if (g < -0.1) neg++
+            else zero++
+          }
+          console.log('[LAMBDA DEBUG] Frame count:', fr.length)
+          console.log('[LAMBDA DEBUG] lateral_g sample - frame 0:', fr[0]?.lateral_g,
+            ', frame 100:', fr[100]?.lateral_g,
+            ', frame 500:', fr[500]?.lateral_g,
+            ', frame 1000:', fr[1000]?.lateral_g,
+            ', frame 2000:', fr[2000]?.lateral_g)
+          console.log('[LAMBDA DEBUG] lateral_g min across all frames:', latMin)
+          console.log('[LAMBDA DEBUG] lateral_g max across all frames:', latMax)
+          console.log('[LAMBDA DEBUG] lateral_g positive count:', pos, ', negative count:', neg, ', zero count:', zero)
+          console.log('[LAMBDA DEBUG] pit_stops:', JSON.stringify(result.pit_stops))
+          console.log('[LAMBDA DEBUG] dataSource: engine')
+        }
         simRanOnceRef.current = true
         setStrategyDirty(false)
       } else {
