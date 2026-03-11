@@ -147,12 +147,13 @@ export default function App() {
   const f = interpolatedFrame
   const brakingPoints = useMemo(() => {
     if (!data?.track || !speedData || !corners.length) return null
+    const vehicle = activeVehicle || data?.vehicle
     return calculateBrakingPoints(data.track, speedData, corners, null, {
       fuel_L: f?.fuel_L,
       tire_wear: f?.tire_wear,
-      base_fuel_L: v?.fuel_capacity_L,
+      base_fuel_L: vehicle?.fuel_capacity_L,
     })
-  }, [data?.track, speedData, corners, f?.fuel_L, f?.tire_wear])
+  }, [data?.track, activeVehicle, speedData, corners, f?.fuel_L, f?.tire_wear])
 
   if (error) return <div className="state-msg error">Failed to load telemetry: {error}</div>
   if (!data) return <div className="state-msg">Loading telemetry data...</div>
