@@ -1,4 +1,4 @@
-import { useState, useMemo, useCallback } from 'react'
+import { useState, useMemo, useCallback, useRef, useEffect } from 'react'
 import { useTelemetryData } from './hooks/useTelemetryData'
 import { usePlayback } from './hooks/usePlayback'
 import { logCornerAnalysis, analyzeCorners } from './utils/cornerDetection'
@@ -10,7 +10,7 @@ import PlaybackControls from './components/PlaybackControls'
 import TrackMap from './components/TrackMap'
 import CarModel from './components/CarModel'
 import TireDetailPanel from './components/TireDetailPanel'
-import StrategyPanel from './components/StrategyPanel'
+import StrategyPanel, { defaultStint, defaultModifiers } from './components/StrategyPanel'
 
 const API_URL = import.meta.env.VITE_SIMULATION_API_URL
 
@@ -64,6 +64,15 @@ export default function App() {
   const [dataSource, setDataSource] = useState('static') // static | engine | estimate
   const [lastSubmittedStrategy, setLastSubmittedStrategy] = useState(null)
 
+  // Strategy builder state — owned by App so it persists across any child remount
+  const [totalLaps, setTotalLaps] = useState(26)
+  const [durationType, setDurationType] = useState('laps')
+  const [durationMinutes, setDurationMinutes] = useState(60)
+  const [strategyStints, setStrategyStints] = useState(() => [defaultStint(0)])
+  const [strategyModifiers, setStrategyModifiers] = useState(defaultModifiers)
+  const [strategyDirty, setStrategyDirty] = useState(false)
+  const simRanOnceRef = useRef(false)
+
   // Active data: simulated results take priority over static telemetry
   const activeFrames = simulatedData?.frames || data?.frames
   const activeSession = simulatedData?.session || data?.session
@@ -76,6 +85,21 @@ export default function App() {
   } = usePlayback(activeFrames)
 
   const [mode, setMode] = useState('default')
+
+  // Detect strategy edits after a successful sim (results become stale)
+  useEffect(() => {
+    if (simRanOnceRef.current) setStrategyDirty(true)
+  }, [totalLaps, durationType, durationMinutes, strategyStints, strategyModifiers])
+
+  // Reset with confirmation — the only way to reset strategy
+  const handleStrategyReset = useCallback(() => {
+    if (!window.confirm('Reset strategy to defaults?')) return
+    setTotalLaps(26)
+    setDurationType('laps')
+    setDurationMinutes(60)
+    setStrategyStints([defaultStint(0)])
+    setStrategyModifiers(defaultModifiers())
+  }, [])
 
   // API call handler
   const handleRunSimulation = useCallback(async (payload) => {
@@ -110,6 +134,8 @@ export default function App() {
         console.log('[Timeline Debug] Strategy payload sent:', body.stints.map(s => `${s.compound} (${s.lap_count} laps)`))
         console.log('[Timeline Debug] Static pitStops (was source of compounds):', JSON.stringify(data.pitStops))
         console.log('[Timeline Debug] Timeline now reads from: lastSubmittedStrategy.stints (matches payload)')
+        simRanOnceRef.current = true
+        setStrategyDirty(false)
       } else {
         throw new Error('No frames in response')
       }
@@ -227,6 +253,13 @@ export default function App() {
                 frames={activeFrames}
                 onRunSimulation={handleRunSimulation}
                 simStatus={simStatus}
+                totalLaps={totalLaps} setTotalLaps={setTotalLaps}
+                durationType={durationType} setDurationType={setDurationType}
+                durationMinutes={durationMinutes} setDurationMinutes={setDurationMinutes}
+                stints={strategyStints} setStints={setStrategyStints}
+                modifiers={strategyModifiers} setModifiers={setStrategyModifiers}
+                strategyDirty={strategyDirty}
+                onReset={handleStrategyReset}
               />
             </div>
           </div>

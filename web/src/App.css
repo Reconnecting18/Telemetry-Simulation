@@ -1074,6 +1074,18 @@ header {
 .strat-run-status-success    { color: #00c853; }
 .strat-run-status-fallback   { color: #f5a623; }
 
+.strat-dirty-badge {
+  font-size: 0.6rem;
+  color: #f5a623;
+  text-align: center;
+  padding: 2px 8px;
+  margin-bottom: 4px;
+  background: rgba(245, 166, 35, 0.08);
+  border: 1px solid rgba(245, 166, 35, 0.2);
+  border-radius: 4px;
+  letter-spacing: 0.02em;
+}
+
 /* Data source indicator in header */
 .data-source-dot {
   font-size: 11px;

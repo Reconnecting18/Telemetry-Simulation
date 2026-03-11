@@ -228,7 +228,7 @@ function StrategyBuilder({
   durationMinutes, setDurationMinutes,
   stints, setStints,
   modifiers, setModifiers,
-  onRunSimulation, simStatus, onReset,
+  onRunSimulation, simStatus, strategyDirty, onReset,
 }) {
   // Button visual state: tracks the displayed state separately so we can
   // hold success/fallback for a brief flash before returning to idle.
@@ -404,6 +404,9 @@ function StrategyBuilder({
       {statusText && (
         <div className={`strat-run-status strat-run-status-${btnState}`}>{statusText}</div>
       )}
+      {strategyDirty && btnState === 'idle' && (
+        <div className="strat-dirty-badge">Strategy changed — re-run to update</div>
+      )}
       <button className={btnClass} onClick={handleRun} disabled={btnDisabled}>
         {btnState === 'simulating' && <span className="strat-run-spinner" />}
         {btnLabel}
@@ -515,24 +518,17 @@ function StrategySummary({ session, frames, stints: stintData }) {
 // ═══════════════════════════════════════════════════════════════════
 // MAIN PANEL — owns strategy state, toggles between Builder/Summary
 // ═══════════════════════════════════════════════════════════════════
-function StrategyPanel({ session, frames, onRunSimulation, simStatus }) {
+function StrategyPanel({
+  session, frames, onRunSimulation, simStatus,
+  totalLaps, setTotalLaps,
+  durationType, setDurationType,
+  durationMinutes, setDurationMinutes,
+  stints, setStints,
+  modifiers, setModifiers,
+  strategyDirty, onReset,
+}) {
   const [view, setView] = useState('builder')
   const hasData = session && frames && frames.length > 0
-
-  // ── Persistent strategy state (survives tab switches) ──
-  const [totalLaps, setTotalLaps] = useState(26)
-  const [durationType, setDurationType] = useState('laps')
-  const [durationMinutes, setDurationMinutes] = useState(60)
-  const [stints, setStints] = useState([defaultStint(0)])
-  const [modifiers, setModifiers] = useState(defaultModifiers)
-
-  const handleReset = useCallback(() => {
-    setTotalLaps(26)
-    setDurationType('laps')
-    setDurationMinutes(60)
-    setStints([defaultStint(0)])
-    setModifiers(defaultModifiers())
-  }, [])
 
   return (
     <div className="strategy-panel-container">
@@ -556,7 +552,8 @@ function StrategyPanel({ session, frames, onRunSimulation, simStatus }) {
           modifiers={modifiers} setModifiers={setModifiers}
           onRunSimulation={onRunSimulation}
           simStatus={simStatus}
-          onReset={handleReset}
+          strategyDirty={strategyDirty}
+          onReset={onReset}
         />
       ) : (
         <StrategySummary session={session} frames={frames} />
@@ -565,4 +562,5 @@ function StrategyPanel({ session, frames, onRunSimulation, simStatus }) {
   )
 }
 
+export { defaultStint, defaultModifiers }
 export default memo(StrategyPanel)
