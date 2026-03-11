@@ -605,8 +605,8 @@ header {
 }
 
 .health-panel {
-  padding: 16px;
   border-right: 1px solid #1e1e1e;
+  overflow: hidden;
 }
 
 .strategy-panel {

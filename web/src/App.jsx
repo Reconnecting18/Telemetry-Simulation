@@ -11,6 +11,7 @@ import TrackMap from './components/TrackMap'
 import CarModel from './components/CarModel'
 import TireDetailPanel from './components/TireDetailPanel'
 import StrategyPanel, { defaultStint, defaultModifiers } from './components/StrategyPanel'
+import LapTimePanel from './components/LapTimePanel'
 
 const API_URL = import.meta.env.VITE_SIMULATION_API_URL
 
@@ -35,25 +36,6 @@ function transformPayload(payload) {
   }
 }
 
-function statusColor(frac) {
-  if (frac < 0.4) return '#00e676'
-  if (frac < 0.7) return '#f5a623'
-  if (frac < 0.9) return '#ff6b00'
-  return '#ff3d3d'
-}
-
-function StatusBar({ label, value, fraction }) {
-  const color = statusColor(fraction)
-  return (
-    <div className="status-row">
-      <span className="status-label">{label}</span>
-      <div className="status-track">
-        <div className="status-fill" style={{ width: `${fraction * 100}%`, background: color }} />
-      </div>
-      <span className="status-value" style={{ color }}>{value}</span>
-    </div>
-  )
-}
 
 export default function App() {
   const { data, error } = useTelemetryData()
@@ -173,15 +155,6 @@ export default function App() {
 
   const v = activeVehicle || data.vehicle
 
-  // Mechanical indicators
-  const rpm = f?.rpm || 0
-  const mRpm = v?.max_rpm || 9000
-  const engineLoad = Math.min(1, (rpm / mRpm) * 0.65 + (f?.throttle || 0) * 0.35)
-  const brakeHeat  = f?.brake || 0
-  const avgWear    = ((f?.tire_wear?.FL || 0) + (f?.tire_wear?.FR || 0)
-                    + (f?.tire_wear?.RL || 0) + (f?.tire_wear?.RR || 0)) / 4
-  const gearboxWear = Math.min(1, avgWear * 0.4)
-
   return (
     <div className="dashboard">
       <Header session={activeSession} vehicle={v} track={data.track} weather={activeWeather} currentLap={f?.lap} dataSource={dataSource} />
@@ -236,15 +209,10 @@ export default function App() {
             </div>
           </div>
 
-          {/* Bottom row: Mechanical Health + Race Strategy */}
+          {/* Bottom row: Lap Time Analysis + Race Strategy */}
           <div className="bottom-row">
             <div className="health-panel">
-              <h4 className="panel-title">Mechanical Health</h4>
-              <div className="status-bars">
-                <StatusBar label="Engine"  value={`${(engineLoad * 100).toFixed(0)}%`}  fraction={engineLoad} />
-                <StatusBar label="Brakes"  value={`${(brakeHeat * 100).toFixed(0)}%`}   fraction={brakeHeat} />
-                <StatusBar label="Gearbox" value={`${(gearboxWear * 100).toFixed(1)}%`} fraction={gearboxWear} />
-              </div>
+              <LapTimePanel frames={activeFrames} pitStops={data.pitStops} currentLap={f?.lap} />
             </div>
 
             <div className="strategy-panel">
