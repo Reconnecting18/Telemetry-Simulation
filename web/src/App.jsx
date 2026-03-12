@@ -60,7 +60,7 @@ export default function App() {
   const activeSession = simulatedData?.session || data?.session
   const activeVehicle = simulatedData?.vehicle || data?.vehicle
   const activeWeather = simulatedData?.weather || data?.weather
-  const activePitStops = simulatedData?.pit_stops || data?.pitStops
+  const activePitStops = simulatedData ? (simulatedData.pit_stops ?? []) : (data?.pitStops ?? [])
 
   const {
     currentTime, maxTime, isPlaying, playbackSpeed,
