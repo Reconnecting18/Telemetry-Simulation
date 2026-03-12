@@ -95,7 +95,6 @@ export function calculateSpeedEnvelope(trackData, corners, carParams) {
           }
         }
         const avgR = count > 0 ? sumR / count : MIN_RADIUS
-        console.warn(`[SpeedEnvelope] WARNING: node ${i} radius ${r.toFixed(1)}m < 10m, replaced with ${avgR.toFixed(1)}m`)
         k = 1 / avgR
       }
     }
@@ -159,8 +158,6 @@ export function calculateSpeedEnvelope(trackData, corners, carParams) {
   for (let i = 0; i < N; i++) {
     // Speed floor: no node below 30 kph
     if (v[i] < minV) {
-      const r = curvature[i] > 1e-6 ? (1 / curvature[i]).toFixed(1) : 'inf'
-      console.warn(`[SpeedEnvelope] WARNING: node ${i} speed ${(v[i] * 3.6).toFixed(1)} kph < ${MIN_SPEED_KPH} kph floor (R=${r}m)`)
       v[i] = minV
     }
     speedKph[i] = v[i] * 3.6

@@ -198,31 +198,3 @@ function classifyCorners(corners, curvatures) {
   }
 }
 
-/**
- * Log detected corners as a console table for verification.
- * @param {object} trackData — the track object with .nodes[]
- */
-export function logCornerAnalysis(trackData) {
-  const corners = analyzeCorners(trackData)
-  if (!corners.length) {
-    console.log('[CornerDetection] No corners detected.')
-    return corners
-  }
-
-  console.log(`[CornerDetection] Found ${corners.length} corners:`)
-  console.table(corners.map((c, i) => ({
-    '#': i + 1,
-    start: c.start_node,
-    apex: c.apex_node,
-    end: c.end_node,
-    dir: c.turn_direction,
-    'radius (m)': c.radius_at_apex,
-    'len': c.corner_length,
-    'type': c.corner_type,
-    'class': c.type_name,
-    'geo apex': c.geometric_apex_offset,
-    'rec apex': c.recommended_apex_offset,
-  })))
-
-  return corners
-}

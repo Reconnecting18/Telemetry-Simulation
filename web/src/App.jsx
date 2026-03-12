@@ -1,7 +1,7 @@
 import { useState, useMemo, useCallback, useRef, useEffect } from 'react'
 import { useTelemetryData } from './hooks/useTelemetryData'
 import { usePlayback } from './hooks/usePlayback'
-import { logCornerAnalysis, analyzeCorners } from './utils/cornerDetection'
+import { analyzeCorners } from './utils/cornerDetection'
 import { calculateSpeedEnvelope, calculateBrakingPoints } from './utils/speedEnvelope'
 import { generateRacingLine } from './utils/racingLine'
 
@@ -130,7 +130,6 @@ export default function App() {
   const { speedData, corners, generatedLine } = useMemo(() => {
     if (!data?.track) return { speedData: null, corners: [], generatedLine: null }
     const c = analyzeCorners(data.track)
-    logCornerAnalysis(data.track)
     const spd = calculateSpeedEnvelope(data.track, c)
     const rl = generateRacingLine(data.track, c)
     return { speedData: spd, corners: c, generatedLine: rl }

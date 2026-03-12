@@ -659,12 +659,6 @@ function CarModel({ frame, vehicle, mode }) {
   const latG = frame.lateral_g || 0
   const steerDeg = Math.max(-STEER_MAX, Math.min(STEER_MAX, -latG * STEER_GAIN))
 
-  // Debug: log steering at chicane entries (high |lat_g| with sign change)
-  const prevLatG = prevG.current?.lat || 0
-  if (Math.abs(latG) > 0.5 && Math.sign(latG) !== Math.sign(prevLatG) && Math.abs(prevLatG) > 0.1) {
-    console.log(`[Steering] chicane entry: lat_g=${latG.toFixed(3)} steer=${steerDeg.toFixed(1)}° (${latG > 0 ? 'LEFT' : 'RIGHT'})`)
-  }
-
   // ── Roll & Pitch (CSS) ──
   const lonG = frame.longitudinal_g || 0
   const rollDeg  = Math.max(-ROLL_MAX,  Math.min(ROLL_MAX,  latG * (ROLL_MAX / 2)))

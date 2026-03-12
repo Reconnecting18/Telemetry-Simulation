@@ -239,24 +239,14 @@ export function generateRacingLine(trackData, corners) {
       // Same index already handled by dedup above; this catches 1-2 node gaps
       if (resolved[i].idx === resolved[j].idx) continue
       if (resolved[i].pri >= resolved[j].pri) {
-        console.log(`[RacingLine] Collision resolved: removed idx ${resolved[j].idx} (pri=${resolved[j].pri}), kept idx ${resolved[i].idx} (pri=${resolved[i].pri})`)
         toRemove.add(j)
       } else {
-        console.log(`[RacingLine] Collision resolved: removed idx ${resolved[i].idx} (pri=${resolved[i].pri}), kept idx ${resolved[j].idx} (pri=${resolved[j].pri})`)
         toRemove.add(i)
         break // i is removed, stop checking against it
       }
     }
   }
   if (toRemove.size) resolved = resolved.filter((_, i) => !toRemove.has(i))
-
-  // Diagnostic: log apex CPs after collision resolution
-  console.log('[RacingLine] Corner apex control points (post-collision):')
-  for (let ci = 0; ci < corners.length; ci++) {
-    const c = corners[ci]
-    const apexCP = resolved.find(cp => cp.idx === c.apex_node)
-    console.log(`  Corner ${ci}: apex=${c.apex_node}, dir=${c.turn_direction}, lateral=${apexCP?.val.toFixed(3) ?? 'N/A'}`)
-  }
 
   // ── Interpolate with Catmull-Rom ──
   const lateral = catmullRomInterpolate(resolved, N)

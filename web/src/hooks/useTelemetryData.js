@@ -25,7 +25,6 @@ function deduplicateNodes(track) {
         if (gap > 5.0) safe = false
       }
       if (safe) {
-        console.log(`[Track] Dedup: removed node ${i} (dist=${dist.toFixed(2)}m to previous)`)
         removed++
       } else {
         keep.push(i)
@@ -45,14 +44,12 @@ function deduplicateNodes(track) {
       const gx = prev2.x - first.x, gy = prev2.y - first.y
       const gap2 = Math.sqrt(gx * gx + gy * gy)
       if (gap2 <= 5.0) {
-        console.log(`[Track] Dedup: removed last node (dist=${d2.toFixed(2)}m to first, wrap-around)`)
         keep.pop()
         removed++
       }
     }
   }
   if (removed === 0) return track
-  console.log(`[Track] Dedup: removed ${removed} near-coincident node(s), ${nodes.length} -> ${keep.length} nodes`)
   const newTrack = { ...track, nodes: keep.map(i => nodes[i]) }
   if (rl && rl.length === nodes.length) {
     newTrack.racing_line = keep.map(i => rl[i])
