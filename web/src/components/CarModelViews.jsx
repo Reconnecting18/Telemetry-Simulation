@@ -9,6 +9,21 @@ import { tempToColorSmooth } from '../utils/colors'
 // updates via useEffect + refs. No 3D math anywhere.
 // ═══════════════════════════════════════════════════════════════════
 
+const DEFAULT_TIRE_COLOR = '#666666'
+
+// Check if frame has real tire temp data (non-zero values from simulation)
+function hasTireData(frame) {
+  const t = frame?.tire_temp_C
+  if (!t) return false
+  return (t.FL > 0 || t.FR > 0 || t.RL > 0 || t.RR > 0)
+}
+
+// Get tire color: default grey when no data, thermal color when sim is running
+function tireColor(temp, optTemp, ovhTemp, hasData) {
+  if (!hasData) return DEFAULT_TIRE_COLOR
+  return tempToColorSmooth(temp, optTemp, ovhTemp)
+}
+
 // ── Suspension strain color: blue=relaxed → orange=loaded → red=overloaded ──
 function suspColor(mm) {
   const abs = Math.abs(mm || 0)
@@ -25,14 +40,20 @@ function suspColor(mm) {
   return `rgb(245,${Math.round(130 - 100 * s)},20)`
 }
 
-// ── Blueprint grid (25px spacing) ──
-function Grid({ w, h }) {
-  const lines = []
-  for (let x = 0; x <= w; x += 25)
-    lines.push(<line key={`v${x}`} x1={x} y1={0} x2={x} y2={h} stroke="#0d1f2d" strokeWidth={0.5} opacity={0.3} />)
-  for (let y = 0; y <= h; y += 25)
-    lines.push(<line key={`h${y}`} x1={0} y1={y} x2={w} y2={y} stroke="#0d1f2d" strokeWidth={0.5} opacity={0.3} />)
-  return <>{lines}</>
+// ── Blueprint grid as SVG pattern (25px, #0a1f30, opacity 0.4) ──
+function BlueprintDefs() {
+  return (
+    <defs>
+      <pattern id="bp-grid" width={25} height={25} patternUnits="userSpaceOnUse">
+        <line x1={25} y1={0} x2={25} y2={25} stroke="#0a1f30" strokeWidth={0.5} />
+        <line x1={0} y1={25} x2={25} y2={25} stroke="#0a1f30" strokeWidth={0.5} />
+      </pattern>
+    </defs>
+  )
+}
+
+function GridBg({ w, h }) {
+  return <rect width={w} height={h} fill="url(#bp-grid)" opacity={0.4} />
 }
 
 // ════════════════════════════════════════════
@@ -44,6 +65,7 @@ function SideViewSvg({ frame, vehicle }) {
   const suspMM = frame?.suspension_mm || { FL: 0, FR: 0, RL: 0, RR: 0 }
   const optTemp = vehicle?.tire_optimal_temp_C || 90
   const ovhTemp = vehicle?.tire_overheat_temp_C || 120
+  const hasData = hasTireData(frame)
 
   useEffect(() => {
     const svg = svgRef.current
@@ -54,8 +76,8 @@ function SideViewSvg({ frame, vehicle }) {
     const rearTemp = (tireTemps.RL + tireTemps.RR) / 2
     const ftEl = svg.getElementById('s-tire-f')
     const rtEl = svg.getElementById('s-tire-r')
-    if (ftEl) ftEl.setAttribute('stroke', tempToColorSmooth(frontTemp, optTemp, ovhTemp))
-    if (rtEl) rtEl.setAttribute('stroke', tempToColorSmooth(rearTemp, optTemp, ovhTemp))
+    if (ftEl) ftEl.setAttribute('stroke', tireColor(frontTemp, optTemp, ovhTemp, hasData))
+    if (rtEl) rtEl.setAttribute('stroke', tireColor(rearTemp, optTemp, ovhTemp, hasData))
 
     // Suspension colors
     const fAvg = (suspMM.FL + suspMM.FR) / 2
@@ -76,22 +98,23 @@ function SideViewSvg({ frame, vehicle }) {
       const rideH = (fAvg - 15) * 0.3
       chassis.setAttribute('transform', `translate(0,${rideH.toFixed(1)})`)
     }
-  }, [tireTemps, suspMM, optTemp, ovhTemp])
+  }, [tireTemps, suspMM, optTemp, ovhTemp, hasData])
 
   return (
     <svg ref={svgRef} viewBox="0 0 800 350" style={{ width: '100%', height: '100%', display: 'block' }}>
-      <Grid w={800} h={350} />
+      <BlueprintDefs />
+      <GridBg w={800} h={350} />
 
       {/* Ground line */}
-      <line x1={0} y1={280} x2={800} y2={280} stroke="#333333" strokeWidth={1} strokeDasharray="8,4" />
+      <line x1={0} y1={355} x2={800} y2={355} stroke="#2a2a2a" strokeWidth={1} strokeDasharray="6,3" />
 
       {/* Front tire */}
-      <circle id="s-tire-f" cx={160} cy={270} r={48} fill="#222222" stroke="#555555" strokeWidth={3} />
+      <circle id="s-tire-f" cx={160} cy={270} r={48} fill="#222222" stroke={DEFAULT_TIRE_COLOR} strokeWidth={3} />
       <circle cx={160} cy={270} r={28} fill="none" stroke="#888888" strokeWidth={1.2} opacity={0.7} />
       <circle cx={160} cy={270} r={3} fill="#aaaaaa" opacity={0.8} />
 
       {/* Rear tire */}
-      <circle id="s-tire-r" cx={620} cy={270} r={55} fill="#222222" stroke="#555555" strokeWidth={3} />
+      <circle id="s-tire-r" cx={620} cy={270} r={55} fill="#222222" stroke={DEFAULT_TIRE_COLOR} strokeWidth={3} />
       <circle cx={620} cy={270} r={32} fill="none" stroke="#888888" strokeWidth={1.2} opacity={0.7} />
       <circle cx={620} cy={270} r={3} fill="#aaaaaa" opacity={0.8} />
 
@@ -137,27 +160,23 @@ function SideViewSvg({ frame, vehicle }) {
           stroke="#666666" strokeWidth={1.5} strokeLinecap="round" />
       </g>
 
-      {/* Rear wing (outside chassis group — stays fixed at top) */}
+      {/* Rear wing */}
       <line x1={540} y1={110} x2={700} y2={110} stroke="#777777" strokeWidth={4} strokeLinecap="round" />
-      {/* Rear wing pillar */}
       <line x1={600} y1={110} x2={600} y2={228} stroke="#555555" strokeWidth={1.5} strokeLinecap="round" />
-      {/* Rear wing endplates */}
       <line x1={540} y1={110} x2={540} y2={145} stroke="#777777" strokeWidth={2} strokeLinecap="round" />
       <line x1={700} y1={110} x2={700} y2={145} stroke="#777777" strokeWidth={2} strokeLinecap="round" />
 
       {/* Front wing */}
       <line x1={60} y1={290} x2={220} y2={290} stroke="#777777" strokeWidth={3} strokeLinecap="round" />
-      {/* Front wing endplates */}
       <line x1={60} y1={280} x2={60} y2={295} stroke="#777777" strokeWidth={2} strokeLinecap="round" />
       <line x1={220} y1={280} x2={220} y2={295} stroke="#777777" strokeWidth={2} strokeLinecap="round" />
-      {/* Front wing nose pillar */}
       <line x1={140} y1={290} x2={100} y2={278} stroke="#555555" strokeWidth={1} strokeLinecap="round" opacity={0.6} />
     </svg>
   )
 }
 
 // ════════════════════════════════════════════
-//  FRONT VIEW — 600x400
+//  FRONT VIEW — 600x400, complete redraw
 // ════════════════════════════════════════════
 function FrontViewSvg({ frame, vehicle }) {
   const svgRef = useRef(null)
@@ -166,6 +185,7 @@ function FrontViewSvg({ frame, vehicle }) {
   const latG = frame?.lateral_g || 0
   const optTemp = vehicle?.tire_optimal_temp_C || 90
   const ovhTemp = vehicle?.tire_overheat_temp_C || 120
+  const hasData = hasTireData(frame)
 
   useEffect(() => {
     const svg = svgRef.current
@@ -174,8 +194,8 @@ function FrontViewSvg({ frame, vehicle }) {
     // Tire colors
     const flEl = svg.getElementById('f-tire-l')
     const frEl = svg.getElementById('f-tire-r')
-    if (flEl) flEl.setAttribute('stroke', tempToColorSmooth(tireTemps.FL, optTemp, ovhTemp))
-    if (frEl) frEl.setAttribute('stroke', tempToColorSmooth(tireTemps.FR, optTemp, ovhTemp))
+    if (flEl) flEl.setAttribute('stroke', tireColor(tireTemps.FL, optTemp, ovhTemp, hasData))
+    if (frEl) frEl.setAttribute('stroke', tireColor(tireTemps.FR, optTemp, ovhTemp, hasData))
 
     // Suspension colors
     const flCol = suspColor(suspMM.FL), frCol = suspColor(suspMM.FR)
@@ -192,70 +212,74 @@ function FrontViewSvg({ frame, vehicle }) {
     const mono = svg.getElementById('f-mono')
     if (mono) {
       const rollDeg = latG * 1.2
-      mono.setAttribute('transform', `rotate(${rollDeg.toFixed(2)},300,300)`)
+      mono.setAttribute('transform', `rotate(${rollDeg.toFixed(2)},300,265)`)
     }
-  }, [tireTemps, suspMM, latG, optTemp, ovhTemp])
+  }, [tireTemps, suspMM, latG, optTemp, ovhTemp, hasData])
 
   return (
     <svg ref={svgRef} viewBox="0 0 600 400" style={{ width: '100%', height: '100%', display: 'block' }}>
-      <Grid w={600} h={400} />
+      <BlueprintDefs />
+      <GridBg w={600} h={400} />
 
       {/* Ground line */}
-      <line x1={0} y1={340} x2={600} y2={340} stroke="#333333" strokeWidth={1} strokeDasharray="8,4" />
+      <line x1={0} y1={355} x2={600} y2={355} stroke="#2a2a2a" strokeWidth={1} strokeDasharray="6,3" />
 
-      {/* Front wing main plane */}
-      <line x1={50} y1={320} x2={550} y2={320} stroke="#777777" strokeWidth={4} strokeLinecap="round" />
+      {/* Front wing main plane — dominant lowest element, 90% width */}
+      <line x1={30} y1={310} x2={570} y2={310} stroke="#888888" strokeWidth={5} strokeLinecap="round" />
       {/* Front wing endplates */}
-      <line x1={50} y1={305} x2={50} y2={335} stroke="#777777" strokeWidth={2} strokeLinecap="round" />
-      <line x1={550} y1={305} x2={550} y2={335} stroke="#777777" strokeWidth={2} strokeLinecap="round" />
-      {/* Front wing cascade */}
-      <line x1={80} y1={310} x2={520} y2={310} stroke="#777777" strokeWidth={2} strokeLinecap="round" opacity={0.6} />
+      <line x1={30} y1={295} x2={30} y2={318} stroke="#666666" strokeWidth={2} strokeLinecap="round" />
+      <line x1={570} y1={295} x2={570} y2={318} stroke="#666666" strokeWidth={2} strokeLinecap="round" />
+      {/* Front wing secondary element */}
+      <line x1={55} y1={300} x2={545} y2={300} stroke="#666666" strokeWidth={2} strokeLinecap="round" opacity={0.5} />
 
-      {/* Left tire */}
-      <circle id="f-tire-l" cx={130} cy={290} r={52} fill="#222222" stroke="#555555" strokeWidth={3} />
-      <circle cx={130} cy={290} r={30} fill="none" stroke="#888888" strokeWidth={1.2} opacity={0.7} />
-      <circle cx={130} cy={290} r={3} fill="#aaaaaa" opacity={0.8} />
+      {/* Left tire — large, low, overlapping wing plane */}
+      <circle id="f-tire-l" cx={145} cy={268} r={58} fill="#111111" stroke={DEFAULT_TIRE_COLOR} strokeWidth={3} />
+      <circle cx={145} cy={268} r={32} fill="none" stroke="#444444" strokeWidth={2} />
+      <circle cx={145} cy={268} r={4} fill="#333333" />
 
       {/* Right tire */}
-      <circle id="f-tire-r" cx={470} cy={290} r={52} fill="#222222" stroke="#555555" strokeWidth={3} />
-      <circle cx={470} cy={290} r={30} fill="none" stroke="#888888" strokeWidth={1.2} opacity={0.7} />
-      <circle cx={470} cy={290} r={3} fill="#aaaaaa" opacity={0.8} />
+      <circle id="f-tire-r" cx={455} cy={268} r={58} fill="#111111" stroke={DEFAULT_TIRE_COLOR} strokeWidth={3} />
+      <circle cx={455} cy={268} r={32} fill="none" stroke="#444444" strokeWidth={2} />
+      <circle cx={455} cy={268} r={4} fill="#333333" />
 
-      {/* Monocoque (rotates with body roll) */}
-      <rect id="f-mono" x={245} y={160} width={110} height={140} rx={8}
-        fill="#1a1a1a" stroke="#888888" strokeWidth={2.5} />
+      {/* Front brake calipers */}
+      <rect x={172} y={252} width={16} height={24} rx={2} fill="#222222" stroke="#555555" strokeWidth={1} />
+      <rect x={412} y={252} width={16} height={24} rx={2} fill="#222222" stroke="#555555" strokeWidth={1} />
 
-      {/* Upper wishbones */}
-      <line id="f-uwb-l" x1={130} y1={258} x2={255} y2={235}
+      {/* Suspension wishbones */}
+      <line id="f-uwb-l" x1={145} y1={242} x2={258} y2={200}
         stroke="#666666" strokeWidth={1.5} strokeLinecap="round" />
-      <line id="f-uwb-r" x1={470} y1={258} x2={345} y2={235}
+      <line id="f-uwb-r" x1={455} y1={242} x2={342} y2={200}
         stroke="#666666" strokeWidth={1.5} strokeLinecap="round" />
-
-      {/* Lower wishbones */}
-      <line id="f-lwb-l" x1={130} y1={285} x2={255} y2={278}
+      <line id="f-lwb-l" x1={145} y1={275} x2={258} y2={258}
         stroke="#666666" strokeWidth={1.5} strokeLinecap="round" />
-      <line id="f-lwb-r" x1={470} y1={285} x2={345} y2={278}
+      <line id="f-lwb-r" x1={455} y1={275} x2={342} y2={258}
         stroke="#666666" strokeWidth={1.5} strokeLinecap="round" />
 
       {/* Push rods */}
-      <line id="f-push-l" x1={155} y1={272} x2={255} y2={255}
-        stroke="#666666" strokeWidth={1.5} strokeLinecap="round" />
-      <line id="f-push-r" x1={445} y1={272} x2={345} y2={255}
-        stroke="#666666" strokeWidth={1.5} strokeLinecap="round" />
+      <line id="f-push-l" x1={168} y1={258} x2={258} y2={228}
+        stroke="#444444" strokeWidth={1} strokeLinecap="round" />
+      <line id="f-push-r" x1={432} y1={258} x2={342} y2={228}
+        stroke="#444444" strokeWidth={1} strokeLinecap="round" />
 
-      {/* Roll hoop */}
-      <polyline points="270,160 270,110 330,110 330,160"
-        fill="none" stroke="#888888" strokeWidth={2.5} strokeLinejoin="round" strokeLinecap="round" />
+      {/* Monocoque body — narrow, between and above tires (rotates with roll) */}
+      <g id="f-mono">
+        <path d="M 255,80 L 255,255 Q 255,265 265,265 L 335,265 Q 345,265 345,255 L 345,80 Q 345,70 300,65 Q 255,70 255,80"
+          fill="#1a1a1a" stroke="#777777" strokeWidth={2} />
 
-      {/* Halo / airbox */}
-      <ellipse cx={300} cy={155} rx={55} ry={12}
-        fill="none" stroke="#555555" strokeWidth={1.5} opacity={0.7} />
+        {/* Cockpit rim */}
+        <ellipse cx={300} cy={145} rx={42} ry={15} fill="#0d0d0d" stroke="#555555" strokeWidth={1.5} />
+
+        {/* Roll hoop */}
+        <path d="M 278,145 L 278,88 Q 278,78 300,75 Q 322,78 322,88 L 322,145"
+          fill="none" stroke="#777777" strokeWidth={2.5} />
+      </g>
     </svg>
   )
 }
 
 // ════════════════════════════════════════════
-//  REAR VIEW — 600x400
+//  REAR VIEW — 600x400, complete redraw
 // ════════════════════════════════════════════
 function RearViewSvg({ frame, vehicle }) {
   const svgRef = useRef(null)
@@ -264,6 +288,7 @@ function RearViewSvg({ frame, vehicle }) {
   const latG = frame?.lateral_g || 0
   const optTemp = vehicle?.tire_optimal_temp_C || 90
   const ovhTemp = vehicle?.tire_overheat_temp_C || 120
+  const hasData = hasTireData(frame)
 
   useEffect(() => {
     const svg = svgRef.current
@@ -272,8 +297,8 @@ function RearViewSvg({ frame, vehicle }) {
     // Tire colors
     const rlEl = svg.getElementById('r-tire-l')
     const rrEl = svg.getElementById('r-tire-r')
-    if (rlEl) rlEl.setAttribute('stroke', tempToColorSmooth(tireTemps.RL, optTemp, ovhTemp))
-    if (rrEl) rrEl.setAttribute('stroke', tempToColorSmooth(tireTemps.RR, optTemp, ovhTemp))
+    if (rlEl) rlEl.setAttribute('stroke', tireColor(tireTemps.RL, optTemp, ovhTemp, hasData))
+    if (rrEl) rrEl.setAttribute('stroke', tireColor(tireTemps.RR, optTemp, ovhTemp, hasData))
 
     // Suspension colors
     const rlCol = suspColor(suspMM.RL), rrCol = suspColor(suspMM.RR)
@@ -292,59 +317,64 @@ function RearViewSvg({ frame, vehicle }) {
       const rollDeg = latG * 1.2
       gbox.setAttribute('transform', `rotate(${rollDeg.toFixed(2)},300,290)`)
     }
-  }, [tireTemps, suspMM, latG, optTemp, ovhTemp])
+  }, [tireTemps, suspMM, latG, optTemp, ovhTemp, hasData])
 
   return (
     <svg ref={svgRef} viewBox="0 0 600 400" style={{ width: '100%', height: '100%', display: 'block' }}>
-      <Grid w={600} h={400} />
+      <BlueprintDefs />
+      <GridBg w={600} h={400} />
 
       {/* Ground line */}
-      <line x1={0} y1={340} x2={600} y2={340} stroke="#333333" strokeWidth={1} strokeDasharray="8,4" />
+      <line x1={0} y1={355} x2={600} y2={355} stroke="#2a2a2a" strokeWidth={1} strokeDasharray="6,3" />
 
-      {/* Rear wing main plane */}
-      <line x1={80} y1={95} x2={520} y2={95} stroke="#777777" strokeWidth={5} strokeLinecap="round" />
-      {/* Rear wing endplates */}
-      <line x1={80} y1={95} x2={80} y2={160} stroke="#777777" strokeWidth={2.5} strokeLinecap="round" />
-      <line x1={520} y1={95} x2={520} y2={160} stroke="#777777" strokeWidth={2.5} strokeLinecap="round" />
-      {/* Rear wing cascade */}
-      <line x1={100} y1={120} x2={500} y2={120} stroke="#777777" strokeWidth={2} strokeLinecap="round" opacity={0.6} />
-
+      {/* Rear wing — massive, wider than tires */}
+      <line x1={55} y1={88} x2={545} y2={88} stroke="#888888" strokeWidth={6} strokeLinecap="round" />
+      {/* Secondary element */}
+      <line x1={75} y1={108} x2={525} y2={108} stroke="#666666" strokeWidth={2.5} strokeLinecap="round" />
+      {/* Endplate L */}
+      <path d="M 55,88 L 55,155 L 75,155 L 75,88" fill="#1a1a1a" stroke="#666666" strokeWidth={1.5} />
+      {/* Endplate R */}
+      <path d="M 545,88 L 545,155 L 525,155 L 525,88" fill="#1a1a1a" stroke="#666666" strokeWidth={1.5} />
       {/* Wing pillars */}
-      <line x1={200} y1={160} x2={200} y2={225} stroke="#555555" strokeWidth={1.5} strokeLinecap="round" />
-      <line x1={400} y1={160} x2={400} y2={225} stroke="#555555" strokeWidth={1.5} strokeLinecap="round" />
+      <line x1={175} y1={155} x2={175} y2={228} stroke="#555555" strokeWidth={2} strokeLinecap="round" />
+      <line x1={425} y1={155} x2={425} y2={228} stroke="#555555" strokeWidth={2} strokeLinecap="round" />
 
-      {/* Left tire (rear) */}
-      <circle id="r-tire-l" cx={120} cy={285} r={60} fill="#222222" stroke="#555555" strokeWidth={3} />
-      <circle cx={120} cy={285} r={35} fill="none" stroke="#888888" strokeWidth={1.2} opacity={0.7} />
-      <circle cx={120} cy={285} r={4} fill="#aaaaaa" opacity={0.8} />
+      {/* Left rear tire — wider and larger than front */}
+      <circle id="r-tire-l" cx={118} cy={285} r={68} fill="#111111" stroke={DEFAULT_TIRE_COLOR} strokeWidth={3} />
+      <circle cx={118} cy={285} r={38} fill="none" stroke="#444444" strokeWidth={2} />
+      <circle cx={118} cy={285} r={4} fill="#333333" />
 
-      {/* Right tire (rear) */}
-      <circle id="r-tire-r" cx={480} cy={285} r={60} fill="#222222" stroke="#555555" strokeWidth={3} />
-      <circle cx={480} cy={285} r={35} fill="none" stroke="#888888" strokeWidth={1.2} opacity={0.7} />
-      <circle cx={480} cy={285} r={4} fill="#aaaaaa" opacity={0.8} />
+      {/* Right rear tire */}
+      <circle id="r-tire-r" cx={482} cy={285} r={68} fill="#111111" stroke={DEFAULT_TIRE_COLOR} strokeWidth={3} />
+      <circle cx={482} cy={285} r={38} fill="none" stroke="#444444" strokeWidth={2} />
+      <circle cx={482} cy={285} r={4} fill="#333333" />
+
+      {/* Rear brake calipers */}
+      <rect x={155} y={268} width={18} height={28} rx={2} fill="#222222" stroke="#555555" strokeWidth={1} />
+      <rect x={427} y={268} width={18} height={28} rx={2} fill="#222222" stroke="#555555" strokeWidth={1} />
+
+      {/* Suspension wishbones */}
+      <line id="r-uwb-l" x1={118} y1={248} x2={238} y2={232}
+        stroke="#666666" strokeWidth={1.5} strokeLinecap="round" />
+      <line id="r-uwb-r" x1={482} y1={248} x2={362} y2={232}
+        stroke="#666666" strokeWidth={1.5} strokeLinecap="round" />
+      <line id="r-lwb-l" x1={118} y1={302} x2={238} y2={278}
+        stroke="#666666" strokeWidth={1.5} strokeLinecap="round" />
+      <line id="r-lwb-r" x1={482} y1={302} x2={362} y2={278}
+        stroke="#666666" strokeWidth={1.5} strokeLinecap="round" />
 
       {/* Gearbox (rotates with body roll) */}
-      <rect id="r-gbox" x={240} y={220} width={120} height={70} rx={4}
-        fill="#161616" stroke="#888888" strokeWidth={2.5} />
-
-      {/* Upper wishbones */}
-      <line id="r-uwb-l" x1={120} y1={248} x2={248} y2={232}
-        stroke="#666666" strokeWidth={1.5} strokeLinecap="round" />
-      <line id="r-uwb-r" x1={480} y1={248} x2={352} y2={232}
-        stroke="#666666" strokeWidth={1.5} strokeLinecap="round" />
-
-      {/* Lower wishbones */}
-      <line id="r-lwb-l" x1={120} y1={278} x2={248} y2={268}
-        stroke="#666666" strokeWidth={1.5} strokeLinecap="round" />
-      <line id="r-lwb-r" x1={480} y1={278} x2={352} y2={268}
-        stroke="#666666" strokeWidth={1.5} strokeLinecap="round" />
+      <rect id="r-gbox" x={238} y={218} width={124} height={72} rx={6}
+        fill="#161616" stroke="#555555" strokeWidth={1.5} />
 
       {/* Diffuser */}
-      <polygon points="160,330 440,330 420,310 180,310"
-        fill="none" stroke="#888888" strokeWidth={2} opacity={0.6} />
-
-      {/* Exhaust pipe hint */}
-      <circle cx={300} cy={305} r={8} fill="none" stroke="#555555" strokeWidth={1.5} opacity={0.5} />
+      <polygon points="155,338 445,338 425,308 175,308"
+        fill="#141414" stroke="#555555" strokeWidth={1.5} />
+      {/* Diffuser fins */}
+      <line x1={225} y1={310} x2={225} y2={336} stroke="#333333" strokeWidth={1} />
+      <line x1={275} y1={310} x2={275} y2={336} stroke="#333333" strokeWidth={1} />
+      <line x1={325} y1={310} x2={325} y2={336} stroke="#333333" strokeWidth={1} />
+      <line x1={375} y1={310} x2={375} y2={336} stroke="#333333" strokeWidth={1} />
     </svg>
   )
 }
@@ -437,6 +467,7 @@ function TopViewSvg({ frame, vehicle }) {
   const tireTemps = frame?.tire_temp_C || { FL: 25, FR: 25, RL: 25, RR: 25 }
   const optTemp = vehicle?.tire_optimal_temp_C || 90
   const ovhTemp = vehicle?.tire_overheat_temp_C || 120
+  const hasData = hasTireData(frame)
 
   const proj = {}
   for (const k in NODES) proj[k] = projectTop(NODES[k])
@@ -483,11 +514,11 @@ function TopViewSvg({ frame, vehicle }) {
       {tireDefs.map(t => {
         if (t.cx == null) return null
         const temp = tireTemps[t.corner] || 25
-        const tireColor = tempToColorSmooth(temp, optTemp, ovhTemp)
+        const tColor = hasData ? tempToColorSmooth(temp, optTemp, ovhTemp) : DEFAULT_TIRE_COLOR
         return (
           <g key={t.corner}>
             <rect x={t.cx - t.w / 2} y={t.cy - t.h / 2} width={t.w} height={t.h}
-              rx={4} fill="#222222" stroke={tireColor} strokeWidth={2.5} opacity={0.9} />
+              rx={4} fill="#222222" stroke={tColor} strokeWidth={2.5} opacity={0.9} />
             <circle cx={t.cx} cy={t.cy} r={4}
               fill="none" stroke="#888888" strokeWidth={0.8} opacity={0.6} />
           </g>
