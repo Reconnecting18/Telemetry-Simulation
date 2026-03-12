@@ -250,12 +250,17 @@ function visibleTires(view) {
   return TIRES
 }
 
+// Roll hoop beam keys to skip in front/rear (drawn as fixed inverted-U instead)
+const ROLL_HOOP_BEAMS = new Set([
+  'rh.top-rh.L', 'rh.top-rh.R', 'rh.L-ch.ckR', 'rh.R-ch.ckR',
+])
+function beamKey(a, b) { return `${a}-${b}` }
+
 // ── Render a single alternate view ──
 function AltViewSvg({ view, frame, vehicle }) {
   const projFn = PROJECT[view]
   if (!projFn) return null
 
-  const susp = frame?.suspension_mm || { FL: 0, FR: 0, RL: 0, RR: 0 }
   const tireTemps = frame?.tire_temp_C || { FL: 25, FR: 25, RL: 25, RR: 25 }
   const optTemp = vehicle?.tire_optimal_temp_C || 90
   const ovhTemp = vehicle?.tire_overheat_temp_C || 120
@@ -266,26 +271,42 @@ function AltViewSvg({ view, frame, vehicle }) {
     proj[k] = projFn(NODES[k])
   }
 
-  // Compute bounding box from visible nodes
-  let x1 = Infinity, x2 = -Infinity, y1 = Infinity, y2 = -Infinity
-  for (const k in proj) {
-    if (!isVisible(view, k)) continue
-    const { sx, sy } = proj[k]
-    if (sx < x1) x1 = sx
-    if (sx > x2) x2 = sx
-    if (sy < y1) y1 = sy
-    if (sy > y2) y2 = sy
+  // ── ViewBox computation ──
+  // Side view: fixed Y range so rear wing is always visible
+  // Front/rear: auto-fit X from visible nodes, fixed Y range for correct proportions
+  let vbX1, vbX2, vbY1, vbY2
+
+  if (view === 'side') {
+    // Fixed Y: ground at sy=0, rear wing at sy=-55 → Y range -65 to 5
+    let zMin = Infinity, zMax = -Infinity
+    for (const k in proj) {
+      if (!isVisible(view, k)) continue
+      if (proj[k].sx < zMin) zMin = proj[k].sx
+      if (proj[k].sx > zMax) zMax = proj[k].sx
+    }
+    const tireExtra = 20
+    vbX1 = zMin - tireExtra
+    vbX2 = zMax + tireExtra
+    vbY1 = -65  // above rear wing (Y=55 → sy=-55, plus margin)
+    vbY2 = 8    // below ground line
+  } else {
+    // Front/rear: auto X, fixed Y range from ground to above roll hoop
+    let xMin = Infinity, xMax = -Infinity
+    for (const k in proj) {
+      if (!isVisible(view, k)) continue
+      if (proj[k].sx < xMin) xMin = proj[k].sx
+      if (proj[k].sx > xMax) xMax = proj[k].sx
+    }
+    const tireExtra = 20
+    vbX1 = xMin - tireExtra
+    vbX2 = xMax + tireExtra
+    vbY1 = -62  // above roll hoop top (Y=55 → sy=-55)
+    vbY2 = 8    // below ground
   }
 
-  // Add tire radii to bounds
-  const maxTireR = 15
-  x1 -= maxTireR; x2 += maxTireR
-  y1 -= maxTireR; y2 += maxTireR
-
-  // Scale to fill 85% of canvas
-  const w = (x2 - x1) || 200, h = (y2 - y1) || 150
-  const pad = Math.max(w, h) * 0.085
-  const vb = `${(x1 - pad).toFixed(1)} ${(y1 - pad).toFixed(1)} ${(w + 2 * pad).toFixed(1)} ${(h + 2 * pad).toFixed(1)}`
+  const w = vbX2 - vbX1, h = vbY2 - vbY1
+  const pad = Math.max(w, h) * 0.06
+  const vb = `${(vbX1 - pad).toFixed(1)} ${(vbY1 - pad).toFixed(1)} ${(w + 2 * pad).toFixed(1)} ${(h + 2 * pad).toFixed(1)}`
 
   // Ground line Y position (Y=0 in 3D → projected)
   const groundY = projFn({ x: 0, y: 0, z: 0 }).sy
@@ -293,23 +314,27 @@ function AltViewSvg({ view, frame, vehicle }) {
   // Tire rendering — painter's order (far first for front/rear)
   const tires = visibleTires(view)
   const sortedTires = view === 'side'
-    ? tires  // side view: all visible, draw rear first (they're behind)
+    ? tires
     : [...tires].sort((a, b) => {
         const da = NODES[a.wheel]?.z || 0
         const db = NODES[b.wheel]?.z || 0
-        return da - db  // further z first
+        return da - db
       })
 
-  // Side view: rear tires are 15% larger
+  // Tire radii: larger for front/rear views to fill proportionally
   const tireR = (t) => {
     if (view === 'side') return t.rear ? 17 : 14
-    return t.r
+    // Front/rear views: ~18% of canvas height
+    return t.rear ? 16 : 14
   }
+
+  // Skip roll hoop beams in front/rear (we draw a fixed inverted-U)
+  const skipRollHoop = view === 'front' || view === 'rear'
 
   return (
     <svg viewBox={vb} style={{ width: '100%', height: '100%', display: 'block' }}>
       {/* Ground reference line */}
-      <line x1={x1 - pad} x2={x2 + pad} y1={groundY} y2={groundY}
+      <line x1={vbX1 - pad} x2={vbX2 + pad} y1={groundY} y2={groundY}
         stroke="#2a2a2a" strokeWidth={0.5} strokeDasharray="4,3" />
 
       {/* Tires */}
@@ -322,61 +347,132 @@ function AltViewSvg({ view, frame, vehicle }) {
         const rimR = r * 0.55
         return (
           <g key={t.corner}>
-            {/* Tire body */}
             <circle cx={p.sx} cy={p.sy} r={r}
               fill="#222222" stroke={tireColor} strokeWidth={3} opacity={0.9} />
-            {/* Rim */}
             <circle cx={p.sx} cy={p.sy} r={rimR}
               fill="none" stroke="#888888" strokeWidth={1.2} opacity={0.7} />
-            {/* Hub */}
             <circle cx={p.sx} cy={p.sy} r={2}
               fill="#aaaaaa" opacity={0.8} />
           </g>
         )
       })}
 
-      {/* Structural beams */}
+      {/* Structural beams — all grey in alt views */}
       {BEAMS.map(([a, b, type], i) => {
         if (!proj[a] || !proj[b]) return null
         if (!isVisible(view, a) && !isVisible(view, b)) return null
+        // Skip roll hoop beams in front/rear (replaced by fixed inverted-U)
+        if (skipRollHoop && ROLL_HOOP_BEAMS.has(beamKey(a, b))) return null
         const s = STYLE[type] || STYLE.mono
-
-        // Dynamic suspension coloring
-        let strokeColor = s.color
-        let strokeOp = s.op
-        if (type === 'susp') {
-          strokeColor = suspColor(beamSuspMM(a, b, susp))
-          strokeOp = 0.9
-        }
-
         return (
           <line key={i}
             x1={proj[a].sx} y1={proj[a].sy}
             x2={proj[b].sx} y2={proj[b].sy}
-            stroke={strokeColor} strokeWidth={s.w}
-            opacity={strokeOp} strokeLinecap="round" />
+            stroke={s.color} strokeWidth={s.w}
+            opacity={s.op} strokeLinecap="round" />
         )
       })}
 
-      {/* Front view extras: front wing fill, monocoque nose */}
+      {/* ── Roll hoop as inverted-U in front/rear views ── */}
+      {skipRollHoop && (() => {
+        // Fixed geometry relative to monocoque center (sx=0)
+        // Cockpit sides at ±18, rising to top at Y=55
+        const cx = 0  // centered
+        const halfW = 18
+        const baseY = -40   // Y=40 → sy=-40 (cockpit sides)
+        const topY = -55    // Y=55 → sy=-55 (roll hoop apex)
+        return (
+          <g>
+            {/* Left pillar */}
+            <line x1={cx - halfW} y1={baseY} x2={cx - halfW} y2={topY}
+              stroke="#cccccc" strokeWidth={2.5} opacity={0.9} strokeLinecap="round" />
+            {/* Right pillar */}
+            <line x1={cx + halfW} y1={baseY} x2={cx + halfW} y2={topY}
+              stroke="#cccccc" strokeWidth={2.5} opacity={0.9} strokeLinecap="round" />
+            {/* Top bar */}
+            <line x1={cx - halfW} y1={topY} x2={cx + halfW} y2={topY}
+              stroke="#cccccc" strokeWidth={2.5} opacity={0.9} strokeLinecap="round" />
+            {/* Connecting to cockpit (ch.ckR projected) */}
+            {proj['ch.ckR'] && (
+              <>
+                <line x1={cx - halfW} y1={baseY} x2={proj['ch.ckR'].sx - 10} y2={proj['ch.ckR'].sy}
+                  stroke="#cccccc" strokeWidth={1.5} opacity={0.6} strokeLinecap="round" />
+                <line x1={cx + halfW} y1={baseY} x2={proj['ch.ckR'].sx + 10} y2={proj['ch.ckR'].sy}
+                  stroke="#cccccc" strokeWidth={1.5} opacity={0.6} strokeLinecap="round" />
+              </>
+            )}
+          </g>
+        )
+      })()}
+
+      {/* ── Front view: wide front wing near ground ── */}
       {view === 'front' && proj['fw.mpL'] && proj['fw.mpR'] && (
-        <line x1={proj['fw.mpL'].sx} y1={proj['fw.mpL'].sy}
-              x2={proj['fw.mpR'].sx} y2={proj['fw.mpR'].sy}
-          stroke="#aaaaaa" strokeWidth={3} opacity={0.6} strokeLinecap="round" />
+        <g>
+          {/* Main plane — thick bar spanning full width */}
+          <line x1={proj['fw.mpL'].sx} y1={proj['fw.mpL'].sy}
+                x2={proj['fw.mpR'].sx} y2={proj['fw.mpR'].sy}
+            stroke="#aaaaaa" strokeWidth={4} opacity={0.7} strokeLinecap="round" />
+          {/* End plates */}
+          {proj['fw.epLT'] && proj['fw.epLB'] && (
+            <line x1={proj['fw.epLT'].sx} y1={proj['fw.epLT'].sy}
+                  x2={proj['fw.epLB'].sx} y2={proj['fw.epLB'].sy}
+              stroke="#aaaaaa" strokeWidth={2} opacity={0.6} strokeLinecap="round" />
+          )}
+          {proj['fw.epRT'] && proj['fw.epRB'] && (
+            <line x1={proj['fw.epRT'].sx} y1={proj['fw.epRT'].sy}
+                  x2={proj['fw.epRB'].sx} y2={proj['fw.epRB'].sy}
+              stroke="#aaaaaa" strokeWidth={2} opacity={0.6} strokeLinecap="round" />
+          )}
+        </g>
       )}
 
-      {/* Rear view extras: rear wing main plane emphasis */}
+      {/* ── Front view: narrow monocoque center ── */}
+      {view === 'front' && proj['ch.fbulk'] && (
+        <rect x={proj['ch.fbulk'].sx - 12} y={-25}
+          width={24} height={26}
+          fill="#1a1a1a" stroke="#cccccc" strokeWidth={1.5} rx={3} opacity={0.8} />
+      )}
+
+      {/* ── Rear view: wide rear wing at top ── */}
       {view === 'rear' && proj['rw.mpL'] && proj['rw.mpR'] && (
-        <line x1={proj['rw.mpL'].sx} y1={proj['rw.mpL'].sy}
-              x2={proj['rw.mpR'].sx} y2={proj['rw.mpR'].sy}
-          stroke="#aaaaaa" strokeWidth={3.5} opacity={0.7} strokeLinecap="round" />
+        <g>
+          {/* Main plane */}
+          <line x1={proj['rw.mpL'].sx} y1={proj['rw.mpL'].sy}
+                x2={proj['rw.mpR'].sx} y2={proj['rw.mpR'].sy}
+            stroke="#aaaaaa" strokeWidth={4.5} opacity={0.8} strokeLinecap="round" />
+          {/* End plates */}
+          {proj['rw.epLT'] && proj['rw.epLB'] && (
+            <line x1={proj['rw.epLT'].sx} y1={proj['rw.epLT'].sy}
+                  x2={proj['rw.epLB'].sx} y2={proj['rw.epLB'].sy}
+              stroke="#aaaaaa" strokeWidth={2.5} opacity={0.7} strokeLinecap="round" />
+          )}
+          {proj['rw.epRT'] && proj['rw.epRB'] && (
+            <line x1={proj['rw.epRT'].sx} y1={proj['rw.epRT'].sy}
+                  x2={proj['rw.epRB'].sx} y2={proj['rw.epRB'].sy}
+              stroke="#aaaaaa" strokeWidth={2.5} opacity={0.7} strokeLinecap="round" />
+          )}
+        </g>
       )}
 
-      {/* Rear view: diffuser emphasis */}
+      {/* ── Rear view: gearbox/engine cover center ── */}
+      {view === 'rear' && proj['ch.gbox'] && (
+        <rect x={proj['ch.gbox'].sx - 14} y={-22}
+          width={28} height={24}
+          fill="#1a1a1a" stroke="#cccccc" strokeWidth={1.5} rx={3} opacity={0.7} />
+      )}
+
+      {/* ── Rear view: diffuser at ground level ── */}
       {view === 'rear' && proj['df.L'] && proj['df.R'] && (
         <line x1={proj['df.L'].sx} y1={proj['df.L'].sy}
               x2={proj['df.R'].sx} y2={proj['df.R'].sy}
-          stroke="#888888" strokeWidth={2} opacity={0.5} strokeLinecap="round" />
+          stroke="#888888" strokeWidth={2.5} opacity={0.5} strokeLinecap="round" />
+      )}
+
+      {/* ── Side view: rear wing pillars + main plane emphasis ── */}
+      {view === 'side' && proj['rw.mpL'] && proj['rw.mpR'] && (
+        <line x1={proj['rw.mpL'].sx} y1={proj['rw.mpL'].sy}
+              x2={proj['rw.mpR'].sx} y2={proj['rw.mpR'].sy}
+          stroke="#aaaaaa" strokeWidth={3.5} opacity={0.7} strokeLinecap="round" />
       )}
     </svg>
   )
