@@ -2,7 +2,7 @@ import { useMemo, useRef, useState, useCallback, useEffect } from 'react'
 import { findFrameIndex } from '../utils/interpolate'
 import { speedColor } from '../utils/speedEnvelope'
 
-const TRACK_WIDTH   = 14
+const TRACK_WIDTH   = 20
 const KERB_OFFSET   = TRACK_WIDTH / 2 + 0.5
 const TRAIL_SECS    = 2.0      // comet tail duration
 const TRAIL_POINTS  = 30       // sample count for trail
@@ -13,7 +13,7 @@ const MIN_CURVATURE = 0.006     // |k| threshold to qualify as a corner
 const MIN_CORNER_GAP = 4        // minimum node gap between distinct corners
 const LABEL_OFFSET = 22         // px offset from track for label placement
 const ZOOM_MIN  = 0.5
-const ZOOM_MAX  = 8.0
+const ZOOM_MAX  = 12.0
 const ZOOM_STEP = 0.25
 
 function detectCorners(nodes) {
@@ -158,6 +158,7 @@ export default function TrackMap({ trackNodes, racingLineData, speedData, brakin
   const [zoomVisible, setZoomVisible] = useState(false)
   const zoomFadeRef = useRef(null)
   const panAnimRef = useRef(null)
+  const [viewMode, setViewMode] = useState('track') // 'track' or 'speed'
 
   const { baseVB, segments, surfacePath, racingLine, dirtyZones, gripOverlay, speedOverlay, startX, startY, cornerPositions } = useMemo(() => {
     if (!trackNodes || !trackNodes.length)
@@ -485,6 +486,12 @@ export default function TrackMap({ trackNodes, racingLineData, speedData, brakin
       <div className="track-map-header">
         <h3>Track Map</h3>
         <div className="track-map-btns">
+          <div className="map-view-toggle">
+            <button className={`map-view-btn${viewMode === 'track' ? ' active' : ''}`}
+              onClick={() => setViewMode('track')}>TRACK</button>
+            <button className={`map-view-btn${viewMode === 'speed' ? ' active' : ''}`}
+              onClick={() => setViewMode('speed')}>SPEED</button>
+          </div>
           <button className={`map-btn${followCam ? ' map-btn-active' : ''}`}
             onClick={toggleFollowCam} title="Follow car">
             <svg width="10" height="10" viewBox="0 0 10 10">
@@ -519,30 +526,31 @@ export default function TrackMap({ trackNodes, racingLineData, speedData, brakin
         >
           {/* ── Track surface fill + border ── */}
           {surfacePath && (
-            <>
-              <path d={surfacePath} fill="#1a1a1a" stroke="#333333" strokeWidth={1.5}
-                strokeLinejoin="round" />
-            </>
+            <path d={surfacePath}
+              fill={viewMode === 'track' ? '#2a2a2a' : '#1a1a1a'}
+              stroke={viewMode === 'track' ? '#e0e0e0' : '#333333'}
+              strokeWidth={viewMode === 'track' ? 2.0 : 1.5}
+              strokeLinejoin="round" />
           )}
 
-          {/* ── Grip overlay (surface grip heatmap on road) ── */}
-          {gripOverlay.map((go, i) => (
+          {/* ── Grip overlay (only in speed mode) ── */}
+          {viewMode === 'speed' && gripOverlay.map((go, i) => (
             <line key={`grip-${i}`}
               x1={go.x1} y1={go.y1} x2={go.x2} y2={go.y2}
               stroke={go.gripColor} strokeWidth={TRACK_WIDTH - 2}
               strokeLinecap="round" opacity={go.gripOpacity} />
           ))}
 
-          {/* ── Speed envelope overlay (blue→green→red) ── */}
-          {speedOverlay.map((s, i) => (
+          {/* ── Speed envelope overlay (only in speed mode) ── */}
+          {viewMode === 'speed' && speedOverlay.map((s, i) => (
             <line key={`spd-${i}`}
               x1={s.x1} y1={s.y1} x2={s.x2} y2={s.y2}
               stroke={s.color} strokeWidth={TRACK_WIDTH - 2}
               strokeLinecap="round" opacity={0.55} />
           ))}
 
-          {/* ── Dirty zones (outside of corners) ── */}
-          {dirtyZones.map((dz, i) => (
+          {/* ── Dirty zones (only in speed mode) ── */}
+          {viewMode === 'speed' && dirtyZones.map((dz, i) => (
             <line key={`dirty-${i}`}
               x1={dz.x1} y1={dz.y1} x2={dz.x2} y2={dz.y2}
               stroke="#3a2e20" strokeWidth={4}
@@ -709,7 +717,7 @@ export default function TrackMap({ trackNodes, racingLineData, speedData, brakin
             &nbsp;Brake
           </span>
         )}
-        {speedOverlay.length > 0 && (
+        {viewMode === 'speed' && speedOverlay.length > 0 && (
           <span className="legend-item">
             <svg width="30" height="6" style={{ display:'inline-block', verticalAlign:'middle' }}>
               <rect x="0"  width="10" height="6" fill="rgb(0,0,220)" />
@@ -719,12 +727,16 @@ export default function TrackMap({ trackNodes, racingLineData, speedData, brakin
             &nbsp;Speed
           </span>
         )}
-        <span className="legend-item">
-          <span className="legend-line" style={{ background: '#00e676' }} />High grip
-        </span>
-        <span className="legend-item">
-          <span className="legend-line" style={{ background: '#8d6e4a' }} />Low grip
-        </span>
+        {viewMode === 'speed' && (
+          <span className="legend-item">
+            <span className="legend-line" style={{ background: '#00e676' }} />High grip
+          </span>
+        )}
+        {viewMode === 'speed' && (
+          <span className="legend-item">
+            <span className="legend-line" style={{ background: '#8d6e4a' }} />Low grip
+          </span>
+        )}
         <span className="legend-item">
           <svg width="18" height="4" style={{ display:'inline-block', verticalAlign:'middle' }}>
             <line x1="0" y1="2" x2="18" y2="2" stroke="white" strokeWidth="2.5" />

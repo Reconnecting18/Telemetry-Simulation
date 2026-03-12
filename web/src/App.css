@@ -384,7 +384,17 @@ header {
   margin: 0;
 }
 
-.track-map-btns { display: flex; gap: 3px; }
+.track-map-btns { display: flex; gap: 3px; align-items: center; }
+
+.map-view-toggle { display: flex; gap: 1px; margin-right: 4px; }
+.map-view-btn {
+  background: #161616; color: #555; border: 1px solid #1e1e1e;
+  border-radius: 3px; padding: 1px 5px; font-size: 0.55rem;
+  font-weight: 600; cursor: pointer; letter-spacing: 0.5px;
+  font-family: 'Courier New', monospace;
+}
+.map-view-btn:hover { border-color: #007a7a; color: #aaa; }
+.map-view-btn.active { border-color: #007a7a; color: #00d4d4; background: #0a1a1a; }
 
 .map-btn {
   background: #161616;
