@@ -4,9 +4,11 @@ const SPEEDS = [0.25, 0.5, 1, 2, 5]
 
 // Compound colors for stint backgrounds and pit markers
 const COMPOUND = {
-  soft:   { bg: 'rgba(255,61,61,0.18)',   block: '#ff3d3d' },
-  medium: { bg: 'rgba(245,166,35,0.18)',  block: '#f5a623' },
-  hard:   { bg: 'rgba(160,160,160,0.18)', block: '#999' },
+  soft:         { bg: 'rgba(255,61,61,0.18)',   block: '#ff3d3d' },
+  medium:       { bg: 'rgba(245,166,35,0.18)',  block: '#f5a623' },
+  hard:         { bg: 'rgba(160,160,160,0.18)', block: '#999' },
+  intermediate: { bg: 'rgba(0,200,83,0.18)',    block: '#00c853' },
+  wet:          { bg: 'rgba(41,121,255,0.18)',   block: '#2979ff' },
 }
 
 const PIT_TIME_S = 21 // default pit lane time loss

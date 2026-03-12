@@ -9,7 +9,7 @@
 // ============================================================
 
 struct StintConfig {
-    std::string compound = "medium";  // "soft", "medium", "hard"
+    std::string compound = "medium";  // "soft", "medium", "hard", "intermediate", "wet"
     int    tire_age   = 0;            // laps of prior use
     double fuel_load  = 100.0;        // kg
     int    lap_count  = 10;           // laps for this stint
@@ -37,7 +37,7 @@ struct CompoundParams {
 };
 
 CompoundParams getCompoundParams(const std::string& compound);
-double         getWeatherGripMultiplier(const std::string& weather);
+double         getWeatherGripMultiplier(const std::string& weather, const std::string& compound = "medium");
 
 // Parse strategy config from a JSON file.
 bool parseStrategyConfig(const std::string& path, StrategyConfig& out);

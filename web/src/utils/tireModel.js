@@ -144,12 +144,14 @@ export function tireTempColor(tempC) {
 //   40-20%  = canvas/white showing through rubber
 //   <20%    = warning red tint (worn to canvas)
 //
-// compound base colors: soft=#ff3d3d, medium=#f5a623, hard=#cccccc
+// compound base colors: soft=#ff3d3d, medium=#f5a623, hard=#cccccc, inter=#00c853, wet=#2979ff
 
 const COMPOUND_BASE = {
-  soft:   { r: 0xff, g: 0x3d, b: 0x3d },
-  medium: { r: 0xf5, g: 0xa6, b: 0x23 },
-  hard:   { r: 0xcc, g: 0xcc, b: 0xcc },
+  soft:         { r: 0xff, g: 0x3d, b: 0x3d },
+  medium:       { r: 0xf5, g: 0xa6, b: 0x23 },
+  hard:         { r: 0xcc, g: 0xcc, b: 0xcc },
+  intermediate: { r: 0x00, g: 0xc8, b: 0x53 },
+  wet:          { r: 0x29, g: 0x79, b: 0xff },
 }
 
 export function tireWearColor(wearPct, compound = 'medium') {

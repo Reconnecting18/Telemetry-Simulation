@@ -16,7 +16,7 @@ import LapTimePanel from './components/LapTimePanel'
 const API_URL = import.meta.env.VITE_SIMULATION_API_URL
 
 // Map StrategyBuilder compound IDs to C++ engine names
-const COMPOUND_MAP = { S: 'soft', M: 'medium', H: 'hard' }
+const COMPOUND_MAP = { S: 'soft', M: 'medium', H: 'hard', I: 'intermediate', W: 'wet' }
 
 function transformPayload(payload) {
   return {

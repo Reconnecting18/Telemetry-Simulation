@@ -11,15 +11,30 @@ using json = nlohmann::json;
 // ============================================================
 
 CompoundParams getCompoundParams(const std::string& compound) {
-    if (compound == "soft")  return { 1.45, 0.045,  88.0, 105.0 };
-    if (compound == "hard")  return { 1.25, 0.016, 100.0, 118.0 };
-    return                          { 1.35, 0.028,  95.0, 112.0 }; // medium (default)
+    if (compound == "soft")         return { 1.45, 0.045,  88.0, 105.0 };
+    if (compound == "hard")         return { 1.25, 0.016, 100.0, 118.0 };
+    if (compound == "intermediate") return { 1.15, 0.020,  70.0,  90.0 };
+    if (compound == "wet")          return { 1.05, 0.015,  60.0,  80.0 };
+    return                                 { 1.35, 0.028,  95.0, 112.0 }; // medium (default)
 }
 
-double getWeatherGripMultiplier(const std::string& weather) {
-    if (weather == "damp") return 0.78;
-    if (weather == "wet")  return 0.55;
-    return 1.0; // dry
+double getWeatherGripMultiplier(const std::string& weather, const std::string& compound) {
+    // Compound-weather cross-effect grip matrix
+    // Dry slicks on wet = catastrophic; wet tires on dry = overheating/low grip
+    if (compound == "intermediate") {
+        if (weather == "damp") return 1.15;  // optimal condition
+        if (weather == "wet")  return 0.40;  // too little tread for standing water
+        return 0.70;                          // dry: overheating, graining
+    }
+    if (compound == "wet") {
+        if (weather == "wet")  return 1.05;  // optimal condition
+        if (weather == "damp") return 0.80;  // decent but sub-optimal
+        return 0.50;                          // dry: massive overheating, shredding
+    }
+    // Dry compounds (soft, medium, hard)
+    if (weather == "damp") return 0.65;  // reduced: water film, no tread pattern
+    if (weather == "wet")  return 0.40;  // severe: aquaplaning, no grip
+    return 1.0; // dry: nominal
 }
 
 // ============================================================

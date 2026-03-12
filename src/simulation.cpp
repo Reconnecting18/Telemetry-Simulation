@@ -255,12 +255,15 @@ static void updateTireTemps(double tire_temp[4], const double factors[4],
                              double lateral_g, double velocity, double max_speed,
                              double longitudinal_g, double ambient, double dt,
                              double heat_rate_mult = 1.0, double cool_mult = 1.0,
-                             double track_temp_fact = 1.0) {
+                             double track_temp_fact = 1.0,
+                             double temp_ceiling = 999.0) {
     // Retuned for realistic multi-lap thermal behaviour:
     //   K_BRAKE is dominant — caliper friction generates enormous heat
     //   K_COOL  is low     — rubber has high thermal mass, cools slowly
     // Result: tires warm over 2-3 laps, spike visibly in braking zones,
     //         cool ~5-8 °C on the main straight.
+    // temp_ceiling: water film prevents dry tires from reaching operating temp
+    //   on wet track. Tires cool toward this ceiling when above it.
     static constexpr double K_LAT   = 0.20;   // lateral g^2 heat
     static constexpr double K_SPEED = 0.05;   // rolling-resistance/speed heat
     static constexpr double K_BRAKE = 1.00;   // caliper friction heat (major source)
@@ -276,6 +279,10 @@ static void updateTireTemps(double tire_temp[4], const double factors[4],
     for (int i = 0; i < 4; ++i) {
         double heat    = heat_base * (0.5 + factors[i]) * heat_rate_mult * track_temp_fact;
         double cooling = K_COOL * (tire_temp[i] - ambient) * cool_mult;
+        // Water-film ceiling: extra cooling when tire is above the ceiling
+        if (tire_temp[i] > temp_ceiling) {
+            cooling += 0.04 * (tire_temp[i] - temp_ceiling);
+        }
         tire_temp[i]  += (heat - cooling) * dt;
         tire_temp[i]   = std::max(tire_temp[i], ambient);
     }
@@ -691,8 +698,8 @@ TelemetrySession runStrategySimulation(
     weather.ambient_temp_C = strategy.modifiers.ambient_temp;
     session.weather = weather;
 
-    // Strategy-specific grip multiplier (user spec: dry=1.0, damp=0.78, wet=0.55)
-    double strategy_weather_grip = getWeatherGripMultiplier(strategy.modifiers.weather);
+    // Weather grip multiplier is now per-stint (compound-weather cross-effect)
+    // Computed inside the stint loop below
 
     if (track.nodes.empty()) {
         std::cerr << "[Strategy] ERROR: track has no nodes.\n";
@@ -779,6 +786,22 @@ TelemetrySession runStrategySimulation(
         double wear_scale = (compound.wear_rate / BASELINE_WEAR_PER_LAP)
                           * strategy.modifiers.wear_multiplier;
 
+        // Water-film temperature ceiling: wet track prevents dry rubber from
+        // reaching operating temperature. Water cools the contact patch.
+        double temp_ceiling = 999.0; // no ceiling by default
+        bool is_dry_compound = (stint.compound == "soft" || stint.compound == "medium"
+                             || stint.compound == "hard");
+        bool is_inter = (stint.compound == "intermediate");
+        if (is_dry_compound) {
+            if (wstr == "wet")  temp_ceiling = compound.optimal_temp_min - 20.0; // ~65-80°C
+            if (wstr == "damp") temp_ceiling = compound.optimal_temp_min - 10.0; // ~78-90°C
+        } else if (is_inter) {
+            if (wstr == "dry")  temp_ceiling = compound.optimal_temp_max + 15.0; // overheating on dry
+            if (wstr == "wet")  temp_ceiling = compound.optimal_temp_min - 10.0; // too much water
+        } else { // wet compound
+            if (wstr == "dry")  temp_ceiling = compound.optimal_temp_max + 10.0; // severe overheating
+        }
+
         // Engine power for this config
         double drag_at_vmax = 0.5 * AIR_DENSITY * cfg.drag_coeff
                             * cfg.frontal_area * cfg.max_speed * cfg.max_speed;
@@ -821,10 +844,12 @@ TelemetrySession runStrategySimulation(
             std::vector<double> effective_grip = applyRubberBuildup(
                 session.track_nodes, rubber_accum, lap_global);
 
-            // Weather grip (strategy-specific multiplier)
-            if (strategy_weather_grip < 1.0) {
+            // Weather grip (compound-weather cross-effect)
+            double stint_weather_grip = getWeatherGripMultiplier(
+                strategy.modifiers.weather, stint.compound);
+            if (stint_weather_grip < 1.0) {
                 for (int i = 0; i < N; ++i) {
-                    effective_grip[i] *= strategy_weather_grip;
+                    effective_grip[i] *= stint_weather_grip;
                 }
             }
 
@@ -915,13 +940,14 @@ TelemetrySession runStrategySimulation(
 
                 double dt = seg_len / std::max(state.velocity, 0.1);
 
-                // Tire temperature
+                // Tire temperature (with water-film ceiling for wet conditions)
                 updateTireTemps(state.tire_temp, factors,
                                 state.lateral_g, state.velocity, cfg.max_speed,
                                 state.longitudinal_g, weather.ambient_temp_C, dt,
                                 weather.heat_rate_multiplier(),
                                 weather.cooling_multiplier(),
-                                weather.track_temp_factor());
+                                weather.track_temp_factor(),
+                                temp_ceiling);
 
                 // Low-grip surface heat
                 if (node_grip < 0.95) {

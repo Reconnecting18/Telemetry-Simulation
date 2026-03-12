@@ -2,9 +2,11 @@ import { useState, useEffect, useRef, memo, useCallback } from 'react'
 
 // ── Constants ──
 const COMPOUNDS = [
-  { id: 'S', label: 'Soft',   color: '#ff3d3d', bg: 'rgba(255,61,61,0.15)' },
-  { id: 'M', label: 'Medium', color: '#f5a623', bg: 'rgba(245,166,35,0.15)' },
-  { id: 'H', label: 'Hard',   color: '#cccccc', bg: 'rgba(204,204,204,0.1)' },
+  { id: 'S', label: 'Soft',         color: '#ff3d3d', bg: 'rgba(255,61,61,0.15)' },
+  { id: 'M', label: 'Medium',       color: '#f5a623', bg: 'rgba(245,166,35,0.15)' },
+  { id: 'H', label: 'Hard',         color: '#cccccc', bg: 'rgba(204,204,204,0.1)' },
+  { id: 'I', label: 'Intermediate', color: '#00c853', bg: 'rgba(0,200,83,0.15)' },
+  { id: 'W', label: 'Wet',          color: '#2979ff', bg: 'rgba(41,121,255,0.15)' },
 ]
 
 const WEATHER_OPTIONS = ['Dry', 'Damp', 'Wet']

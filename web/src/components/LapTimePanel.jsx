@@ -1,6 +1,6 @@
 import { useMemo } from 'react'
 
-const COMPOUND_COLORS = { soft: '#ff3d3d', medium: '#f5c623', hard: '#999999' }
+const COMPOUND_COLORS = { soft: '#ff3d3d', medium: '#f5c623', hard: '#999999', intermediate: '#00c853', wet: '#2979ff' }
 
 function formatLapTime(seconds) {
   if (seconds == null || !isFinite(seconds)) return '-:--:---'
