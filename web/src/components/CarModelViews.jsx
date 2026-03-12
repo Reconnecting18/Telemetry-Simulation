@@ -233,80 +233,173 @@ function solve3D(ride, steerDeg) {
 }
 
 // Project 3D to 2D for a given view
-// Top: x→screen_x, y→screen_y (default, handled by CarModel)
-// Front: x→screen_x, z→screen_y (inverted, looking from front)
-// Side: y→screen_x, z→screen_y (inverted, looking from left)
-// Rear: -x→screen_x, z→screen_y (inverted, looking from rear)
-function project(pos, view) {
-  const proj = {}
-  for (const k in pos) {
-    const { x, y, z } = pos[k]
-    switch (view) {
-      case 'front':
-        proj[k] = { x: x, y: -z }  // Z up → screen Y down
-        break
-      case 'side':
-        proj[k] = { x: -y, y: -z } // Y forward→screen left, Z up
-        break
-      case 'rear':
-        proj[k] = { x: -x, y: -z } // mirror X, Z up
-        break
-      default:
-        proj[k] = { x, y }
-    }
-  }
-  return proj
-}
-
-// Viewbox configs per view
-const VIEW_CONFIG = {
-  front: { vb: '-35 -50 70 55', label: 'FRONT' },
-  side:  { vb: '-60 -50 120 55', label: 'SIDE' },
-  rear:  { vb: '-35 -50 70 55', label: 'REAR' },
-}
+// ── Alternate view projection + rendering ──
+// Front: camera at -Y (looking toward +Y), project X,Z to screen
+// Side:  camera at -X (looking toward +X), project Y,Z to screen
+// Rear:  camera at +Y (looking toward -Y), project -X,Z to screen
 
 function AltViewSvg({ pos3d, view }) {
-  const proj = project(pos3d, view)
-  const cfg = VIEW_CONFIG[view]
+  // Project all nodes to 2D screen coords + depth value
+  const proj = {}
+  let minD = Infinity, maxD = -Infinity
+  for (const k in pos3d) {
+    const { x, y, z } = pos3d[k]
+    let sx, sy, d
+    switch (view) {
+      case 'front': sx = x;  sy = -z; d = y;  break
+      case 'side':  sx = y;  sy = -z; d = x;  break
+      case 'rear':  sx = -x; sy = -z; d = -y; break
+      default: sx = x; sy = y; d = 0
+    }
+    proj[k] = { x: sx, y: sy, d }
+    if (d < minD) minD = d
+    if (d > maxD) maxD = d
+  }
+  const dRange = maxD - minD || 1
 
-  // Ground line at Z=0 → y=0 in projected space
-  const groundY = 0
+  // Depth cueing: closer=1.0 opacity, farthest=0.2
+  const dOp = (k) => {
+    if (!proj[k]) return 0.5
+    const t = (proj[k].d - minD) / dRange
+    return 0.2 + 0.8 * (1 - t)
+  }
+
+  // Front/rear views: hide nodes in the far 35% of depth range
+  const dCut = minD + dRange * 0.65
+  const vis = (k) => !proj[k] || view === 'side' || proj[k].d < dCut
+
+  // Auto-fit viewBox from visible projected nodes
+  let bx1 = Infinity, bx2 = -Infinity, by1 = Infinity, by2 = -Infinity
+  for (const k in proj) {
+    if (!vis(k)) continue
+    bx1 = Math.min(bx1, proj[k].x); bx2 = Math.max(bx2, proj[k].x)
+    by1 = Math.min(by1, proj[k].y); by2 = Math.max(by2, proj[k].y)
+  }
+  by2 = Math.max(by2, 3) // space below ground line
+  const bw = (bx2 - bx1) || 60, bh = (by2 - by1) || 50
+  const padX = bw * 0.12, padY = bh * 0.12
+  const vbStr = `${(bx1 - padX).toFixed(1)} ${(by1 - padY).toFixed(1)} ${(bw + 2 * padX).toFixed(1)} ${(bh + 2 * padY).toFixed(1)}`
+
+  // ── Tire circles (replace flat tire-beam outlines with round tires) ──
+  const TIRE_R = 9
+  const tireKeys = view === 'front' ? ['fl.hub', 'fr.hub'] :
+                   view === 'rear'  ? ['rl.hub', 'rr.hub'] :
+                                      ['fl.hub', 'fr.hub', 'rl.hub', 'rr.hub']
+  // Paint far tires first (painter's order)
+  const sortedTires = [...tireKeys].sort((a, b) => (proj[b]?.d || 0) - (proj[a]?.d || 0))
+
+  // ── Body silhouette (side view: profile polygon with flat floor) ──
+  const spineKeys = ['ch.nose', 'ch.fbL', 'ch.cpL', 'ch.rbL', 'ch.tail']
+  let bodySilhouette = null
+  if (view === 'side') {
+    const topPts = spineKeys.map(k => proj[k]).filter(Boolean)
+    if (topPts.length === spineKeys.length) {
+      const floorY = -6 // Z=6 floor, ride-height gap visible to ground at y=0
+      const pts = [
+        ...topPts.map(p => `${p.x.toFixed(1)},${p.y.toFixed(1)}`),
+        `${topPts[topPts.length - 1].x.toFixed(1)},${floorY}`,
+        `${topPts[0].x.toFixed(1)},${floorY}`,
+      ].join(' ')
+      bodySilhouette = <polygon points={pts} fill="#0d0d0d" stroke="#333" strokeWidth={0.5} opacity={0.7} />
+    }
+  }
+
+  // ── Monocoque cross-section (front/rear views) ──
+  let monoSection = null
+  if (view === 'front' || view === 'rear') {
+    const lKey = view === 'front' ? 'ch.fbL' : 'ch.rbR'
+    const rKey = view === 'front' ? 'ch.fbR' : 'ch.rbL'
+    let L = proj[lKey], R = proj[rKey]
+    if (L && R) {
+      if (L.x > R.x) { const tmp = L; L = R; R = tmp }
+      const floorSy = -10
+      monoSection = (
+        <rect x={L.x} y={L.y} width={R.x - L.x} height={floorSy - L.y}
+          fill="#0d0d0d" stroke="#333" strokeWidth={0.4} opacity={0.7} rx={1} />
+      )
+    }
+  }
+
+  // ── Wing emphasis bars ──
+  let wingElements = null
+  if (view === 'front' && proj['fw.lt'] && proj['fw.rt']) {
+    const op = (dOp('fw.lt') + dOp('fw.rt')) / 2
+    wingElements = (
+      <g>
+        <line x1={proj['fw.lt'].x} y1={proj['fw.lt'].y}
+              x2={proj['fw.rt'].x} y2={proj['fw.rt'].y}
+          stroke="#777" strokeWidth={2} opacity={op * 0.8} strokeLinecap="round" />
+        {proj['fw.csL'] && proj['fw.csR'] && (
+          <line x1={proj['fw.csL'].x} y1={proj['fw.csL'].y}
+                x2={proj['fw.csR'].x} y2={proj['fw.csR'].y}
+            stroke="#666" strokeWidth={1.2} opacity={op * 0.6} strokeLinecap="round" />
+        )}
+      </g>
+    )
+  } else if (view === 'rear' && proj['rw.lt'] && proj['rw.rt']) {
+    const op = (dOp('rw.lt') + dOp('rw.rt')) / 2
+    wingElements = (
+      <line x1={proj['rw.lt'].x} y1={proj['rw.lt'].y}
+            x2={proj['rw.rt'].x} y2={proj['rw.rt'].y}
+        stroke="#777" strokeWidth={2.5} opacity={op * 0.8} strokeLinecap="round" />
+    )
+  }
 
   return (
-    <svg viewBox={cfg.vb} style={{ width: '100%', height: '100%', display: 'block' }}>
+    <svg viewBox={vbStr} style={{ width: '100%', height: '100%', display: 'block' }}>
       {/* Ground reference line */}
-      <line x1="-60" x2="60" y1={groundY} y2={groundY}
-        stroke="#1a1a1a" strokeWidth={0.5} strokeDasharray="2,2" />
+      <line x1={bx1 - padX} x2={bx2 + padX} y1={0} y2={0}
+        stroke="#2a2a2a" strokeWidth={0.4} strokeDasharray="2,1.5" />
 
-      {/* All beams */}
-      {BEAM_DEFS.map(([a, b, type], i) => {
-        const pa = proj[a], pb = proj[b]
-        if (!pa || !pb) return null
-        const s = BEAM_STYLE[type] || BEAM_STYLE.chassis
+      {/* Body fills */}
+      {bodySilhouette}
+      {monoSection}
+
+      {/* Wing bars */}
+      {wingElements}
+
+      {/* Tire circles (far-first for painter's order) */}
+      {sortedTires.map(k => {
+        const p = proj[k]
+        if (!p) return null
+        const op = dOp(k)
         return (
-          <line key={i} x1={pa.x} y1={pa.y} x2={pb.x} y2={pb.y}
-            stroke={s.color} strokeWidth={s.w} opacity={s.op} strokeLinecap="round" />
+          <g key={`tire-${k}`}>
+            <circle cx={p.x} cy={p.y} r={TIRE_R}
+              fill="#111" stroke="#555" strokeWidth={0.6} opacity={op * 0.85} />
+            <circle cx={p.x} cy={p.y} r={5}
+              fill="none" stroke="#444" strokeWidth={0.4} opacity={op * 0.5} />
+            <circle cx={p.x} cy={p.y} r={1}
+              fill="#888" opacity={op * 0.7} />
+          </g>
         )
       })}
 
-      {/* Hub dots */}
-      {['fl.hub', 'fr.hub', 'rl.hub', 'rr.hub'].map(k => {
-        const p = proj[k]
-        if (!p) return null
-        return <circle key={k} cx={p.x} cy={p.y} r={1.2} fill="#aaa" opacity={0.6} />
+      {/* Structural beams — skip 'tire' type (replaced by circles above) */}
+      {BEAM_DEFS.map(([a, b, type], i) => {
+        if (type === 'tire') return null
+        if (!proj[a] || !proj[b]) return null
+        if (!vis(a) && !vis(b)) return null
+        const s = BEAM_STYLE[type] || BEAM_STYLE.chassis
+        const avgOp = (dOp(a) + dOp(b)) / 2
+        return (
+          <line key={i} x1={proj[a].x} y1={proj[a].y} x2={proj[b].x} y2={proj[b].y}
+            stroke={s.color} strokeWidth={s.w}
+            opacity={s.op * avgOp} strokeLinecap="round" />
+        )
       })}
 
-      {/* Chassis nodes */}
-      {['ch.nose','ch.fbL','ch.fbR','ch.cpL','ch.cpR','ch.rbL','ch.rbR','ch.tail'].map(k => {
-        const p = proj[k]
-        if (!p) return null
-        return <circle key={k} cx={p.x} cy={p.y} r={0.8} fill="#888" opacity={0.5} />
-      })}
+      {/* Node dots (visible, depth-cued) */}
+      {Object.keys(proj).filter(k => vis(k) && proj[k]).map(k => (
+        <circle key={k} cx={proj[k].x} cy={proj[k].y} r={0.5}
+          fill="#888" opacity={0.35 * dOp(k)} />
+      ))}
 
-      {/* View label */}
-      <text x={cfg.vb.split(' ')[0] * 1 + 3} y={cfg.vb.split(' ')[1] * 1 + 5}
-        fill="#333" fontSize={4} fontFamily="'Courier New', monospace">
-        {cfg.label}
+      {/* View label — top-left corner with padding */}
+      <text x={bx1 - padX + 3} y={by1 - padY + 5}
+        fill="#444" fontSize={4} fontWeight={600}
+        fontFamily="'Courier New', monospace">
+        {view.toUpperCase()}
       </text>
     </svg>
   )
