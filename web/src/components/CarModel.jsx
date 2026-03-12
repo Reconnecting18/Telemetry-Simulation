@@ -485,39 +485,47 @@ function computeHealth(frame, vehicle) {
   if (!frame) return null
   const rpm = frame.rpm || 0
   const maxRpm = vehicle?.max_rpm || 9000
-  const throttle = frame.throttle || 0
-  const brake = frame.brake || 0
   const tw = frame.tire_wear || {}
   const avgWear = ((tw.FL || 0) + (tw.FR || 0) + (tw.RL || 0) + (tw.RR || 0)) / 4
   const latG = Math.abs(frame.lateral_g || 0)
+  // Stress only from over-revving (>95% of redline)
+  const rpmStress = Math.max(0, rpm / maxRpm - 0.95) * 20
 
   return {
-    engine:   Math.min(1, (rpm / maxRpm) * 0.65 + throttle * 0.35),
-    gearbox:  Math.min(1, avgWear * 0.4 + (rpm / maxRpm) * 0.15),
-    brakes:   { FL: brake, FR: brake, RL: brake * 0.7, RR: brake * 0.7 },
-    steering: Math.min(1, latG * 0.25 + (Math.abs(frame.lateral_g || 0) > 1.5 ? 0.15 : 0)),
-    radiator: Math.min(1, (rpm / maxRpm) * 0.5 + throttle * 0.3),
+    // Cumulative damage based on tire wear as race-progress proxy
+    // 26-lap race avgWear~0.28: engine~4%, gearbox~6%, brakes~15-22%
+    engine:   Math.min(1, avgWear * 0.15 + rpmStress * 0.02),
+    gearbox:  Math.min(1, avgWear * 0.20 + rpmStress * 0.01),
+    brakes:   {
+      FL: Math.min(1, (tw.FL || 0) * 0.55),
+      FR: Math.min(1, (tw.FR || 0) * 0.55),
+      RL: Math.min(1, (tw.RL || 0) * 0.40),
+      RR: Math.min(1, (tw.RR || 0) * 0.40),
+    },
+    // Suspension stress only from extreme lateral loads (>3.5g)
+    steering: latG > 3.5 ? Math.min(1, (latG - 3.5) * 0.15) : 0,
+    radiator: Math.min(1, avgWear * 0.10 + rpmStress * 0.01),
   }
 }
 
 // Health overlay zone definitions
 // { name, cx, cy, w, h, r (for circle), getValue(health) }
 const HEALTH_ZONES = [
-  { name: 'Engine',   cx: 0, cy: 15,  w: 12, h: 16, labelX: -30, labelY: 10,  getValue: h => h.engine },
-  { name: 'Gearbox',  cx: 0, cy: 30,  w: 8,  h: 10, labelX: -30, labelY: 30,  getValue: h => h.gearbox },
-  { name: 'Steering', cx: 0, cy: -22, w: 14, h: 8,  labelX: -30, labelY: -25, getValue: h => h.steering },
+  { name: 'Engine',   cx: 0, cy: 15,  w: 12, h: 16, labelX: -42, labelY: 8,   getValue: h => h.engine },
+  { name: 'Gearbox',  cx: 0, cy: 30,  w: 8,  h: 10, labelX: -42, labelY: 34,  getValue: h => h.gearbox },
+  { name: 'Steering', cx: 0, cy: -22, w: 14, h: 8,  labelX: -42, labelY: -28, getValue: h => h.steering },
 ]
 
 const BRAKE_ZONES = [
-  { id: 'FL', cx: -20, cy: -28, labelX: -32, labelY: -35 },
-  { id: 'FR', cx:  20, cy: -28, labelX:  32, labelY: -35 },
-  { id: 'RL', cx: -20, cy:  35, labelX: -32, labelY:  42 },
-  { id: 'RR', cx:  20, cy:  35, labelX:  32, labelY:  42 },
+  { id: 'FL', cx: -20, cy: -28, labelX: -42, labelY: -42 },
+  { id: 'FR', cx:  20, cy: -28, labelX:  42, labelY: -42 },
+  { id: 'RL', cx: -20, cy:  35, labelX: -42, labelY:  50 },
+  { id: 'RR', cx:  20, cy:  35, labelX:  42, labelY:  50 },
 ]
 
 const RADIATOR_ZONES = [
-  { side: 'L', cx: -12, cy: -1, w: 5, h: 10, labelX: -30, labelY: -5 },
-  { side: 'R', cx:  12, cy: -1, w: 5, h: 10, labelX:  30, labelY: -5 },
+  { side: 'L', cx: -12, cy: -1, w: 5, h: 10, labelX: -42, labelY: -10 },
+  { side: 'R', cx:  12, cy: -1, w: 5, h: 10, labelX:  42, labelY: -10 },
 ]
 
 function HealthOverlay({ health, pos }) {
