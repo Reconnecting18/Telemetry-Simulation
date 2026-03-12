@@ -1,406 +1,496 @@
-import { memo, useRef, useState } from 'react'
+import { memo, useState } from 'react'
 import CarModel from './CarModel'
+import { tempToColorSmooth } from '../utils/colors'
 
 // ═══════════════════════════════════════════════════════════════════
 // Multi-view car model panel with TOP, FRONT, SIDE, REAR tabs.
-// TOP = existing CarModel. Others are simplified wireframe projections
-// using the same node-beam data with Z-height coordinates.
+// TOP = existing CarModel (top-down animated wireframe).
+// FRONT/SIDE/REAR = orthographic projections of a clean open-wheel
+// formula car node set with accurate F3/Formula Ford proportions.
 // ═══════════════════════════════════════════════════════════════════
 
-// Z-height assignments for nodes (ground=0, higher=up)
-// F1 car: ground contact at Z=0, hub center ~16, chassis floor ~12,
-// cockpit ~30, wing elements vary
-const NODE_Z = {}
+// ── 3D Node definitions ──
+// Coordinate system: X = lateral (+ right), Y = height (+ up), Z = longitudinal (+ forward)
+// All units are abstract but proportionally accurate.
 
-function setZ(name, z) { NODE_Z[name] = z }
+const NODES = {
+  // Chassis spine (centerline)
+  'ch.nose':    { x: 0, y: 0, z: 120 },
+  'ch.fbulk':   { x: 0, y: 0, z: 80 },
+  'ch.ckF':     { x: 0, y: 8, z: 30 },
+  'ch.ckR':     { x: 0, y: 12, z: -10 },
+  'ch.engF':    { x: 0, y: 10, z: -20 },
+  'ch.engR':    { x: 0, y: 8, z: -70 },
+  'ch.gbox':    { x: 0, y: 6, z: -90 },
+  'ch.crash':   { x: 0, y: 4, z: -110 },
 
-// Chassis spine — monocoque cross-section
-setZ('ch.nose',  22)
-setZ('ch.fbL',   18)
-setZ('ch.fbR',   18)
-setZ('ch.cpL',   16)
-setZ('ch.cpR',   16)
-setZ('ch.rbL',   18)
-setZ('ch.rbR',   18)
-setZ('ch.tail',  20)
+  // Front axle (Z=75)
+  'fa.wheelL':  { x: -70, y: 10, z: 75 },
+  'fa.wheelR':  { x: 70, y: 10, z: 75 },
+  'fa.tireOL':  { x: -85, y: 10, z: 75 },
+  'fa.tireOR':  { x: 85, y: 10, z: 75 },
+  'fa.uwiL':    { x: -25, y: 18, z: 75 },
+  'fa.uwiR':    { x: 25, y: 18, z: 75 },
+  'fa.uwoL':    { x: -65, y: 18, z: 75 },
+  'fa.uwoR':    { x: 65, y: 18, z: 75 },
+  'fa.lwiL':    { x: -22, y: 4, z: 75 },
+  'fa.lwiR':    { x: 22, y: 4, z: 75 },
+  'fa.lwoL':    { x: -65, y: 4, z: 75 },
+  'fa.lwoR':    { x: 65, y: 4, z: 75 },
+  'fa.pushL':   { x: -45, y: 8, z: 75 },
+  'fa.pushR':   { x: 45, y: 8, z: 75 },
 
-// Hub centers at wheel center height
-const HUB_Z = 16
-for (const p of ['fl', 'fr', 'rl', 'rr']) {
-  setZ(`${p}.hub`, HUB_Z)
-  setZ(`${p}.upr`, HUB_Z)
-  setZ(`${p}.uwi`, HUB_Z + 6)  // upper wishbone inner — higher
-  setZ(`${p}.uwo`, HUB_Z + 4)  // upper wishbone outer
-  setZ(`${p}.lwi`, HUB_Z - 6)  // lower wishbone inner — lower
-  setZ(`${p}.lwo`, HUB_Z - 4)  // lower wishbone outer
-  setZ(`${p}.pri`, HUB_Z + 2)  // pushrod inner
-  setZ(`${p}.pro`, HUB_Z - 2)  // pushrod outer
-  // Wheel/tire nodes at hub height ± tire radius
-  setZ(`${p}.rim.t`, HUB_Z + 5)
-  setZ(`${p}.rim.b`, HUB_Z - 5)
-  setZ(`${p}.tire.ot`, HUB_Z + 9)
-  setZ(`${p}.tire.ob`, HUB_Z - 9)
-  setZ(`${p}.tire.it`, HUB_Z + 9)
-  setZ(`${p}.tire.ib`, HUB_Z - 9)
-}
+  // Rear axle (Z=-90)
+  'ra.wheelL':  { x: -75, y: 12, z: -90 },
+  'ra.wheelR':  { x: 75, y: 12, z: -90 },
+  'ra.tireOL':  { x: -95, y: 12, z: -90 },
+  'ra.tireOR':  { x: 95, y: 12, z: -90 },
+  'ra.uwiL':    { x: -20, y: 20, z: -90 },
+  'ra.uwiR':    { x: 20, y: 20, z: -90 },
+  'ra.uwoL':    { x: -70, y: 20, z: -90 },
+  'ra.uwoR':    { x: 70, y: 20, z: -90 },
+  'ra.lwiL':    { x: -18, y: 4, z: -90 },
+  'ra.lwiR':    { x: 18, y: 4, z: -90 },
+  'ra.lwoL':    { x: -70, y: 4, z: -90 },
+  'ra.lwoR':    { x: 70, y: 4, z: -90 },
 
-// Front wing — low and forward
-for (const k of ['fw.lt','fw.rt','fw.cL','fw.cR']) setZ(k, 8)
-for (const k of ['fw.csL','fw.csR']) setZ(k, 10)
-for (const k of ['fw.lepT','fw.repT']) setZ(k, 10)
-for (const k of ['fw.lepB','fw.repB']) setZ(k, 6)
-setZ('fw.aL', 14); setZ('fw.aR', 14)
+  // Front wing (Z=115)
+  'fw.mpL':     { x: -110, y: 4, z: 115 },
+  'fw.mpR':     { x: 110, y: 4, z: 115 },
+  'fw.mcL':     { x: -40, y: 4, z: 118 },
+  'fw.mcR':     { x: 40, y: 4, z: 118 },
+  'fw.epLT':    { x: -110, y: 12, z: 115 },
+  'fw.epLB':    { x: -110, y: 2, z: 115 },
+  'fw.epRT':    { x: 110, y: 12, z: 115 },
+  'fw.epRB':    { x: 110, y: 2, z: 115 },
 
-// Rear wing — high
-for (const k of ['rw.lt','rw.rt','rw.cL','rw.cR']) setZ(k, 42)
-for (const k of ['rw.lepT','rw.repT']) setZ(k, 38)
-for (const k of ['rw.lepB','rw.repB']) setZ(k, 46)
-setZ('rw.piL', 42); setZ('rw.piR', 42)
-setZ('rw.baL', 22); setZ('rw.baR', 22)
+  // Rear wing (Z=-95)
+  'rw.mpL':     { x: -70, y: 55, z: -95 },
+  'rw.mpR':     { x: 70, y: 55, z: -95 },
+  'rw.pilLT':   { x: -40, y: 55, z: -90 },
+  'rw.pilLB':   { x: -40, y: 20, z: -90 },
+  'rw.pilRT':   { x: 40, y: 55, z: -90 },
+  'rw.pilRB':   { x: 40, y: 20, z: -90 },
+  'rw.epLT':    { x: -70, y: 55, z: -95 },
+  'rw.epLB':    { x: -70, y: 30, z: -95 },
+  'rw.epRT':    { x: 70, y: 55, z: -95 },
+  'rw.epRB':    { x: 70, y: 30, z: -95 },
 
-// Sidepods — mid height
-for (const k of ['lsp.ft','lsp.fb','rsp.ft','rsp.fb']) setZ(k, 16)
-for (const k of ['lsp.rt','lsp.rb','rsp.rt','rsp.rb']) setZ(k, 14)
+  // Roll hoop (Z=10)
+  'rh.top':     { x: 0, y: 55, z: 10 },
+  'rh.L':       { x: -18, y: 40, z: 10 },
+  'rh.R':       { x: 18, y: 40, z: 10 },
 
-// Import node/beam data from CarModel module scope
-// Since these are not exported, we replicate the minimal structure needed
-// by reading the shared NODES/BEAMS that CarModel defines at module scope.
-// Instead, we use CarModel's exported solve approach and build our own
-// minimal node set for the alternate views.
-
-// Minimal node rest positions (X=lateral, Y=longitudinal from CarModel)
-const NODE_REST = {
-  'ch.nose': [0, -48], 'ch.fbL': [-6, -32], 'ch.fbR': [6, -32],
-  'ch.cpL': [-8, -5], 'ch.cpR': [8, -5],
-  'ch.rbL': [-6, 25], 'ch.rbR': [6, 25], 'ch.tail': [0, 33],
-  'fl.hub': [-20, -28], 'fr.hub': [20, -28], 'rl.hub': [-20, 35], 'rr.hub': [20, 35],
-  'fl.uwi': [-7, -31], 'fl.lwi': [-7, -25], 'fl.uwo': [-16, -31], 'fl.lwo': [-16, -25],
-  'fl.upr': [-18, -28], 'fl.pri': [-7, -27], 'fl.pro': [-17, -26],
-  'fr.uwi': [7, -31], 'fr.lwi': [7, -25], 'fr.uwo': [16, -31], 'fr.lwo': [16, -25],
-  'fr.upr': [18, -28], 'fr.pri': [7, -27], 'fr.pro': [17, -26],
-  'rl.uwi': [-7, 38], 'rl.lwi': [-7, 32], 'rl.uwo': [-16, 38], 'rl.lwo': [-16, 32],
-  'rl.upr': [-18, 35], 'rl.pri': [-7, 36], 'rl.pro': [-17, 37],
-  'rr.uwi': [7, 38], 'rr.lwi': [7, 32], 'rr.uwo': [16, 38], 'rr.lwo': [16, 32],
-  'rr.upr': [18, 35], 'rr.pri': [7, 36], 'rr.pro': [17, 37],
-  // Tires
-  'fl.tire.ot': [-24.5, -37], 'fl.tire.ob': [-24.5, -19], 'fl.tire.it': [-15.5, -37], 'fl.tire.ib': [-15.5, -19],
-  'fr.tire.ot': [24.5, -37], 'fr.tire.ob': [24.5, -19], 'fr.tire.it': [15.5, -37], 'fr.tire.ib': [15.5, -19],
-  'rl.tire.ot': [-25.5, 26], 'rl.tire.ob': [-25.5, 44], 'rl.tire.it': [-14.5, 26], 'rl.tire.ib': [-14.5, 44],
-  'rr.tire.ot': [25.5, 26], 'rr.tire.ob': [25.5, 44], 'rr.tire.it': [14.5, 26], 'rr.tire.ib': [14.5, 44],
-  'fl.rim.t': [-20, -33], 'fl.rim.b': [-20, -23], 'fr.rim.t': [20, -33], 'fr.rim.b': [20, -23],
-  'rl.rim.t': [-20, 30], 'rl.rim.b': [-20, 40], 'rr.rim.t': [20, 30], 'rr.rim.b': [20, 40],
-  // Wings
-  'fw.lt': [-22, -53], 'fw.rt': [22, -53], 'fw.cL': [-4, -53], 'fw.cR': [4, -53],
-  'fw.csL': [-19, -50], 'fw.csR': [19, -50],
-  'fw.lepT': [-25, -58], 'fw.lepB': [-25, -40], 'fw.repT': [25, -58], 'fw.repB': [25, -40],
-  'fw.aL': [-2, -49], 'fw.aR': [2, -49],
-  'rw.lt': [-17, 43], 'rw.rt': [17, 43], 'rw.cL': [-4, 43], 'rw.cR': [4, 43],
-  'rw.lepT': [-21, 32], 'rw.lepB': [-21, 53], 'rw.repT': [21, 32], 'rw.repB': [21, 53],
-  'rw.piL': [-4, 43], 'rw.piR': [4, 43], 'rw.baL': [-4, 34], 'rw.baR': [4, 34],
   // Sidepods
-  'lsp.ft': [-8, -3], 'lsp.fb': [-14, -1], 'lsp.rt': [-8, 20], 'lsp.rb': [-14, 18],
-  'rsp.ft': [8, -3], 'rsp.fb': [14, -1], 'rsp.rt': [8, 20], 'rsp.rb': [14, 18],
+  'sp.fL':      { x: -28, y: 8, z: -10 },
+  'sp.rL':      { x: -28, y: 8, z: -65 },
+  'sp.tL':      { x: -28, y: 20, z: -35 },
+  'sp.fR':      { x: 28, y: 8, z: -10 },
+  'sp.rR':      { x: 28, y: 8, z: -65 },
+  'sp.tR':      { x: 28, y: 20, z: -35 },
+
+  // Diffuser (rear floor, at ground level)
+  'df.L':       { x: -60, y: 2, z: -105 },
+  'df.R':       { x: 60, y: 2, z: -105 },
+  'df.cL':      { x: -20, y: 2, z: -105 },
+  'df.cR':      { x: 20, y: 2, z: -105 },
 }
 
-// Beam connections (subset for wireframe views)
-const BEAM_DEFS = [
-  // Chassis
-  ['ch.nose','ch.fbL','chassis'], ['ch.fbL','ch.cpL','chassis'], ['ch.cpL','ch.rbL','chassis'],
-  ['ch.rbL','ch.tail','chassis'], ['ch.tail','ch.rbR','chassis'], ['ch.rbR','ch.cpR','chassis'],
-  ['ch.cpR','ch.fbR','chassis'], ['ch.fbR','ch.nose','chassis'],
-  // Suspension
-  ...['fl','fr','rl','rr'].flatMap(p => [
-    [`${p}.uwi`, `${p}.uwo`, 'susp'], [`${p}.lwi`, `${p}.lwo`, 'susp'],
-    [`${p}.pri`, `${p}.pro`, 'susp'], [`${p}.uwo`, `${p}.upr`, 'upright'],
-    [`${p}.lwo`, `${p}.upr`, 'upright'], [`${p}.upr`, `${p}.hub`, 'hub_link'],
-  ]),
-  // Tires (outline)
-  ...['fl','fr','rl','rr'].flatMap(p => [
-    [`${p}.tire.ot`, `${p}.tire.ob`, 'tire'], [`${p}.tire.it`, `${p}.tire.ib`, 'tire'],
-    [`${p}.tire.ot`, `${p}.tire.it`, 'tire'], [`${p}.tire.ob`, `${p}.tire.ib`, 'tire'],
-  ]),
+// ── Beam definitions: [nodeA, nodeB, type] ──
+const BEAMS = [
+  // Chassis spine
+  ['ch.nose', 'ch.fbulk', 'mono'],
+  ['ch.fbulk', 'ch.ckF', 'mono'],
+  ['ch.ckF', 'ch.ckR', 'mono'],
+  ['ch.ckR', 'ch.engF', 'mono'],
+  ['ch.engF', 'ch.engR', 'mono'],
+  ['ch.engR', 'ch.gbox', 'mono'],
+  ['ch.gbox', 'ch.crash', 'mono'],
+
+  // Chassis width at bulkhead
+  ['ch.fbulk', 'fa.uwiL', 'mono'], ['ch.fbulk', 'fa.uwiR', 'mono'],
+  ['ch.fbulk', 'fa.lwiL', 'mono'], ['ch.fbulk', 'fa.lwiR', 'mono'],
+
+  // Front suspension upper wishbones
+  ['fa.uwiL', 'fa.uwoL', 'susp'], ['fa.uwiR', 'fa.uwoR', 'susp'],
+  // Front suspension lower wishbones
+  ['fa.lwiL', 'fa.lwoL', 'susp'], ['fa.lwiR', 'fa.lwoR', 'susp'],
+  // Front uprights (outer wishbone to wheel center)
+  ['fa.uwoL', 'fa.wheelL', 'susp'], ['fa.uwoR', 'fa.wheelR', 'susp'],
+  ['fa.lwoL', 'fa.wheelL', 'susp'], ['fa.lwoR', 'fa.wheelR', 'susp'],
+  // Front pushrods
+  ['fa.pushL', 'fa.lwoL', 'susp'], ['fa.pushR', 'fa.lwoR', 'susp'],
+  ['fa.pushL', 'fa.uwiL', 'susp'], ['fa.pushR', 'fa.uwiR', 'susp'],
+
+  // Rear suspension
+  ['ra.uwiL', 'ra.uwoL', 'susp'], ['ra.uwiR', 'ra.uwoR', 'susp'],
+  ['ra.lwiL', 'ra.lwoL', 'susp'], ['ra.lwiR', 'ra.lwoR', 'susp'],
+  ['ra.uwoL', 'ra.wheelL', 'susp'], ['ra.uwoR', 'ra.wheelR', 'susp'],
+  ['ra.lwoL', 'ra.wheelL', 'susp'], ['ra.lwoR', 'ra.wheelR', 'susp'],
+  // Rear inboard to gearbox
+  ['ch.gbox', 'ra.uwiL', 'mono'], ['ch.gbox', 'ra.uwiR', 'mono'],
+  ['ch.gbox', 'ra.lwiL', 'mono'], ['ch.gbox', 'ra.lwiR', 'mono'],
+
   // Front wing
-  ['fw.lt','fw.rt','wing'], ['fw.csL','fw.csR','wing'],
-  ['fw.lepT','fw.lepB','wing'], ['fw.repT','fw.repB','wing'],
-  ['fw.aL','ch.nose','wing'], ['fw.aR','ch.nose','wing'],
+  ['fw.mpL', 'fw.mcL', 'wing'], ['fw.mcL', 'fw.mcR', 'wing'], ['fw.mcR', 'fw.mpR', 'wing'],
+  ['fw.epLT', 'fw.epLB', 'wing'], ['fw.epRT', 'fw.epRB', 'wing'],
+  // Front wing nose pillars
+  ['fw.mcL', 'ch.nose', 'wing'], ['fw.mcR', 'ch.nose', 'wing'],
+
   // Rear wing
-  ['rw.lt','rw.rt','wing'], ['rw.lepT','rw.lepB','wing'], ['rw.repT','rw.repB','wing'],
-  ['rw.piL','rw.baL','wing'], ['rw.piR','rw.baR','wing'],
-  ['rw.baL','ch.tail','wing'], ['rw.baR','ch.tail','wing'],
+  ['rw.mpL', 'rw.mpR', 'wing'],
+  ['rw.epLT', 'rw.epLB', 'wing'], ['rw.epRT', 'rw.epRB', 'wing'],
+  // Rear wing pillars
+  ['rw.pilLT', 'rw.pilLB', 'wing'], ['rw.pilRT', 'rw.pilRB', 'wing'],
+  ['rw.pilLB', 'ch.engR', 'wing'], ['rw.pilRB', 'ch.engR', 'wing'],
+
+  // Roll hoop
+  ['rh.top', 'rh.L', 'mono'], ['rh.top', 'rh.R', 'mono'],
+  ['rh.L', 'ch.ckR', 'mono'], ['rh.R', 'ch.ckR', 'mono'],
+
   // Sidepods
-  ['lsp.ft','lsp.fb','sidepod'], ['lsp.fb','lsp.rb','sidepod'],
-  ['lsp.rb','lsp.rt','sidepod'], ['lsp.rt','lsp.ft','sidepod'],
-  ['rsp.ft','rsp.fb','sidepod'], ['rsp.fb','rsp.rb','sidepod'],
-  ['rsp.rb','rsp.rt','sidepod'], ['rsp.rt','rsp.ft','sidepod'],
+  ['sp.fL', 'sp.rL', 'sidepod'], ['sp.fL', 'sp.tL', 'sidepod'], ['sp.tL', 'sp.rL', 'sidepod'],
+  ['sp.fR', 'sp.rR', 'sidepod'], ['sp.fR', 'sp.tR', 'sidepod'], ['sp.tR', 'sp.rR', 'sidepod'],
+  ['sp.fL', 'ch.ckR', 'sidepod'], ['sp.fR', 'ch.ckR', 'sidepod'],
+  ['sp.rL', 'ch.engR', 'sidepod'], ['sp.rR', 'ch.engR', 'sidepod'],
+
+  // Diffuser
+  ['df.L', 'df.cL', 'diffuser'], ['df.cL', 'df.cR', 'diffuser'], ['df.cR', 'df.R', 'diffuser'],
+  ['df.L', 'ra.lwoL', 'diffuser'], ['df.R', 'ra.lwoR', 'diffuser'],
 ]
 
-const BEAM_STYLE = {
-  chassis: { w: 0.9, color: '#555', op: 0.9 },
-  susp:    { w: 0.7, color: '#888', op: 0.7 },
-  upright: { w: 0.7, color: '#ccc', op: 0.6 },
-  hub_link:{ w: 0.5, color: '#888', op: 0.5 },
-  tire:    { w: 0.6, color: '#666', op: 0.5 },
-  wing:    { w: 0.8, color: '#888', op: 0.6 },
-  sidepod: { w: 0.5, color: '#888', op: 0.4 },
+// Line style per beam type
+const STYLE = {
+  mono:     { w: 2.5, color: '#cccccc', op: 0.9 },
+  susp:     { w: 1.5, color: '#666666', op: 0.8 },
+  wing:     { w: 2.0, color: '#aaaaaa', op: 0.8 },
+  sidepod:  { w: 1.2, color: '#777777', op: 0.5 },
+  diffuser: { w: 1.5, color: '#888888', op: 0.6 },
 }
 
-const MAX_SUSP_MM = 30
-const HUB_DY = 1.4
-const HUB_DX = 1.4
-const LERP_K = 0.15
-const STEER_GAIN = 12.5
-const STEER_MAX = 25
+// Tire definitions: [wheelCenter, tireOuter, radius, cornerID]
+const TIRES = [
+  { wheel: 'fa.wheelL', outer: 'fa.tireOL', r: 13, corner: 'FL', rear: false },
+  { wheel: 'fa.wheelR', outer: 'fa.tireOR', r: 13, corner: 'FR', rear: false },
+  { wheel: 'ra.wheelL', outer: 'ra.tireOL', r: 15, corner: 'RL', rear: true },
+  { wheel: 'ra.wheelR', outer: 'ra.tireOR', r: 15, corner: 'RR', rear: true },
+]
 
-// Solve 3D positions from frame data
-function solve3D(ride, steerDeg) {
-  const pos = {}
-  for (const k in NODE_REST) {
-    const [x, y] = NODE_REST[k]
-    pos[k] = { x, y, z: NODE_Z[k] || 16 }
+// ── Suspension strain color ──
+// Maps suspension_mm deflection to color: blue=relaxed, orange=loaded, red=overloaded
+function suspColor(mm) {
+  const abs = Math.abs(mm || 0)
+  const MAX = 30
+  const t = Math.min(1, abs / MAX)
+  if (t < 0.4) {
+    // blue to white transition
+    const s = t / 0.4
+    const r = Math.round(80 + 100 * s)
+    const g = Math.round(130 + 80 * s)
+    const b = Math.round(220 - 20 * s)
+    return `rgb(${r},${g},${b})`
   }
-
-  const corners = [
-    { id: 'FL', p: 'fl', side: 'L', steers: true },
-    { id: 'FR', p: 'fr', side: 'R', steers: true },
-    { id: 'RL', p: 'rl', side: 'L', steers: false },
-    { id: 'RR', p: 'rr', side: 'R', steers: false },
-  ]
-
-  for (const { id, p, side, steers } of corners) {
-    const rh = ride[id]
-    const inward = side === 'L' ? 1 : -1
-    const dxSusp = rh * HUB_DX * inward
-    const dySusp = rh * -HUB_DY
-    // Z displacement from suspension: compressed = lower
-    const dzSusp = -(rh - 0.5) * 4 // ±2 units from neutral
-
-    // Hub, upright: full displacement
-    for (const sfx of ['.hub', '.upr']) {
-      const k = `${p}${sfx}`
-      if (!pos[k]) continue
-      pos[k].x += dxSusp
-      pos[k].y += dySusp
-      pos[k].z += dzSusp
-    }
-    // Wishbone outers
-    for (const sfx of ['.uwo', '.lwo', '.pro']) {
-      const k = `${p}${sfx}`
-      if (!pos[k]) continue
-      pos[k].x += dxSusp * 0.7
-      pos[k].y += dySusp * 0.7
-      pos[k].z += dzSusp * 0.7
-    }
-
-    // Steering rotation (XY plane only for front)
-    if (steers && Math.abs(steerDeg) > 0.01) {
-      const angle = steerDeg * (Math.PI / 180)
-      const cx = pos[`${p}.upr`].x, cy = pos[`${p}.upr`].y
-      const cos = Math.cos(angle), sin = Math.sin(angle)
-      for (const sfx of ['.uwo', '.lwo', '.hub', '.pro']) {
-        const k = `${p}${sfx}`
-        if (!pos[k]) continue
-        const rx = pos[k].x - cx, ry = pos[k].y - cy
-        pos[k].x = cx + rx * cos - ry * sin
-        pos[k].y = cy + rx * sin + ry * cos
-      }
-    }
-
-    // Propagate to tire/rim child nodes
-    const hubKey = `${p}.hub`
-    if (!pos[hubKey]) continue
-    const hubRestX = NODE_REST[hubKey][0], hubRestY = NODE_REST[hubKey][1]
-    const hubRestZ = NODE_Z[hubKey] || HUB_Z
-    for (const sfx of ['.rim.t','.rim.b','.tire.ot','.tire.ob','.tire.it','.tire.ib']) {
-      const k = `${p}${sfx}`
-      if (!pos[k] || !NODE_REST[k]) continue
-      let offX = NODE_REST[k][0] - hubRestX
-      let offY = NODE_REST[k][1] - hubRestY
-      const offZ = (NODE_Z[k] || HUB_Z) - hubRestZ
-      if (steers && Math.abs(steerDeg) > 0.01) {
-        const angle = steerDeg * (Math.PI / 180)
-        const cos = Math.cos(angle), sin = Math.sin(angle)
-        const rx = offX, ry = offY
-        offX = rx * cos - ry * sin
-        offY = rx * sin + ry * cos
-      }
-      pos[k].x = pos[hubKey].x + offX
-      pos[k].y = pos[hubKey].y + offY
-      pos[k].z = pos[hubKey].z + offZ
-    }
+  if (t < 0.7) {
+    // white to orange
+    const s = (t - 0.4) / 0.3
+    const r = Math.round(210 + 35 * s)
+    const g = Math.round(210 - 80 * s)
+    const b = Math.round(200 - 180 * s)
+    return `rgb(${r},${g},${b})`
   }
-
-  return pos
+  // orange to red
+  const s = (t - 0.7) / 0.3
+  const r = Math.round(245)
+  const g = Math.round(130 - 100 * s)
+  const b = Math.round(20)
+  return `rgb(${r},${g},${b})`
 }
 
-// Project 3D to 2D for a given view
-// ── Alternate view projection + rendering ──
-// Front: camera at -Y (looking toward +Y), project X,Z to screen
-// Side:  camera at -X (looking toward +X), project Y,Z to screen
-// Rear:  camera at +Y (looking toward -Y), project -X,Z to screen
+// ── Get suspension mm for a beam's nearest corner ──
+function beamSuspMM(a, b, susp) {
+  // Determine which corner(s) this beam relates to
+  const getCorner = (key) => {
+    if (key.startsWith('fa.') && key.includes('L')) return 'FL'
+    if (key.startsWith('fa.') && key.includes('R')) return 'FR'
+    if (key.startsWith('ra.') && key.includes('L')) return 'RL'
+    if (key.startsWith('ra.') && key.includes('R')) return 'RR'
+    return null
+  }
+  const ca = getCorner(a), cb = getCorner(b)
+  if (ca && susp[ca] !== undefined) return susp[ca]
+  if (cb && susp[cb] !== undefined) return susp[cb]
+  return 0
+}
 
-function AltViewSvg({ pos3d, view }) {
-  // Project all nodes to 2D screen coords + depth value
+// ── Projection functions ──
+// Each returns { sx, sy } screen coords from 3D node
+function projectTop(n)   { return { sx: n.x, sy: -n.z } }
+function projectFront(n) { return { sx: n.x, sy: -n.y } }
+function projectSide(n)  { return { sx: -n.z, sy: -n.y } }  // negate Z so nose faces right
+function projectRear(n)  { return { sx: -n.x, sy: -n.y } }  // mirror X for rear
+
+const PROJECT = { top: projectTop, front: projectFront, side: projectSide, rear: projectRear }
+
+// ── View-specific visibility ──
+// front: only show front half (Z > 0 roughly)
+// rear: only show rear half (Z < 0 roughly)
+// side/top: show everything
+function isVisible(view, nodeKey) {
+  const n = NODES[nodeKey]
+  if (!n) return false
+  if (view === 'front') return n.z > -30   // hide deep rear
+  if (view === 'rear') return n.z < 30     // hide deep front
+  return true
+}
+
+// ── Which tires to show per view ──
+function visibleTires(view) {
+  if (view === 'front') return TIRES.filter(t => !t.rear)
+  if (view === 'rear') return TIRES.filter(t => t.rear)
+  return TIRES
+}
+
+// ── Render a single alternate view ──
+function AltViewSvg({ view, frame, vehicle }) {
+  const projFn = PROJECT[view]
+  if (!projFn) return null
+
+  const susp = frame?.suspension_mm || { FL: 0, FR: 0, RL: 0, RR: 0 }
+  const tireTemps = frame?.tire_temp_C || { FL: 25, FR: 25, RL: 25, RR: 25 }
+  const optTemp = vehicle?.tire_optimal_temp_C || 90
+  const ovhTemp = vehicle?.tire_overheat_temp_C || 120
+
+  // Project all nodes
   const proj = {}
-  let minD = Infinity, maxD = -Infinity
-  for (const k in pos3d) {
-    const { x, y, z } = pos3d[k]
-    let sx, sy, d
-    switch (view) {
-      case 'front': sx = x;  sy = -z; d = y;  break
-      case 'side':  sx = y;  sy = -z; d = x;  break
-      case 'rear':  sx = -x; sy = -z; d = -y; break
-      default: sx = x; sy = y; d = 0
-    }
-    proj[k] = { x: sx, y: sy, d }
-    if (d < minD) minD = d
-    if (d > maxD) maxD = d
-  }
-  const dRange = maxD - minD || 1
-
-  // Depth cueing: closer=1.0 opacity, farthest=0.2
-  const dOp = (k) => {
-    if (!proj[k]) return 0.5
-    const t = (proj[k].d - minD) / dRange
-    return 0.2 + 0.8 * (1 - t)
+  for (const k in NODES) {
+    proj[k] = projFn(NODES[k])
   }
 
-  // Front/rear views: hide nodes in the far 35% of depth range
-  const dCut = minD + dRange * 0.65
-  const vis = (k) => !proj[k] || view === 'side' || proj[k].d < dCut
-
-  // Auto-fit viewBox from visible projected nodes
-  let bx1 = Infinity, bx2 = -Infinity, by1 = Infinity, by2 = -Infinity
+  // Compute bounding box from visible nodes
+  let x1 = Infinity, x2 = -Infinity, y1 = Infinity, y2 = -Infinity
   for (const k in proj) {
-    if (!vis(k)) continue
-    bx1 = Math.min(bx1, proj[k].x); bx2 = Math.max(bx2, proj[k].x)
-    by1 = Math.min(by1, proj[k].y); by2 = Math.max(by2, proj[k].y)
-  }
-  by2 = Math.max(by2, 3) // space below ground line
-  const bw = (bx2 - bx1) || 60, bh = (by2 - by1) || 50
-  const padX = bw * 0.12, padY = bh * 0.12
-  const vbStr = `${(bx1 - padX).toFixed(1)} ${(by1 - padY).toFixed(1)} ${(bw + 2 * padX).toFixed(1)} ${(bh + 2 * padY).toFixed(1)}`
-
-  // ── Tire circles (replace flat tire-beam outlines with round tires) ──
-  const TIRE_R = 9
-  const tireKeys = view === 'front' ? ['fl.hub', 'fr.hub'] :
-                   view === 'rear'  ? ['rl.hub', 'rr.hub'] :
-                                      ['fl.hub', 'fr.hub', 'rl.hub', 'rr.hub']
-  // Paint far tires first (painter's order)
-  const sortedTires = [...tireKeys].sort((a, b) => (proj[b]?.d || 0) - (proj[a]?.d || 0))
-
-  // ── Body silhouette (side view: profile polygon with flat floor) ──
-  const spineKeys = ['ch.nose', 'ch.fbL', 'ch.cpL', 'ch.rbL', 'ch.tail']
-  let bodySilhouette = null
-  if (view === 'side') {
-    const topPts = spineKeys.map(k => proj[k]).filter(Boolean)
-    if (topPts.length === spineKeys.length) {
-      const floorY = -6 // Z=6 floor, ride-height gap visible to ground at y=0
-      const pts = [
-        ...topPts.map(p => `${p.x.toFixed(1)},${p.y.toFixed(1)}`),
-        `${topPts[topPts.length - 1].x.toFixed(1)},${floorY}`,
-        `${topPts[0].x.toFixed(1)},${floorY}`,
-      ].join(' ')
-      bodySilhouette = <polygon points={pts} fill="#0d0d0d" stroke="#333" strokeWidth={0.5} opacity={0.7} />
-    }
+    if (!isVisible(view, k)) continue
+    const { sx, sy } = proj[k]
+    if (sx < x1) x1 = sx
+    if (sx > x2) x2 = sx
+    if (sy < y1) y1 = sy
+    if (sy > y2) y2 = sy
   }
 
-  // ── Monocoque cross-section (front/rear views) ──
-  let monoSection = null
-  if (view === 'front' || view === 'rear') {
-    const lKey = view === 'front' ? 'ch.fbL' : 'ch.rbR'
-    const rKey = view === 'front' ? 'ch.fbR' : 'ch.rbL'
-    let L = proj[lKey], R = proj[rKey]
-    if (L && R) {
-      if (L.x > R.x) { const tmp = L; L = R; R = tmp }
-      const floorSy = -10
-      monoSection = (
-        <rect x={L.x} y={L.y} width={R.x - L.x} height={floorSy - L.y}
-          fill="#0d0d0d" stroke="#333" strokeWidth={0.4} opacity={0.7} rx={1} />
-      )
-    }
-  }
+  // Add tire radii to bounds
+  const maxTireR = 15
+  x1 -= maxTireR; x2 += maxTireR
+  y1 -= maxTireR; y2 += maxTireR
 
-  // ── Wing emphasis bars ──
-  let wingElements = null
-  if (view === 'front' && proj['fw.lt'] && proj['fw.rt']) {
-    const op = (dOp('fw.lt') + dOp('fw.rt')) / 2
-    wingElements = (
-      <g>
-        <line x1={proj['fw.lt'].x} y1={proj['fw.lt'].y}
-              x2={proj['fw.rt'].x} y2={proj['fw.rt'].y}
-          stroke="#777" strokeWidth={2} opacity={op * 0.8} strokeLinecap="round" />
-        {proj['fw.csL'] && proj['fw.csR'] && (
-          <line x1={proj['fw.csL'].x} y1={proj['fw.csL'].y}
-                x2={proj['fw.csR'].x} y2={proj['fw.csR'].y}
-            stroke="#666" strokeWidth={1.2} opacity={op * 0.6} strokeLinecap="round" />
-        )}
-      </g>
-    )
-  } else if (view === 'rear' && proj['rw.lt'] && proj['rw.rt']) {
-    const op = (dOp('rw.lt') + dOp('rw.rt')) / 2
-    wingElements = (
-      <line x1={proj['rw.lt'].x} y1={proj['rw.lt'].y}
-            x2={proj['rw.rt'].x} y2={proj['rw.rt'].y}
-        stroke="#777" strokeWidth={2.5} opacity={op * 0.8} strokeLinecap="round" />
-    )
+  // Scale to fill 85% of canvas
+  const w = (x2 - x1) || 200, h = (y2 - y1) || 150
+  const pad = Math.max(w, h) * 0.085
+  const vb = `${(x1 - pad).toFixed(1)} ${(y1 - pad).toFixed(1)} ${(w + 2 * pad).toFixed(1)} ${(h + 2 * pad).toFixed(1)}`
+
+  // Ground line Y position (Y=0 in 3D → projected)
+  const groundY = projFn({ x: 0, y: 0, z: 0 }).sy
+
+  // Tire rendering — painter's order (far first for front/rear)
+  const tires = visibleTires(view)
+  const sortedTires = view === 'side'
+    ? tires  // side view: all visible, draw rear first (they're behind)
+    : [...tires].sort((a, b) => {
+        const da = NODES[a.wheel]?.z || 0
+        const db = NODES[b.wheel]?.z || 0
+        return da - db  // further z first
+      })
+
+  // Side view: rear tires are 15% larger
+  const tireR = (t) => {
+    if (view === 'side') return t.rear ? 17 : 14
+    return t.r
   }
 
   return (
-    <svg viewBox={vbStr} style={{ width: '100%', height: '100%', display: 'block' }}>
+    <svg viewBox={vb} style={{ width: '100%', height: '100%', display: 'block' }}>
       {/* Ground reference line */}
-      <line x1={bx1 - padX} x2={bx2 + padX} y1={0} y2={0}
-        stroke="#2a2a2a" strokeWidth={0.4} strokeDasharray="2,1.5" />
+      <line x1={x1 - pad} x2={x2 + pad} y1={groundY} y2={groundY}
+        stroke="#2a2a2a" strokeWidth={0.5} strokeDasharray="4,3" />
 
-      {/* Body fills */}
-      {bodySilhouette}
-      {monoSection}
-
-      {/* Wing bars */}
-      {wingElements}
-
-      {/* Tire circles (far-first for painter's order) */}
-      {sortedTires.map(k => {
-        const p = proj[k]
+      {/* Tires */}
+      {sortedTires.map(t => {
+        const p = proj[t.wheel]
         if (!p) return null
-        const op = dOp(k)
+        const r = tireR(t)
+        const temp = tireTemps[t.corner] || 25
+        const tireColor = tempToColorSmooth(temp, optTemp, ovhTemp)
+        const rimR = r * 0.55
         return (
-          <g key={`tire-${k}`}>
-            <circle cx={p.x} cy={p.y} r={TIRE_R}
-              fill="#111" stroke="#555" strokeWidth={0.6} opacity={op * 0.85} />
-            <circle cx={p.x} cy={p.y} r={5}
-              fill="none" stroke="#444" strokeWidth={0.4} opacity={op * 0.5} />
-            <circle cx={p.x} cy={p.y} r={1}
-              fill="#888" opacity={op * 0.7} />
+          <g key={t.corner}>
+            {/* Tire body */}
+            <circle cx={p.sx} cy={p.sy} r={r}
+              fill="#222222" stroke={tireColor} strokeWidth={3} opacity={0.9} />
+            {/* Rim */}
+            <circle cx={p.sx} cy={p.sy} r={rimR}
+              fill="none" stroke="#888888" strokeWidth={1.2} opacity={0.7} />
+            {/* Hub */}
+            <circle cx={p.sx} cy={p.sy} r={2}
+              fill="#aaaaaa" opacity={0.8} />
           </g>
         )
       })}
 
-      {/* Structural beams — skip 'tire' type (replaced by circles above) */}
-      {BEAM_DEFS.map(([a, b, type], i) => {
-        if (type === 'tire') return null
+      {/* Structural beams */}
+      {BEAMS.map(([a, b, type], i) => {
         if (!proj[a] || !proj[b]) return null
-        if (!vis(a) && !vis(b)) return null
-        const s = BEAM_STYLE[type] || BEAM_STYLE.chassis
-        const avgOp = (dOp(a) + dOp(b)) / 2
+        if (!isVisible(view, a) && !isVisible(view, b)) return null
+        const s = STYLE[type] || STYLE.mono
+
+        // Dynamic suspension coloring
+        let strokeColor = s.color
+        let strokeOp = s.op
+        if (type === 'susp') {
+          strokeColor = suspColor(beamSuspMM(a, b, susp))
+          strokeOp = 0.9
+        }
+
         return (
-          <line key={i} x1={proj[a].x} y1={proj[a].y} x2={proj[b].x} y2={proj[b].y}
-            stroke={s.color} strokeWidth={s.w}
-            opacity={s.op * avgOp} strokeLinecap="round" />
+          <line key={i}
+            x1={proj[a].sx} y1={proj[a].sy}
+            x2={proj[b].sx} y2={proj[b].sy}
+            stroke={strokeColor} strokeWidth={s.w}
+            opacity={strokeOp} strokeLinecap="round" />
         )
       })}
 
-      {/* Node dots (visible, depth-cued) */}
-      {Object.keys(proj).filter(k => vis(k) && proj[k]).map(k => (
-        <circle key={k} cx={proj[k].x} cy={proj[k].y} r={0.5}
-          fill="#888" opacity={0.35 * dOp(k)} />
-      ))}
+      {/* Front view extras: front wing fill, monocoque nose */}
+      {view === 'front' && proj['fw.mpL'] && proj['fw.mpR'] && (
+        <line x1={proj['fw.mpL'].sx} y1={proj['fw.mpL'].sy}
+              x2={proj['fw.mpR'].sx} y2={proj['fw.mpR'].sy}
+          stroke="#aaaaaa" strokeWidth={3} opacity={0.6} strokeLinecap="round" />
+      )}
 
-      {/* View label — top-left corner with padding */}
-      <text x={bx1 - padX + 3} y={by1 - padY + 5}
-        fill="#444" fontSize={4} fontWeight={600}
-        fontFamily="'Courier New', monospace">
-        {view.toUpperCase()}
-      </text>
+      {/* Rear view extras: rear wing main plane emphasis */}
+      {view === 'rear' && proj['rw.mpL'] && proj['rw.mpR'] && (
+        <line x1={proj['rw.mpL'].sx} y1={proj['rw.mpL'].sy}
+              x2={proj['rw.mpR'].sx} y2={proj['rw.mpR'].sy}
+          stroke="#aaaaaa" strokeWidth={3.5} opacity={0.7} strokeLinecap="round" />
+      )}
+
+      {/* Rear view: diffuser emphasis */}
+      {view === 'rear' && proj['df.L'] && proj['df.R'] && (
+        <line x1={proj['df.L'].sx} y1={proj['df.L'].sy}
+              x2={proj['df.R'].sx} y2={proj['df.R'].sy}
+          stroke="#888888" strokeWidth={2} opacity={0.5} strokeLinecap="round" />
+      )}
+    </svg>
+  )
+}
+
+// ── Top view with proper filled polygons ──
+function TopViewSvg({ frame, vehicle }) {
+  const susp = frame?.suspension_mm || { FL: 0, FR: 0, RL: 0, RR: 0 }
+  const tireTemps = frame?.tire_temp_C || { FL: 25, FR: 25, RL: 25, RR: 25 }
+  const optTemp = vehicle?.tire_optimal_temp_C || 90
+  const ovhTemp = vehicle?.tire_overheat_temp_C || 120
+
+  const proj = {}
+  for (const k in NODES) {
+    proj[k] = projectTop(NODES[k])
+  }
+
+  // Bounding box
+  let x1 = Infinity, x2 = -Infinity, y1 = Infinity, y2 = -Infinity
+  for (const k in proj) {
+    const { sx, sy } = proj[k]
+    if (sx < x1) x1 = sx
+    if (sx > x2) x2 = sx
+    if (sy < y1) y1 = sy
+    if (sy > y2) y2 = sy
+  }
+  const maxR = 18
+  x1 -= maxR; x2 += maxR; y1 -= maxR; y2 += maxR
+  const w = x2 - x1, h = y2 - y1
+  const pad = Math.max(w, h) * 0.06
+  const vb = `${(x1 - pad).toFixed(1)} ${(y1 - pad).toFixed(1)} ${(w + 2 * pad).toFixed(1)} ${(h + 2 * pad).toFixed(1)}`
+
+  // Monocoque teardrop polygon
+  const monoKeys = ['ch.nose', 'ch.fbulk', 'ch.ckF', 'ch.ckR', 'ch.engF', 'ch.engR', 'ch.gbox', 'ch.crash']
+  const monoWidth = [4, 14, 16, 16, 14, 12, 8, 6]  // half-width at each spine node
+  const monoL = monoKeys.map((k, i) => `${(proj[k].sx - monoWidth[i]).toFixed(1)},${proj[k].sy.toFixed(1)}`)
+  const monoR = monoKeys.map((k, i) => `${(proj[k].sx + monoWidth[i]).toFixed(1)},${proj[k].sy.toFixed(1)}`).reverse()
+  const monoPts = [...monoL, ...monoR].join(' ')
+
+  // Front wing polygon
+  const fwPts = [proj['fw.mpL'], proj['fw.mcL'], proj['fw.mcR'], proj['fw.mpR']]
+    .filter(Boolean)
+    .map(p => `${p.sx.toFixed(1)},${p.sy.toFixed(1)}`).join(' ')
+
+  // Rear wing bar
+  const rwPts = proj['rw.mpL'] && proj['rw.mpR']
+    ? `${proj['rw.mpL'].sx.toFixed(1)},${(proj['rw.mpL'].sy - 4).toFixed(1)} ${proj['rw.mpR'].sx.toFixed(1)},${(proj['rw.mpR'].sy - 4).toFixed(1)} ${proj['rw.mpR'].sx.toFixed(1)},${(proj['rw.mpR'].sy + 4).toFixed(1)} ${proj['rw.mpL'].sx.toFixed(1)},${(proj['rw.mpL'].sy + 4).toFixed(1)}`
+    : null
+
+  // Sidepod shapes
+  const spL = [proj['sp.fL'], proj['sp.tL'], proj['sp.rL']].filter(Boolean)
+  const spR = [proj['sp.fR'], proj['sp.tR'], proj['sp.rR']].filter(Boolean)
+
+  // Tire rectangles (rounded)
+  const tireDefs = [
+    { cx: proj['fa.wheelL']?.sx, cy: proj['fa.wheelL']?.sy, w: 16, h: 24, corner: 'FL' },
+    { cx: proj['fa.wheelR']?.sx, cy: proj['fa.wheelR']?.sy, w: 16, h: 24, corner: 'FR' },
+    { cx: proj['ra.wheelL']?.sx, cy: proj['ra.wheelL']?.sy, w: 22, h: 28, corner: 'RL' },
+    { cx: proj['ra.wheelR']?.sx, cy: proj['ra.wheelR']?.sy, w: 22, h: 28, corner: 'RR' },
+  ]
+
+  return (
+    <svg viewBox={vb} style={{ width: '100%', height: '100%', display: 'block' }}>
+      {/* Tires as rounded rects */}
+      {tireDefs.map(t => {
+        if (t.cx == null) return null
+        const temp = tireTemps[t.corner] || 25
+        const tireColor = tempToColorSmooth(temp, optTemp, ovhTemp)
+        return (
+          <g key={t.corner}>
+            <rect x={t.cx - t.w / 2} y={t.cy - t.h / 2} width={t.w} height={t.h}
+              rx={4} fill="#222222" stroke={tireColor} strokeWidth={2.5} opacity={0.9} />
+            <circle cx={t.cx} cy={t.cy} r={4}
+              fill="none" stroke="#888888" strokeWidth={0.8} opacity={0.6} />
+          </g>
+        )
+      })}
+
+      {/* Monocoque */}
+      <polygon points={monoPts} fill="#1a1a1a" stroke="#cccccc" strokeWidth={1.5}
+        strokeLinejoin="round" opacity={0.85} />
+
+      {/* Sidepods */}
+      {spL.length === 3 && (
+        <polygon points={spL.map(p => `${p.sx.toFixed(1)},${p.sy.toFixed(1)}`).join(' ')}
+          fill="#141414" stroke="#777777" strokeWidth={1} opacity={0.6} />
+      )}
+      {spR.length === 3 && (
+        <polygon points={spR.map(p => `${p.sx.toFixed(1)},${p.sy.toFixed(1)}`).join(' ')}
+          fill="#141414" stroke="#777777" strokeWidth={1} opacity={0.6} />
+      )}
+
+      {/* Front wing */}
+      {fwPts && (
+        <polygon points={fwPts} fill="#1a1a1a" stroke="#aaaaaa" strokeWidth={1.5} opacity={0.8} />
+      )}
+
+      {/* Rear wing */}
+      {rwPts && (
+        <polygon points={rwPts} fill="#1a1a1a" stroke="#aaaaaa" strokeWidth={1.5} opacity={0.8} />
+      )}
+
+      {/* Suspension beams */}
+      {BEAMS.filter(([,, type]) => type === 'susp').map(([a, b], i) => {
+        if (!proj[a] || !proj[b]) return null
+        const mm = beamSuspMM(a, b, susp)
+        return (
+          <line key={`s${i}`}
+            x1={proj[a].sx} y1={proj[a].sy}
+            x2={proj[b].sx} y2={proj[b].sy}
+            stroke={suspColor(mm)} strokeWidth={1.5}
+            opacity={0.8} strokeLinecap="round" />
+        )
+      })}
     </svg>
   )
 }
@@ -409,21 +499,6 @@ const VIEWS = ['top', 'front', 'side', 'rear']
 
 function CarModelViews({ frame, vehicle, mode }) {
   const [activeView, setActiveView] = useState('top')
-  const animRide = useRef({ FL: 0.5, FR: 0.5, RL: 0.5, RR: 0.5 })
-
-  // Compute ride heights for alt views (same logic as CarModel)
-  const susp = frame?.suspension_mm || { FL: 0, FR: 0, RL: 0, RR: 0 }
-  const ride = animRide.current
-  for (const id of ['FL', 'FR', 'RL', 'RR']) {
-    const target = Math.max(0, Math.min(1, (susp[id] + MAX_SUSP_MM) / (2 * MAX_SUSP_MM)))
-    ride[id] += (target - ride[id]) * LERP_K
-  }
-
-  const latG = frame?.lateral_g || 0
-  const steerDeg = Math.max(-STEER_MAX, Math.min(STEER_MAX, -latG * STEER_GAIN))
-
-  // Solve 3D positions for alt views
-  const pos3d = solve3D(ride, steerDeg)
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
@@ -455,7 +530,7 @@ function CarModelViews({ frame, vehicle, mode }) {
         {activeView === 'top' ? (
           <CarModel frame={frame} vehicle={vehicle} mode={mode} />
         ) : (
-          <AltViewSvg pos3d={pos3d} view={activeView} />
+          <AltViewSvg view={activeView} frame={frame} vehicle={vehicle} />
         )}
       </div>
     </div>
