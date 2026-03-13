@@ -17,18 +17,6 @@ const DEFAULT_TIRE_COLOR = '#555555'
 const DEFAULT_SUSP_COLOR = '#444444'
 const SUSP_THRESHOLD = 5 // mm — below this, suspension stays grey
 
-// ── Data presence checks ──
-function hasTireData(frame) {
-  const t = frame?.tire_temp_C
-  if (!t) return false
-  return (t.FL > 0 || t.FR > 0 || t.RL > 0 || t.RR > 0)
-}
-
-function tireStroke(temp, optTemp, ovhTemp, hasData) {
-  if (!hasData) return DEFAULT_TIRE_COLOR
-  return tempToColorSmooth(temp, optTemp, ovhTemp)
-}
-
 // ── Suspension strain color with threshold ──
 // Returns #444444 for values <= 5mm, then gradient for 5-30mm:
 //   blue(relaxed) → orange(loaded) → red(overloaded)
@@ -104,28 +92,24 @@ function TreadLines({ cx, cy, innerR, outerR }) {
 // ════════════════════════════════════════════
 //  SIDE VIEW — 800x360, nose faces right
 // ════════════════════════════════════════════
-function SideViewSvg({ frame, vehicle }) {
+function SideViewSvg({ frame, vehicle, hasSimData }) {
   const svgRef = useRef(null)
-  const tireTemps = frame?.tire_temp_C || { FL: 25, FR: 25, RL: 25, RR: 25 }
   const suspMM = frame?.suspension_mm || { FL: 0, FR: 0, RL: 0, RR: 0 }
-  const optTemp = vehicle?.tire_optimal_temp_C || 90
-  const ovhTemp = vehicle?.tire_overheat_temp_C || 120
-  const hasData = hasTireData(frame)
 
   useEffect(() => {
     const svg = svgRef.current
     if (!svg) return
 
-    const frontTemp = (tireTemps.FL + tireTemps.FR) / 2
-    const rearTemp = (tireTemps.RL + tireTemps.RR) / 2
+    // Side view tires always #555555 — no temp visualization
     const ftEl = svg.getElementById('s-tire-f')
     const rtEl = svg.getElementById('s-tire-r')
-    if (ftEl) ftEl.setAttribute('stroke', tireStroke(frontTemp, optTemp, ovhTemp, hasData))
-    if (rtEl) rtEl.setAttribute('stroke', tireStroke(rearTemp, optTemp, ovhTemp, hasData))
+    if (ftEl) ftEl.setAttribute('stroke', DEFAULT_TIRE_COLOR)
+    if (rtEl) rtEl.setAttribute('stroke', DEFAULT_TIRE_COLOR)
 
     const fAvg = (suspMM.FL + suspMM.FR) / 2
     const rAvg = (suspMM.RL + suspMM.RR) / 2
-    const fCol = suspColor(fAvg), rCol = suspColor(rAvg)
+    const fCol = hasSimData && Math.abs(fAvg) > 3 ? suspColor(fAvg) : DEFAULT_SUSP_COLOR
+    const rCol = hasSimData && Math.abs(rAvg) > 3 ? suspColor(rAvg) : DEFAULT_SUSP_COLOR
     for (const id of ['s-susp-fu', 's-susp-fl']) {
       const el = svg.getElementById(id)
       if (el) el.setAttribute('stroke', fCol)
@@ -140,7 +124,7 @@ function SideViewSvg({ frame, vehicle }) {
       const rideH = (fAvg - 15) * 0.3
       chassis.setAttribute('transform', `translate(0,${rideH.toFixed(1)})`)
     }
-  }, [tireTemps, suspMM, optTemp, ovhTemp, hasData])
+  }, [suspMM, hasSimData])
 
   return (
     <svg ref={svgRef} viewBox="0 0 800 360" style={{ width: '100%', height: '100%', display: 'block' }}>
@@ -253,14 +237,13 @@ function SideViewSvg({ frame, vehicle }) {
 // ════════════════════════════════════════════
 //  FRONT VIEW — 600x400
 // ════════════════════════════════════════════
-function FrontViewSvg({ frame, vehicle }) {
+function FrontViewSvg({ frame, vehicle, hasSimData }) {
   const svgRef = useRef(null)
-  const tireTemps = frame?.tire_temp_C || { FL: 25, FR: 25, RL: 25, RR: 25 }
+  const tireTemps = frame?.tire_temp_C || { FL: 0, FR: 0, RL: 0, RR: 0 }
   const suspMM = frame?.suspension_mm || { FL: 0, FR: 0, RL: 0, RR: 0 }
   const latG = frame?.lateral_g || 0
   const optTemp = vehicle?.tire_optimal_temp_C || 90
   const ovhTemp = vehicle?.tire_overheat_temp_C || 120
-  const hasData = hasTireData(frame)
 
   useEffect(() => {
     const svg = svgRef.current
@@ -268,10 +251,11 @@ function FrontViewSvg({ frame, vehicle }) {
 
     const flEl = svg.getElementById('f-tire-l')
     const frEl = svg.getElementById('f-tire-r')
-    if (flEl) flEl.setAttribute('stroke', tireStroke(tireTemps.FL, optTemp, ovhTemp, hasData))
-    if (frEl) frEl.setAttribute('stroke', tireStroke(tireTemps.FR, optTemp, ovhTemp, hasData))
+    if (flEl) flEl.setAttribute('stroke', hasSimData && tireTemps.FL > 0 ? tempToColorSmooth(tireTemps.FL, optTemp, ovhTemp) : DEFAULT_TIRE_COLOR)
+    if (frEl) frEl.setAttribute('stroke', hasSimData && tireTemps.FR > 0 ? tempToColorSmooth(tireTemps.FR, optTemp, ovhTemp) : DEFAULT_TIRE_COLOR)
 
-    const flCol = suspColor(suspMM.FL), frCol = suspColor(suspMM.FR)
+    const flCol = hasSimData && Math.abs(suspMM.FL) > 3 ? suspColor(suspMM.FL) : DEFAULT_SUSP_COLOR
+    const frCol = hasSimData && Math.abs(suspMM.FR) > 3 ? suspColor(suspMM.FR) : DEFAULT_SUSP_COLOR
     for (const id of ['f-uwb-l', 'f-lwb-l', 'f-push-l']) {
       const el = svg.getElementById(id)
       if (el) el.setAttribute('stroke', flCol)
@@ -286,7 +270,7 @@ function FrontViewSvg({ frame, vehicle }) {
       const rollDeg = latG * 1.2
       mono.setAttribute('transform', `rotate(${rollDeg.toFixed(2)},300,265)`)
     }
-  }, [tireTemps, suspMM, latG, optTemp, ovhTemp, hasData])
+  }, [tireTemps, suspMM, latG, optTemp, ovhTemp, hasSimData])
 
   return (
     <svg ref={svgRef} viewBox="0 0 600 400" style={{ width: '100%', height: '100%', display: 'block' }}>
@@ -379,14 +363,13 @@ function FrontViewSvg({ frame, vehicle }) {
 // ════════════════════════════════════════════
 //  REAR VIEW — 600x400
 // ════════════════════════════════════════════
-function RearViewSvg({ frame, vehicle }) {
+function RearViewSvg({ frame, vehicle, hasSimData }) {
   const svgRef = useRef(null)
-  const tireTemps = frame?.tire_temp_C || { FL: 25, FR: 25, RL: 25, RR: 25 }
+  const tireTemps = frame?.tire_temp_C || { FL: 0, FR: 0, RL: 0, RR: 0 }
   const suspMM = frame?.suspension_mm || { FL: 0, FR: 0, RL: 0, RR: 0 }
   const latG = frame?.lateral_g || 0
   const optTemp = vehicle?.tire_optimal_temp_C || 90
   const ovhTemp = vehicle?.tire_overheat_temp_C || 120
-  const hasData = hasTireData(frame)
 
   useEffect(() => {
     const svg = svgRef.current
@@ -394,10 +377,11 @@ function RearViewSvg({ frame, vehicle }) {
 
     const rlEl = svg.getElementById('r-tire-l')
     const rrEl = svg.getElementById('r-tire-r')
-    if (rlEl) rlEl.setAttribute('stroke', tireStroke(tireTemps.RL, optTemp, ovhTemp, hasData))
-    if (rrEl) rrEl.setAttribute('stroke', tireStroke(tireTemps.RR, optTemp, ovhTemp, hasData))
+    if (rlEl) rlEl.setAttribute('stroke', hasSimData && tireTemps.RL > 0 ? tempToColorSmooth(tireTemps.RL, optTemp, ovhTemp) : DEFAULT_TIRE_COLOR)
+    if (rrEl) rrEl.setAttribute('stroke', hasSimData && tireTemps.RR > 0 ? tempToColorSmooth(tireTemps.RR, optTemp, ovhTemp) : DEFAULT_TIRE_COLOR)
 
-    const rlCol = suspColor(suspMM.RL), rrCol = suspColor(suspMM.RR)
+    const rlCol = hasSimData && Math.abs(suspMM.RL) > 3 ? suspColor(suspMM.RL) : DEFAULT_SUSP_COLOR
+    const rrCol = hasSimData && Math.abs(suspMM.RR) > 3 ? suspColor(suspMM.RR) : DEFAULT_SUSP_COLOR
     for (const id of ['r-uwb-l', 'r-lwb-l']) {
       const el = svg.getElementById(id)
       if (el) el.setAttribute('stroke', rlCol)
@@ -412,7 +396,7 @@ function RearViewSvg({ frame, vehicle }) {
       const rollDeg = latG * 1.2
       gbox.setAttribute('transform', `rotate(${rollDeg.toFixed(2)},300,254)`)
     }
-  }, [tireTemps, suspMM, latG, optTemp, ovhTemp, hasData])
+  }, [tireTemps, suspMM, latG, optTemp, ovhTemp, hasSimData])
 
   return (
     <svg ref={svgRef} viewBox="0 0 600 400" style={{ width: '100%', height: '100%', display: 'block' }}>
@@ -592,12 +576,11 @@ function beamSuspMM(a, b, susp) {
 
 function projectTop(n) { return { sx: n.x, sy: -n.z } }
 
-function TopViewSvg({ frame, vehicle }) {
+function TopViewSvg({ frame, vehicle, hasSimData }) {
   const susp = frame?.suspension_mm || { FL: 0, FR: 0, RL: 0, RR: 0 }
-  const tireTemps = frame?.tire_temp_C || { FL: 25, FR: 25, RL: 25, RR: 25 }
+  const tireTemps = frame?.tire_temp_C || { FL: 0, FR: 0, RL: 0, RR: 0 }
   const optTemp = vehicle?.tire_optimal_temp_C || 90
   const ovhTemp = vehicle?.tire_overheat_temp_C || 120
-  const hasData = hasTireData(frame)
 
   const proj = {}
   for (const k in NODES) proj[k] = projectTop(NODES[k])
@@ -642,7 +625,7 @@ function TopViewSvg({ frame, vehicle }) {
       {tireDefs.map(t => {
         if (t.cx == null) return null
         const temp = tireTemps[t.corner] || 25
-        const tColor = hasData ? tempToColorSmooth(temp, optTemp, ovhTemp) : DEFAULT_TIRE_COLOR
+        const tColor = hasSimData && temp > 0 ? tempToColorSmooth(temp, optTemp, ovhTemp) : DEFAULT_TIRE_COLOR
         return (
           <g key={t.corner}>
             <rect x={t.cx - t.w / 2} y={t.cy - t.h / 2} width={t.w} height={t.h}
@@ -694,7 +677,7 @@ function TopViewSvg({ frame, vehicle }) {
 
 const VIEWS = ['top', 'front', 'side', 'rear']
 
-function CarModelViews({ frame, vehicle, mode }) {
+function CarModelViews({ frame, vehicle, mode, hasSimData }) {
   const [activeView, setActiveView] = useState('top')
 
   return (
@@ -723,9 +706,9 @@ function CarModelViews({ frame, vehicle, mode }) {
 
       <div style={{ flex: 1, minHeight: 0 }}>
         {activeView === 'top' && <CarModel frame={frame} vehicle={vehicle} mode={mode} />}
-        {activeView === 'front' && <FrontViewSvg frame={frame} vehicle={vehicle} />}
-        {activeView === 'side' && <SideViewSvg frame={frame} vehicle={vehicle} />}
-        {activeView === 'rear' && <RearViewSvg frame={frame} vehicle={vehicle} />}
+        {activeView === 'front' && <FrontViewSvg frame={frame} vehicle={vehicle} hasSimData={hasSimData} />}
+        {activeView === 'side' && <SideViewSvg frame={frame} vehicle={vehicle} hasSimData={hasSimData} />}
+        {activeView === 'rear' && <RearViewSvg frame={frame} vehicle={vehicle} hasSimData={hasSimData} />}
       </div>
     </div>
   )

@@ -198,7 +198,7 @@ export default function App() {
                   </button>
                 ))}
               </div>
-              <CarModelViews frame={f} vehicle={v} mode={mode} />
+              <CarModelViews frame={f} vehicle={v} mode={mode} hasSimData={simulatedData !== null} />
             </div>
 
             <div className="tire-panel">
