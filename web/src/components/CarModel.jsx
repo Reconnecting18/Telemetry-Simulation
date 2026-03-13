@@ -1,4 +1,4 @@
-import { memo, useRef } from 'react'
+import { memo, useRef, useEffect } from 'react'
 import { buildTireData, tireTempColor, tireWearColor } from '../utils/tireModel'
 
 // ═══════════════════════════════════════════════════════════════════
@@ -16,9 +16,11 @@ import { buildTireData, tireTempColor, tireWearColor } from '../utils/tireModel'
 
 // ── CONSTANTS ───────────────────────────────────────────────────
 const MAX_SUSP_MM = 30
-const HUB_DY      = 1.4   // max forward displacement at full compression
-const HUB_DX      = 1.4   // max inward displacement (camber gain)
-const LERP_K      = 0.15  // suspension smoothing per frame
+const COMP_PX     = 4     // max inward px at full compression (30mm)
+const EXT_PX      = 3     // max outward px at full extension (-30mm)
+const COMP_DY     = 2     // max upward px at full compression
+const EXT_DY      = 1.5   // max downward px at full extension
+const LERP_K      = 0.12  // suspension smoothing per frame
 const STEER_GAIN  = 12.5  // deg per 1g lateral
 const STEER_MAX   = 25    // deg
 const ROLL_MAX    = 3     // deg
@@ -294,6 +296,48 @@ function strainColor(rideHeight) {
 }
 
 // ═══════════════════════════════════════════════════════════════════
+// 5b. HEAT DISSIPATION COLOR GRADIENTS
+// ═══════════════════════════════════════════════════════════════════
+
+const BHEAT = [
+  { at: 0.0, r: 17,  g: 17,  b: 17  },  // cold #111111
+  { at: 0.3, r: 68,  g: 0,   b: 0   },  // warm #440000
+  { at: 0.6, r: 255, g: 34,  b: 0   },  // hot #ff2200
+  { at: 1.0, r: 255, g: 170, b: 0   },  // very hot #ffaa00
+]
+
+function brakeHeatColor(frac) {
+  const t = Math.max(0, Math.min(1, frac))
+  for (let i = 1; i < BHEAT.length; i++) {
+    if (t <= BHEAT[i].at) {
+      const lo = BHEAT[i - 1], hi = BHEAT[i]
+      const s = (t - lo.at) / (hi.at - lo.at)
+      return rgb(lerpC(lo.r, hi.r, s), lerpC(lo.g, hi.g, s), lerpC(lo.b, hi.b, s))
+    }
+  }
+  return rgb(255, 170, 0)
+}
+
+const EHEAT = [
+  { at: 0.0, r: 17,  g: 10,  b: 0   },  // #110a00 subtle
+  { at: 0.3, r: 130, g: 0,   b: 0   },  // deep red
+  { at: 0.6, r: 255, g: 68,  b: 0   },  // orange #ff4400
+  { at: 1.0, r: 255, g: 200, b: 180 },  // white-hot
+]
+
+function engineHeatColor(frac) {
+  const t = Math.max(0, Math.min(1, frac))
+  for (let i = 1; i < EHEAT.length; i++) {
+    if (t <= EHEAT[i].at) {
+      const lo = EHEAT[i - 1], hi = EHEAT[i]
+      const s = (t - lo.at) / (hi.at - lo.at)
+      return rgb(lerpC(lo.r, hi.r, s), lerpC(lo.g, hi.g, s), lerpC(lo.b, hi.b, s))
+    }
+  }
+  return rgb(255, 200, 180)
+}
+
+// ═══════════════════════════════════════════════════════════════════
 // 6. DAMAGE SYSTEM
 // ═══════════════════════════════════════════════════════════════════
 const DAMAGE_ZONES = {
@@ -380,9 +424,13 @@ function solvePositions(rideHeights, steerDeg, dmgMap) {
   // Per-corner: suspension displacement + steering
   for (const { id, p, side, steers } of CORNERS) {
     const rh = rideHeights[id]
+    const centered = (rh - 0.5) * 2  // -1 (ext) to +1 (comp)
     const inward = side === 'L' ? 1 : -1
-    const dx = rh * HUB_DX * inward
-    const dy = rh * -HUB_DY
+    const absC = Math.abs(centered)
+    const dxPx = centered >= 0 ? absC * COMP_PX : absC * EXT_PX
+    const dyPx = centered >= 0 ? absC * COMP_DY : absC * EXT_DY
+    const dx = (centered >= 0 ? dxPx : -dxPx) * inward
+    const dy = centered >= 0 ? -dyPx : dyPx
 
     // Hub + upright: full displacement
     for (const sfx of ['.hub', '.upr']) {
@@ -636,19 +684,34 @@ function HealthOverlay({ health, pos }) {
 // ═══════════════════════════════════════════════════════════════════
 // 9. REACT COMPONENT — RENDERING
 // ═══════════════════════════════════════════════════════════════════
-function CarModel({ frame, vehicle, mode }) {
+function CarModel({ frame, vehicle, mode, hasSimData }) {
   // Persistent state across frames
   const animRide = useRef({ FL: 0.5, FR: 0.5, RL: 0.5, RR: 0.5 })
   const dmgRef   = useRef({})
   const prevG    = useRef({ lat: 0, lon: 0 })
+  const brakeHeatRef = useRef({ FL: 20, FR: 20, RL: 20, RR: 20 })
+  const heatGradRefs = useRef({})
 
   if (!frame) return null
 
+  // ── Extract G-forces (used by suspension, steering, roll, pitch, heat) ──
+  const latG = frame.lateral_g || 0
+  const lonG = frame.longitudinal_g || 0
+
   // ── Suspension: target ride_height [0=extended, 1=compressed] ──
+  // Includes body roll (lateral_g) and pitch (longitudinal_g) effects
   const susp = frame.suspension_mm || { FL: 0, FR: 0, RL: 0, RR: 0 }
   const ride = animRide.current
   for (const id of ['FL', 'FR', 'RL', 'RR']) {
-    const target = Math.max(0, Math.min(1, (susp[id] + MAX_SUSP_MM) / (2 * MAX_SUSP_MM)))
+    let target = (susp[id] + MAX_SUSP_MM) / (2 * MAX_SUSP_MM)
+    // Body roll: outside of turn compresses, inside extends
+    // Left turn (latG > 0): right compresses, left extends
+    const isRight = id === 'FR' || id === 'RR'
+    target += (isRight ? 1 : -1) * latG * 0.1875
+    // Pitch: braking (lonG < 0) compresses front, extends rear
+    const isFront = id === 'FL' || id === 'FR'
+    target += (isFront ? 1 : -1) * (-lonG) * 0.25
+    target = Math.max(0, Math.min(1, target))
     ride[id] += (target - ride[id]) * LERP_K
   }
 
@@ -656,11 +719,9 @@ function CarModel({ frame, vehicle, mode }) {
   // lateral_g sign: positive = left turn (CCW/Menger), negative = right turn
   // SVG rotation: positive angle = clockwise = visual right
   // Therefore negate: left turn → negative steerDeg → CCW → wheels point left
-  const latG = frame.lateral_g || 0
   const steerDeg = Math.max(-STEER_MAX, Math.min(STEER_MAX, -latG * STEER_GAIN))
 
   // ── Roll & Pitch (CSS) ──
-  const lonG = frame.longitudinal_g || 0
   const rollDeg  = Math.max(-ROLL_MAX,  Math.min(ROLL_MAX,  latG * (ROLL_MAX / 2)))
   const pitchDeg = Math.max(-PITCH_MAX, Math.min(PITCH_MAX, lonG * (PITCH_MAX / 1.5)))
 
@@ -712,11 +773,74 @@ function CarModel({ frame, vehicle, mode }) {
     }
   }
 
+  // ── Heat dissipation system ──
+  // Brake temps: heat from deceleration, cool 2% per frame toward ambient
+  const bHeat = brakeHeatRef.current
+  if (hasSimData) {
+    const brakingG = Math.max(0, -lonG)
+    const frontGain = brakingG * 15
+    const rearGain = brakingG * 10
+    for (const id of ['FL', 'FR']) {
+      bHeat[id] = Math.min(800, bHeat[id] + frontGain - (bHeat[id] - 20) * 0.02)
+    }
+    for (const id of ['RL', 'RR']) {
+      bHeat[id] = Math.min(800, bHeat[id] + rearGain - (bHeat[id] - 20) * 0.02)
+    }
+  }
+  // Brake fractions (0-1)
+  const brakeFracs = {}
+  for (const id of ['FL', 'FR', 'RL', 'RR']) {
+    brakeFracs[id] = Math.max(0, Math.min(1, (bHeat[id] - 100) / 700))
+  }
+  // Engine temp from RPM
+  const rpm = frame.rpm || 0
+  const maxRpm = vehicle?.max_rpm || 15000
+  const engineTemp = 80 + (rpm / maxRpm) * 60  // 80-140°C
+  const engineFrac = Math.max(0, Math.min(1, (engineTemp - 80) / 60))
+  // Aero heat from velocity
+  const velocity = frame.velocity_kmh || 0
+  const aeroFrac = Math.max(0, Math.min(1, velocity / 350))
+
   // Monocoque polygon
   const monoPoints = MONO_SEQ.slice(0, -1).map(k => `${pos[k].x},${pos[k].y}`).join(' ')
 
   // CSS transform
   const transform = `perspective(400px) rotateX(${pitchDeg.toFixed(2)}deg) rotateY(${rollDeg.toFixed(2)}deg)`
+
+  // ── Update heat gradient stops via refs (DOM-direct for performance) ──
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(() => {
+    if (!hasSimData) return
+    const refs = heatGradRefs.current
+    const setStops = (el, color, opacity) => {
+      if (!el) return
+      const stops = el.querySelectorAll('stop')
+      if (stops[0]) {
+        stops[0].setAttribute('stop-color', color)
+        stops[0].setAttribute('stop-opacity', String(opacity))
+      }
+      if (stops[1]) {
+        stops[1].setAttribute('stop-color', color)
+        stops[1].setAttribute('stop-opacity', '0')
+      }
+    }
+    // Engine
+    const eColor = engineHeatColor(engineFrac)
+    const eOp = engineFrac < 0.1 ? 0 : Math.min(0.6, engineFrac * 0.8)
+    setStops(refs.engine, eColor, eOp)
+    // Brakes
+    for (const id of ['FL', 'FR', 'RL', 'RR']) {
+      const bf = brakeFracs[id]
+      const bColor = brakeHeatColor(bf)
+      const bOp = bf < 0.05 ? 0 : Math.min(0.65, bf * 0.8)
+      setStops(refs[`brake${id}`], bColor, bOp)
+    }
+    // Aero — subtle glow increasing with speed
+    const aColor = `rgb(${Math.round(26 + 60 * aeroFrac)},${Math.round(8 + 20 * aeroFrac)},0)`
+    const aOp = aeroFrac < 0.2 ? 0 : Math.min(0.25, (aeroFrac - 0.2) * 0.35)
+    setStops(refs.aeroFW, aColor, aOp)
+    setStops(refs.aeroRW, aColor, aOp)
+  })
 
   return (
     <svg viewBox="-35 -62 70 115" className="car-svg"
@@ -783,13 +907,10 @@ function CarModel({ frame, vehicle, mode }) {
         )
       })}
 
-      {/* Tire rounded rects with 3-zone gradient fill */}
+      {/* Tire rounded rects with 3-zone gradient fill + heat gradients */}
       <defs>
         {CORNERS.map(({ id, p, side }) => {
           const tc = tireColors[id]
-          // Gradient goes from outer edge to inner edge
-          // L-side: outer is left (x1=0), inner is right (x2=1)
-          // R-side: outer is right (x1=1), inner is left (x2=0)
           const x1 = side === 'L' ? '0' : '1'
           const x2 = side === 'L' ? '1' : '0'
           return (
@@ -804,6 +925,29 @@ function CarModel({ frame, vehicle, mode }) {
             </linearGradient>
           )
         })}
+        {/* Heat dissipation radial gradients — stop colors updated via refs */}
+        <radialGradient id="heat-engine"
+          ref={el => { if (el) heatGradRefs.current.engine = el }}>
+          <stop offset="0%" stopColor="#111" stopOpacity="0" />
+          <stop offset="100%" stopColor="#111" stopOpacity="0" />
+        </radialGradient>
+        {['FL', 'FR', 'RL', 'RR'].map(id => (
+          <radialGradient key={`hb-${id}`} id={`heat-brake-${id}`}
+            ref={el => { if (el) heatGradRefs.current[`brake${id}`] = el }}>
+            <stop offset="0%" stopColor="#111" stopOpacity="0" />
+            <stop offset="100%" stopColor="#111" stopOpacity="0" />
+          </radialGradient>
+        ))}
+        <radialGradient id="heat-aero-fw"
+          ref={el => { if (el) heatGradRefs.current.aeroFW = el }}>
+          <stop offset="0%" stopColor="#111" stopOpacity="0" />
+          <stop offset="100%" stopColor="#111" stopOpacity="0" />
+        </radialGradient>
+        <radialGradient id="heat-aero-rw"
+          ref={el => { if (el) heatGradRefs.current.aeroRW = el }}>
+          <stop offset="0%" stopColor="#111" stopOpacity="0" />
+          <stop offset="100%" stopColor="#111" stopOpacity="0" />
+        </radialGradient>
       </defs>
       {CORNERS.map(({ id, p, tw, steers }) => {
         const hub = pos[`${p}.hub`]
@@ -833,6 +977,35 @@ function CarModel({ frame, vehicle, mode }) {
 
       {/* Mechanical health overlay (default mode only) */}
       {mode === 'default' && <HealthOverlay health={health} pos={pos} />}
+
+      {/* Heat dissipation overlay — engine, brakes, aero */}
+      {hasSimData && (
+        <g className="heat-overlay" style={{ pointerEvents: 'none' }}>
+          {/* Engine glow — center-rear of monocoque */}
+          <ellipse cx={0} cy={15} rx={8} ry={12}
+            fill="url(#heat-engine)" />
+          {/* Brake glow at each hub */}
+          {CORNERS.map(({ id, p }) => {
+            const hub = pos[`${p}.hub`]
+            if (!hub) return null
+            return (
+              <circle key={`bheat-${id}`}
+                cx={hub.x} cy={hub.y} r={6}
+                fill={`url(#heat-brake-${id})`} />
+            )
+          })}
+          {/* Aero heating — front wing tips */}
+          <ellipse cx={pos['fw.lt']?.x || -22} cy={pos['fw.lt']?.y || -53}
+            rx={5} ry={3} fill="url(#heat-aero-fw)" />
+          <ellipse cx={pos['fw.rt']?.x || 22} cy={pos['fw.rt']?.y || -53}
+            rx={5} ry={3} fill="url(#heat-aero-fw)" />
+          {/* Aero heating — rear wing tips */}
+          <ellipse cx={pos['rw.lt']?.x || -17} cy={pos['rw.lt']?.y || 43}
+            rx={5} ry={3} fill="url(#heat-aero-rw)" />
+          <ellipse cx={pos['rw.rt']?.x || 17} cy={pos['rw.rt']?.y || 43}
+            rx={5} ry={3} fill="url(#heat-aero-rw)" />
+        </g>
+      )}
 
       {/* Node dots */}
       {Object.entries(NODE_VIS).map(([k, cls]) => {
