@@ -22,19 +22,47 @@ double getWeatherGripMultiplier(const std::string& weather, const std::string& c
     // Compound-weather cross-effect grip matrix
     // Dry slicks on wet = catastrophic; wet tires on dry = overheating/low grip
     if (compound == "intermediate") {
-        if (weather == "damp") return 1.15;  // optimal condition
-        if (weather == "wet")  return 0.40;  // too little tread for standing water
-        return 0.70;                          // dry: overheating, graining
+        if (weather == "damp") return 1.05;  // optimal condition
+        if (weather == "wet")  return 0.82;  // reasonable in rain
+        return 0.55;                          // dry: overheating, graining
     }
     if (compound == "wet") {
-        if (weather == "wet")  return 1.05;  // optimal condition
-        if (weather == "damp") return 0.80;  // decent but sub-optimal
-        return 0.50;                          // dry: massive overheating, shredding
+        if (weather == "wet")  return 1.02;  // optimal condition
+        if (weather == "damp") return 0.78;  // decent but sub-optimal
+        return 0.40;                          // dry: disastrous, shredding
     }
     // Dry compounds (soft, medium, hard)
     if (weather == "damp") return 0.65;  // reduced: water film, no tread pattern
     if (weather == "wet")  return 0.40;  // severe: aquaplaning, no grip
     return 1.0; // dry: nominal
+}
+
+// ============================================================
+//  Compound-weather thermal interaction
+// ============================================================
+// Returns heat generation, cooling, temperature ceiling, and wear
+// multipliers for a given compound on a given surface condition.
+
+CompoundWeatherEffect getCompoundWeatherEffect(const std::string& compound, const std::string& weather) {
+    // Dry compounds (soft, medium, hard) on non-dry track
+    if (compound == "soft" || compound == "medium" || compound == "hard") {
+        if (weather == "wet")  return { 0.30, 1.70,  55.0, 4.0 };  // water cools contact patch, fast wear
+        if (weather == "damp") return { 0.50, 1.30,  75.0, 3.0 };  // cool, reduced grip, accelerated wear
+        return { 1.0, 1.0, 999.0, 1.0 };                            // dry: nominal
+    }
+    // Intermediate compound
+    if (compound == "intermediate") {
+        if (weather == "damp") return { 1.00, 1.00,  95.0, 0.90 }; // optimal: normal heat, slightly less wear
+        if (weather == "wet")  return { 0.80, 1.20,  85.0, 1.10 }; // slight heat reduction, modest wear increase
+        return { 2.50, 0.80, 145.0, 4.00 };                         // dry: severe overheating, blistering, 8%/lap
+    }
+    // Wet compound
+    if (compound == "wet") {
+        if (weather == "wet")  return { 0.70, 1.10,  75.0, 1.00 }; // optimal: reduced heat, low wear
+        if (weather == "damp") return { 1.00, 1.00, 999.0, 2.00 }; // normal heat, faster wear
+        return { 3.00, 0.70, 160.0, 10.0 };                         // dry: catastrophic overheating, 15%/lap
+    }
+    return { 1.0, 1.0, 999.0, 1.0 };
 }
 
 // ============================================================

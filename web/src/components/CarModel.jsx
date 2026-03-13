@@ -16,15 +16,15 @@ import { buildTireData, tireTempColor, tireWearColor } from '../utils/tireModel'
 
 // ── CONSTANTS ───────────────────────────────────────────────────
 const MAX_SUSP_MM = 30
-const COMP_PX     = 4     // max inward px at full compression (30mm)
-const EXT_PX      = 3     // max outward px at full extension (-30mm)
-const COMP_DY     = 2     // max upward px at full compression
-const EXT_DY      = 1.5   // max downward px at full extension
-const LERP_K      = 0.12  // suspension smoothing per frame
+const COMP_PX     = 0.8   // max inward px at full compression (30mm)
+const EXT_PX      = 0.6   // max outward px at full extension (-30mm)
+const COMP_DY     = 0.4   // max upward px at full compression
+const EXT_DY      = 0.3   // max downward px at full extension
+const LERP_K      = 0.06  // suspension smoothing per frame
 const STEER_GAIN  = 12.5  // deg per 1g lateral
 const STEER_MAX   = 25    // deg
-const ROLL_MAX    = 3     // deg
-const PITCH_MAX   = 4     // deg
+const ROLL_MAX    = 0.6   // deg
+const PITCH_MAX   = 0.8   // deg
 const TIRE_W_F    = 4.5   // front tire half-width (narrower)
 const TIRE_W_R    = 5.5   // rear tire half-width (wider)
 const TIRE_H      = 9     // tire half-height
@@ -44,19 +44,19 @@ function defNode(name, x, y, parent = null) {
 }
 
 // ── 1a. Chassis spine (8 nodes, rigid) ──────────────────────────
-defNode('ch.nose',  0,  -48)
-defNode('ch.fbL',  -6,  -32)
-defNode('ch.fbR',   6,  -32)
-defNode('ch.cpL',  -8,   -5)
-defNode('ch.cpR',   8,   -5)
-defNode('ch.rbL',  -6,   25)
-defNode('ch.rbR',   6,   25)
-defNode('ch.tail',  0,   33)
+defNode('ch.nose',  0,  -50)
+defNode('ch.fbL',  -9,  -34)
+defNode('ch.fbR',   9,  -34)
+defNode('ch.cpL', -12,   -5)
+defNode('ch.cpR',  12,   -5)
+defNode('ch.rbL',  -9,   25)
+defNode('ch.rbR',   9,   25)
+defNode('ch.tail',  0,   34)
 
 // ── 1b. Suspension corners (8 nodes each × 4) ──────────────────
 function defCorner(p, hx, hy, fwd) {
   const ins = hx < 0 ? 1 : -1   // toward centreline
-  const cx = hx + ins * 13      // chassis pickup X
+  const cx = hx + ins * 9       // chassis pickup X (wider monocoque)
   defNode(`${p}.uwi`, cx,            hy - 3 * fwd)           // upper wishbone inner
   defNode(`${p}.lwi`, cx,            hy + 3 * fwd)           // lower wishbone inner
   defNode(`${p}.uwo`, hx + ins * 4,  hy - 3 * fwd)           // upper wishbone outer
@@ -93,42 +93,46 @@ defWheel('rl', ...RL_HUB, 'L', TIRE_W_R)
 defWheel('rr', ...RR_HUB, 'R', TIRE_W_R)
 
 // ── 1d. Front wing (12 nodes) — main plane + cascade + endplates ──
-defNode('fw.lt',    -22, -53)          // left tip (main plane edge)
-defNode('fw.rt',     22, -53)          // right tip
-defNode('fw.cL',     -4, -53)          // centre left
-defNode('fw.cR',      4, -53)          // centre right
-defNode('fw.csL',   -19, -50)          // cascade left
-defNode('fw.csR',    19, -50)          // cascade right
-defNode('fw.lepT',  -25, -58)          // left endplate forward
-defNode('fw.lepB',  -25, -40)          // left endplate rear
-defNode('fw.repT',   25, -58)          // right endplate forward
-defNode('fw.repB',   25, -40)          // right endplate rear
-defNode('fw.aL',     -2, -49)          // attach left
-defNode('fw.aR',      2, -49)          // attach right
+defNode('fw.lt',    -28, -55)          // left tip (main plane edge)
+defNode('fw.rt',     28, -55)          // right tip
+defNode('fw.cL',     -5, -55)          // centre left
+defNode('fw.cR',      5, -55)          // centre right
+defNode('fw.csL',   -25, -52)          // cascade left
+defNode('fw.csR',    25, -52)          // cascade right
+defNode('fw.lepT',  -30, -60)          // left endplate forward
+defNode('fw.lepB',  -30, -42)          // left endplate rear
+defNode('fw.repT',   30, -60)          // right endplate forward
+defNode('fw.repB',   30, -42)          // right endplate rear
+defNode('fw.aL',     -3, -51)          // attach left
+defNode('fw.aR',      3, -51)          // attach right
 
 // ── 1e. Rear wing (12 nodes) — main plane + tall endplates + pillars ──
-defNode('rw.lt',    -17,  43)          // left tip (main plane)
-defNode('rw.rt',     17,  43)          // right tip
-defNode('rw.cL',     -4,  43)          // centre left
-defNode('rw.cR',      4,  43)          // centre right
-defNode('rw.lepT',  -21,  32)          // left endplate forward
-defNode('rw.lepB',  -21,  53)          // left endplate rear
-defNode('rw.repT',   21,  32)          // right endplate forward
-defNode('rw.repB',   21,  53)          // right endplate rear
-defNode('rw.piL',    -4,  43)          // pillar left (wing)
-defNode('rw.piR',     4,  43)          // pillar right (wing)
-defNode('rw.baL',    -4,  34)          // pillar base left (chassis)
-defNode('rw.baR',     4,  34)          // pillar base right (chassis)
+defNode('rw.lt',    -21,  44)          // left tip (main plane)
+defNode('rw.rt',     21,  44)          // right tip
+defNode('rw.cL',     -5,  44)          // centre left
+defNode('rw.cR',      5,  44)          // centre right
+defNode('rw.lepT',  -23,  34)          // left endplate forward
+defNode('rw.lepB',  -23,  54)          // left endplate rear
+defNode('rw.repT',   23,  34)          // right endplate forward
+defNode('rw.repB',   23,  54)          // right endplate rear
+defNode('rw.piL',    -5,  44)          // pillar left (wing)
+defNode('rw.piR',     5,  44)          // pillar right (wing)
+defNode('rw.baL',    -5,  35)          // pillar base left (chassis)
+defNode('rw.baR',     5,  35)          // pillar base right (chassis)
 
-// ── 1f. Sidepods (4 nodes each × 2) ────────────────────────────
-defNode('lsp.ft',   -8,  -3)
-defNode('lsp.fb',  -14,  -1)
-defNode('lsp.rt',   -8,  20)
-defNode('lsp.rb',  -14,  18)
-defNode('rsp.ft',    8,  -3)
-defNode('rsp.fb',   14,  -1)
-defNode('rsp.rt',    8,  20)
-defNode('rsp.rb',   14,  18)
+// ── 1f. Sidepods (6 nodes each × 2) — large swept shapes ───────
+defNode('lsp.ft',  -12,  -5)           // front top (chassis edge)
+defNode('lsp.fb',  -19,  -2)           // front bottom (widest point)
+defNode('lsp.mb',  -20,   8)           // mid bottom (undercut)
+defNode('lsp.rt',  -12,  22)           // rear top (chassis edge)
+defNode('lsp.rb',  -18,  20)           // rear bottom (tapered trailing edge)
+defNode('lsp.in',  -14,   0)           // inlet face
+defNode('rsp.ft',   12,  -5)
+defNode('rsp.fb',   19,  -2)
+defNode('rsp.mb',   20,   8)
+defNode('rsp.rt',   12,  22)
+defNode('rsp.rb',   18,  20)
+defNode('rsp.in',   14,   0)
 
 // ═══════════════════════════════════════════════════════════════════
 // 2. BEAM DATA
@@ -216,10 +220,10 @@ for (const p of ['fl','fr','rl','rr']) {
 
 // ── 2h. Sidepod beams — light grey ─────────────────────────────
 ;[
-  ['lsp.ft','lsp.fb'], ['lsp.fb','lsp.rb'], ['lsp.rb','lsp.rt'], ['lsp.rt','lsp.ft'],
-  ['lsp.ft','ch.cpL'], ['lsp.rt','ch.rbL'],
-  ['rsp.ft','rsp.fb'], ['rsp.fb','rsp.rb'], ['rsp.rb','rsp.rt'], ['rsp.rt','rsp.ft'],
-  ['rsp.ft','ch.cpR'], ['rsp.rt','ch.rbR'],
+  ['lsp.ft','lsp.fb'], ['lsp.fb','lsp.mb'], ['lsp.mb','lsp.rb'], ['lsp.rb','lsp.rt'], ['lsp.rt','lsp.ft'],
+  ['lsp.ft','ch.cpL'], ['lsp.rt','ch.rbL'], ['lsp.in','lsp.fb'],
+  ['rsp.ft','rsp.fb'], ['rsp.fb','rsp.mb'], ['rsp.mb','rsp.rb'], ['rsp.rb','rsp.rt'], ['rsp.rt','rsp.ft'],
+  ['rsp.ft','ch.cpR'], ['rsp.rt','ch.rbR'], ['rsp.in','rsp.fb'],
 ].forEach(([a,b]) => defBeam(a, b, 'sidepod', '#888'))
 
 // ═══════════════════════════════════════════════════════════════════
@@ -267,7 +271,7 @@ const NODE_VIS = {}
   .forEach(k => NODE_VIS[k] = 'aero')
 ;['rw.lt','rw.lepT','rw.lepB','rw.cL','rw.cR','rw.repT','rw.repB','rw.rt',
   'rw.piL','rw.piR','rw.baL','rw.baR'].forEach(k => NODE_VIS[k] = 'aero')
-;['lsp.ft','lsp.fb','lsp.rt','lsp.rb','rsp.ft','rsp.fb','rsp.rt','rsp.rb']
+;['lsp.ft','lsp.fb','lsp.mb','lsp.rt','lsp.rb','lsp.in','rsp.ft','rsp.fb','rsp.mb','rsp.rt','rsp.rb','rsp.in']
   .forEach(k => NODE_VIS[k] = 'sp')
 
 // ═══════════════════════════════════════════════════════════════════
@@ -707,10 +711,10 @@ function CarModel({ frame, vehicle, mode, hasSimData }) {
     // Body roll: outside of turn compresses, inside extends
     // Left turn (latG > 0): right compresses, left extends
     const isRight = id === 'FR' || id === 'RR'
-    target += (isRight ? 1 : -1) * latG * 0.1875
+    target += (isRight ? 1 : -1) * latG * 0.09375
     // Pitch: braking (lonG < 0) compresses front, extends rear
     const isFront = id === 'FL' || id === 'FR'
-    target += (isFront ? 1 : -1) * (-lonG) * 0.25
+    target += (isFront ? 1 : -1) * (-lonG) * 0.125
     target = Math.max(0, Math.min(1, target))
     ride[id] += (target - ride[id]) * LERP_K
   }
@@ -843,37 +847,114 @@ function CarModel({ frame, vehicle, mode, hasSimData }) {
   })
 
   return (
-    <svg viewBox="-35 -62 70 115" className="car-svg"
+    <svg viewBox="-36 -65 72 130" className="car-svg"
       style={{ transform, transformOrigin: '50% 50%' }}>
+
+      {/* Floor/undertray — dark panel between sidepods */}
+      <polygon points={`${pos['lsp.fb'].x},${pos['lsp.fb'].y} ${pos['rsp.fb'].x},${pos['rsp.fb'].y} ${pos['rsp.rb'].x},${pos['rsp.rb'].y} ${pos['rsp.rt'].x},${pos['rsp.rt'].y+2} ${pos['lsp.rt'].x},${pos['lsp.rt'].y+2} ${pos['lsp.rb'].x},${pos['lsp.rb'].y}`}
+        fill="#141414" stroke="#333" strokeWidth={0.3} />
+
+      {/* Sidepod fills — large swept body panels */}
+      <polygon points={`${pos['lsp.ft'].x},${pos['lsp.ft'].y} ${pos['lsp.fb'].x},${pos['lsp.fb'].y} ${pos['lsp.mb'].x},${pos['lsp.mb'].y} ${pos['lsp.rb'].x},${pos['lsp.rb'].y} ${pos['lsp.rt'].x},${pos['lsp.rt'].y}`}
+        fill="#1a1a1a" stroke="#666" strokeWidth={0.5} />
+      <polygon points={`${pos['rsp.ft'].x},${pos['rsp.ft'].y} ${pos['rsp.fb'].x},${pos['rsp.fb'].y} ${pos['rsp.mb'].x},${pos['rsp.mb'].y} ${pos['rsp.rb'].x},${pos['rsp.rb'].y} ${pos['rsp.rt'].x},${pos['rsp.rt'].y}`}
+        fill="#1a1a1a" stroke="#666" strokeWidth={0.5} />
+
+      {/* Sidepod inlet openings */}
+      <rect x={pos['lsp.in'].x - 2} y={pos['lsp.in'].y - 5} width={4} height={10}
+        rx={1} fill="#0a0a0a" stroke="#555" strokeWidth={0.4} />
+      <rect x={pos['rsp.in'].x - 2} y={pos['rsp.in'].y - 5} width={4} height={10}
+        rx={1} fill="#0a0a0a" stroke="#555" strokeWidth={0.4} />
+
+      {/* Sidepod undercut detail lines */}
+      <line x1={pos['lsp.fb'].x + 2} y1={pos['lsp.fb'].y + 2}
+            x2={pos['lsp.rb'].x + 2} y2={pos['lsp.rb'].y - 2}
+        stroke="#444" strokeWidth={0.4} opacity={0.6} />
+      <line x1={pos['rsp.fb'].x - 2} y1={pos['rsp.fb'].y + 2}
+            x2={pos['rsp.rb'].x - 2} y2={pos['rsp.rb'].y - 2}
+        stroke="#444" strokeWidth={0.4} opacity={0.6} />
 
       {/* Monocoque fill */}
       <polygon points={monoPoints} fill="#0d0d0d" stroke="none" />
 
+      {/* Engine cover spine — two lines from cockpit rear to rear wing base */}
+      <line x1={-5} y1={5} x2={-4} y2={pos['ch.tail'].y}
+        stroke="#444" strokeWidth={0.5} opacity={0.5} />
+      <line x1={5} y1={5} x2={4} y2={pos['ch.tail'].y}
+        stroke="#444" strokeWidth={0.5} opacity={0.5} />
+
+      {/* Cockpit opening */}
+      <ellipse cx={0} cy={-15} rx={7} ry={10}
+        fill="#080808" stroke="#555" strokeWidth={0.4} />
+
+      {/* Halo structure */}
+      <line x1={-6} y1={-8} x2={0} y2={-26}
+        stroke="#888" strokeWidth={1.2} strokeLinecap="round" />
+      <line x1={6} y1={-8} x2={0} y2={-26}
+        stroke="#888" strokeWidth={1.2} strokeLinecap="round" />
+      <line x1={-6} y1={-8} x2={6} y2={-8}
+        stroke="#666" strokeWidth={0.8} />
+
+      {/* Helmet */}
+      <ellipse cx={0} cy={-14} rx={4} ry={3.5}
+        fill="#222" stroke="#888" strokeWidth={0.5} />
+      {/* Visor */}
+      <ellipse cx={0} cy={-15} rx={3} ry={1.5}
+        fill="#333" stroke="#666" strokeWidth={0.3} />
+
+      {/* Steering wheel */}
+      <rect x={-3.5} y={-10} width={7} height={3}
+        rx={1} fill="#1a1a1a" stroke="#666" strokeWidth={0.3} />
+
       {/* Front wing filled shapes */}
       <g opacity={0.9}>
+        {/* Endplates — curved */}
         <polygon points={`${pos['fw.lepT'].x-3},${pos['fw.lepT'].y} ${pos['fw.lepT'].x+3},${pos['fw.lepT'].y} ${pos['fw.lepB'].x+3},${pos['fw.lepB'].y} ${pos['fw.lepB'].x-3},${pos['fw.lepB'].y}`}
           fill="#1a1a1a" />
         <polygon points={`${pos['fw.repT'].x-3},${pos['fw.repT'].y} ${pos['fw.repT'].x+3},${pos['fw.repT'].y} ${pos['fw.repB'].x+3},${pos['fw.repB'].y} ${pos['fw.repB'].x-3},${pos['fw.repB'].y}`}
           fill="#1a1a1a" />
+        {/* Main plane */}
         <polygon points={`${pos['fw.lt'].x},${pos['fw.lt'].y-4} ${pos['fw.rt'].x},${pos['fw.rt'].y-4} ${pos['fw.rt'].x},${pos['fw.rt'].y+4} ${pos['fw.lt'].x},${pos['fw.lt'].y+4}`}
           fill="#1a1a1a" />
+        {/* Cascade element — second wing plane 8px behind, 4px lower */}
         <polygon points={`${pos['fw.csL'].x},${pos['fw.csL'].y-2.5} ${pos['fw.csR'].x},${pos['fw.csR'].y-2.5} ${pos['fw.csR'].x},${pos['fw.csR'].y+2.5} ${pos['fw.csL'].x},${pos['fw.csL'].y+2.5}`}
           fill="#1a1a1a" />
       </g>
 
       {/* Rear wing filled shapes */}
       <g opacity={0.9}>
+        {/* Endplates — tall */}
         <polygon points={`${pos['rw.lepT'].x-4},${pos['rw.lepT'].y} ${pos['rw.lepT'].x+4},${pos['rw.lepT'].y} ${pos['rw.lepB'].x+4},${pos['rw.lepB'].y} ${pos['rw.lepB'].x-4},${pos['rw.lepB'].y}`}
           fill="#1a1a1a" />
         <polygon points={`${pos['rw.repT'].x-4},${pos['rw.repT'].y} ${pos['rw.repT'].x+4},${pos['rw.repT'].y} ${pos['rw.repB'].x+4},${pos['rw.repB'].y} ${pos['rw.repB'].x-4},${pos['rw.repB'].y}`}
           fill="#1a1a1a" />
+        {/* Main plane */}
         <polygon points={`${pos['rw.lt'].x},${pos['rw.lt'].y-5} ${pos['rw.rt'].x},${pos['rw.rt'].y-5} ${pos['rw.rt'].x},${pos['rw.rt'].y+5} ${pos['rw.lt'].x},${pos['rw.lt'].y+5}`}
           fill="#1a1a1a" />
+        {/* Beam wing — smaller horizontal element below main plane */}
+        <line x1={pos['rw.lt'].x + 3} y1={pos['rw.lt'].y + 8}
+              x2={pos['rw.rt'].x - 3} y2={pos['rw.rt'].y + 8}
+          stroke="#666" strokeWidth={1.5} strokeLinecap="round" />
+        {/* DRS actuator — small rectangle centered on main plane */}
+        <rect x={-3} y={pos['rw.cL'].y - 2} width={6} height={3}
+          rx={0.5} fill="#222" stroke="#666" strokeWidth={0.3} />
+        {/* Pillars */}
         <line x1={pos['rw.piL'].x} y1={pos['rw.piL'].y} x2={pos['rw.baL'].x} y2={pos['rw.baL'].y}
           stroke="#1a1a1a" strokeWidth={2} />
         <line x1={pos['rw.piR'].x} y1={pos['rw.piR'].y} x2={pos['rw.baR'].x} y2={pos['rw.baR'].y}
           stroke="#1a1a1a" strokeWidth={2} />
       </g>
+
+      {/* Diffuser — five evenly spaced fins at rear between tires */}
+      {[-16, -8, 0, 8, 16].map(dx => (
+        <line key={`diff-${dx}`}
+          x1={dx} y1={pos['ch.tail'].y + 2}
+          x2={dx} y2={pos['ch.tail'].y + 8}
+          stroke="#444" strokeWidth={0.6} opacity={0.7} />
+      ))}
+      {/* Diffuser floor */}
+      <polygon points={`-18,${pos['ch.tail'].y + 2} 18,${pos['ch.tail'].y + 2} 16,${pos['ch.tail'].y + 8} -16,${pos['ch.tail'].y + 8}`}
+        fill="#141414" stroke="#333" strokeWidth={0.3} />
 
       {/* All beams */}
       {BEAMS.map((beam, i) => {
@@ -995,14 +1076,14 @@ function CarModel({ frame, vehicle, mode, hasSimData }) {
             )
           })}
           {/* Aero heating — front wing tips */}
-          <ellipse cx={pos['fw.lt']?.x || -22} cy={pos['fw.lt']?.y || -53}
+          <ellipse cx={pos['fw.lt']?.x || -28} cy={pos['fw.lt']?.y || -55}
             rx={5} ry={3} fill="url(#heat-aero-fw)" />
-          <ellipse cx={pos['fw.rt']?.x || 22} cy={pos['fw.rt']?.y || -53}
+          <ellipse cx={pos['fw.rt']?.x || 28} cy={pos['fw.rt']?.y || -55}
             rx={5} ry={3} fill="url(#heat-aero-fw)" />
           {/* Aero heating — rear wing tips */}
-          <ellipse cx={pos['rw.lt']?.x || -17} cy={pos['rw.lt']?.y || 43}
+          <ellipse cx={pos['rw.lt']?.x || -21} cy={pos['rw.lt']?.y || 44}
             rx={5} ry={3} fill="url(#heat-aero-rw)" />
-          <ellipse cx={pos['rw.rt']?.x || 17} cy={pos['rw.rt']?.y || 43}
+          <ellipse cx={pos['rw.rt']?.x || 21} cy={pos['rw.rt']?.y || 44}
             rx={5} ry={3} fill="url(#heat-aero-rw)" />
         </g>
       )}

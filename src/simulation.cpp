@@ -786,21 +786,13 @@ TelemetrySession runStrategySimulation(
         double wear_scale = (compound.wear_rate / BASELINE_WEAR_PER_LAP)
                           * strategy.modifiers.wear_multiplier;
 
-        // Water-film temperature ceiling: wet track prevents dry rubber from
-        // reaching operating temperature. Water cools the contact patch.
-        double temp_ceiling = 999.0; // no ceiling by default
-        bool is_dry_compound = (stint.compound == "soft" || stint.compound == "medium"
-                             || stint.compound == "hard");
-        bool is_inter = (stint.compound == "intermediate");
-        if (is_dry_compound) {
-            if (wstr == "wet")  temp_ceiling = compound.optimal_temp_min - 20.0; // ~65-80°C
-            if (wstr == "damp") temp_ceiling = compound.optimal_temp_min - 10.0; // ~78-90°C
-        } else if (is_inter) {
-            if (wstr == "dry")  temp_ceiling = compound.optimal_temp_max + 15.0; // overheating on dry
-            if (wstr == "wet")  temp_ceiling = compound.optimal_temp_min - 10.0; // too much water
-        } else { // wet compound
-            if (wstr == "dry")  temp_ceiling = compound.optimal_temp_max + 10.0; // severe overheating
-        }
+        // Compound-weather thermal interaction: replaces generic weather multipliers
+        // with compound-specific heat generation, cooling, temp ceiling, and wear.
+        CompoundWeatherEffect cwe = getCompoundWeatherEffect(stint.compound, wstr);
+        double temp_ceiling = cwe.temp_ceiling;
+
+        // Apply compound-weather wear multiplier on top of existing wear_scale
+        wear_scale *= cwe.wear_mult;
 
         // Engine power for this config
         double drag_at_vmax = 0.5 * AIR_DENSITY * cfg.drag_coeff
@@ -940,12 +932,12 @@ TelemetrySession runStrategySimulation(
 
                 double dt = seg_len / std::max(state.velocity, 0.1);
 
-                // Tire temperature (with water-film ceiling for wet conditions)
+                // Tire temperature (compound-weather specific heat/cooling/ceiling)
                 updateTireTemps(state.tire_temp, factors,
                                 state.lateral_g, state.velocity, cfg.max_speed,
                                 state.longitudinal_g, weather.ambient_temp_C, dt,
-                                weather.heat_rate_multiplier(),
-                                weather.cooling_multiplier(),
+                                cwe.heat_mult,
+                                cwe.cool_mult,
                                 weather.track_temp_factor(),
                                 temp_ceiling);
 

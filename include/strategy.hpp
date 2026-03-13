@@ -39,6 +39,17 @@ struct CompoundParams {
 CompoundParams getCompoundParams(const std::string& compound);
 double         getWeatherGripMultiplier(const std::string& weather, const std::string& compound = "medium");
 
+// Compound-weather thermal interaction: heat generation, cooling, temperature
+// ceiling, and wear rate multipliers vary by compound-condition combination.
+struct CompoundWeatherEffect {
+    double heat_mult;      // heat generation rate multiplier
+    double cool_mult;      // cooling rate multiplier
+    double temp_ceiling;   // max achievable tire temperature (°C)
+    double wear_mult;      // wear rate multiplier (applied on top of compound base rate)
+};
+
+CompoundWeatherEffect getCompoundWeatherEffect(const std::string& compound, const std::string& weather);
+
 // Parse strategy config from a JSON file.
 bool parseStrategyConfig(const std::string& path, StrategyConfig& out);
 
